@@ -1,7 +1,9 @@
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import Canvas from './components/Canvas';
 import Toolbar from './components/Toolbar';
+import LeftPanel from './components/LeftPanel';
 import PropertiesPanel from './components/PropertiesPanel';
+import PreviewModal from './components/PreviewModal';
 import { useNodeTree } from './hooks/useNodeTree';
 import { useCanvasInteraction } from './hooks/useCanvasInteraction';
 
@@ -9,11 +11,21 @@ function App() {
   const {
     tree,
     ready,
+    canUndo,
+    canRedo,
+    undo,
+    redo,
     updateNodeFlexStyle,
-    addChildNode,
-    addContainerNode,
+    updateNodeVisualStyle,
+    updateTextProps,
+    addNodeByType,
     deleteNode,
+    moveNode,
     resizeNode,
+    rotateNodeLive,
+    commitLiveUpdate,
+    updateImageProps,
+    updateCanvasContainer,
   } = useNodeTree();
 
   const {
@@ -21,41 +33,55 @@ function App() {
     scale,
     offset,
     selectNode,
+    focusNode,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
+    handleDoubleClick,
     handleWheel,
-  } = useCanvasInteraction(tree, resizeNode);
+  } = useCanvasInteraction(tree, resizeNode, rotateNodeLive, moveNode, commitLiveUpdate);
+
+  const canvasContainerRef = useRef<HTMLDivElement>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   const selectedNode = selection.selectedNodeId ? tree.nodes[selection.selectedNodeId] ?? null : null;
-  const isRoot = selection.selectedNodeId === tree.rootId;
 
-  const handleAddChild = useCallback(() => {
-    if (selection.selectedNodeId) addChildNode(selection.selectedNodeId);
-  }, [selection.selectedNodeId, addChildNode]);
+  const handleFocusNode = useCallback(() => {
+    if (!selection.selectedNodeId) return;
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    focusNode(selection.selectedNodeId, rect.width, rect.height);
+  }, [selection.selectedNodeId, focusNode]);
 
-  const handleAddContainer = useCallback(() => {
-    if (selection.selectedNodeId) addContainerNode(selection.selectedNodeId);
-  }, [selection.selectedNodeId, addContainerNode]);
-
-  const handleDelete = useCallback(() => {
-    if (selection.selectedNodeId) {
-      const parentId = tree.nodes[selection.selectedNodeId]?.parentId;
-      deleteNode(selection.selectedNodeId);
+  const handleDeleteNode = useCallback(
+    (nodeId: string) => {
+      const parentId = tree.nodes[nodeId]?.parentId;
+      deleteNode(nodeId);
       selectNode(parentId ?? null);
-    }
-  }, [selection.selectedNodeId, tree.nodes, deleteNode, selectNode]);
+    },
+    [tree.nodes, deleteNode, selectNode]
+  );
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      const tag = document.activeElement?.tagName;
+      if (tag === 'INPUT' || tag === 'SELECT' || tag === 'TEXTAREA') return;
+
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+        return;
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'z' && e.shiftKey) {
+        e.preventDefault();
+        redo();
+        return;
+      }
       if (e.key === 'Delete' || e.key === 'Backspace') {
-        if (
-          document.activeElement?.tagName === 'INPUT' ||
-          document.activeElement?.tagName === 'SELECT'
-        ) {
-          return;
+        if (selection.selectedNodeId && selection.selectedNodeId !== tree.rootId) {
+          handleDeleteNode(selection.selectedNodeId);
         }
-        handleDelete();
       }
       if (e.key === 'Escape') {
         selectNode(null);
@@ -63,7 +89,7 @@ function App() {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleDelete, selectNode]);
+  }, [undo, redo, selection.selectedNodeId, tree.rootId, handleDeleteNode, selectNode]);
 
   if (!ready) {
     return (
@@ -79,15 +105,23 @@ function App() {
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       <Toolbar
-        selectedNodeId={selection.selectedNodeId}
-        isRoot={isRoot}
-        hasChildren={selectedNode ? selectedNode.children.length > 0 : false}
-        onAddChild={handleAddChild}
-        onAddContainer={handleAddContainer}
-        onDelete={handleDelete}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        onUndo={undo}
+        onRedo={redo}
+        onPreview={() => setShowPreview(true)}
       />
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 overflow-hidden">
+        <LeftPanel
+          tree={tree}
+          selectedNodeId={selection.selectedNodeId}
+          onAddNode={addNodeByType}
+          onUpdateContainer={updateCanvasContainer}
+          onSelectNode={selectNode}
+          onDeleteNode={handleDeleteNode}
+          onMoveNode={moveNode}
+        />
+        <div ref={canvasContainerRef} className="flex-1 overflow-hidden">
           <Canvas
             tree={tree}
             selection={selection}
@@ -97,13 +131,19 @@ function App() {
             onMouseMove={handleMouseMove}
             onMouseUp={handleMouseUp}
             onWheel={handleWheel}
+            onDoubleClick={handleDoubleClick}
+            onFocusNode={handleFocusNode}
           />
         </div>
         <PropertiesPanel
           node={selectedNode}
           onUpdateFlexStyle={updateNodeFlexStyle}
+          onUpdateVisualStyle={updateNodeVisualStyle}
+          onUpdateTextProps={updateTextProps}
+          onUpdateImageProps={updateImageProps}
         />
       </div>
+      {showPreview && <PreviewModal tree={tree} onClose={() => setShowPreview(false)} />}
     </div>
   );
 }

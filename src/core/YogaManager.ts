@@ -7,9 +7,11 @@ import {
   Edge,
   Gutter,
   Direction,
+  PositionType,
 } from 'yoga-layout/load';
 import type { Yoga, Node as YogaNode } from 'yoga-layout/load';
-import type { CanvasNode, NodeTree, FlexStyle, ComputedLayout } from '../types';
+import type { CanvasNode, NodeTree, FlexStyle, FlexValue, ComputedLayout } from '../types';
+import { measureTextHeight } from './textMeasure';
 
 let yogaInstance: Yoga | null = null;
 
@@ -55,9 +57,35 @@ const WRAP_MAP: Record<string, Wrap> = {
   wrap: Wrap.Wrap,
 };
 
+function applyDimension(
+  value: FlexValue | undefined,
+  setPx: (v: number) => void,
+  setPercent: (v: number) => void,
+  setAuto?: () => void,
+): void {
+  if (value === undefined) return;
+  if (value === 'auto') {
+    setAuto?.();
+    return;
+  }
+  if (typeof value === 'string' && value.endsWith('%')) {
+    setPercent(parseFloat(value));
+    return;
+  }
+  setPx(value as number);
+}
+
 export function applyFlexStyle(yogaNode: YogaNode, style: FlexStyle): void {
-  if (style.width !== undefined) yogaNode.setWidth(style.width);
-  if (style.height !== undefined) yogaNode.setHeight(style.height);
+  applyDimension(style.width,
+    (v) => yogaNode.setWidth(v),
+    (v) => yogaNode.setWidthPercent(v),
+    () => yogaNode.setWidthAuto(),
+  );
+  applyDimension(style.height,
+    (v) => yogaNode.setHeight(v),
+    (v) => yogaNode.setHeightPercent(v),
+    () => yogaNode.setHeightAuto(),
+  );
 
   if (style.flexDirection) {
     yogaNode.setFlexDirection(FLEX_DIRECTION_MAP[style.flexDirection] ?? FlexDirection.Row);
@@ -75,27 +103,87 @@ export function applyFlexStyle(yogaNode: YogaNode, style: FlexStyle): void {
   if (style.flex !== undefined) yogaNode.setFlex(style.flex);
   if (style.flexGrow !== undefined) yogaNode.setFlexGrow(style.flexGrow);
   if (style.flexShrink !== undefined) yogaNode.setFlexShrink(style.flexShrink);
-  if (style.flexBasis !== undefined) {
-    if (style.flexBasis === 'auto') {
-      yogaNode.setFlexBasisAuto();
-    } else {
-      yogaNode.setFlexBasis(style.flexBasis);
-    }
+
+  applyDimension(style.flexBasis,
+    (v) => yogaNode.setFlexBasis(v),
+    (v) => yogaNode.setFlexBasisPercent(v),
+    () => yogaNode.setFlexBasisAuto(),
+  );
+
+  applyGap(yogaNode, Gutter.All, style.gap);
+  applyGap(yogaNode, Gutter.Row, style.rowGap);
+  applyGap(yogaNode, Gutter.Column, style.columnGap);
+
+  applyEdge(yogaNode, 'padding', Edge.Top, style.paddingTop);
+  applyEdge(yogaNode, 'padding', Edge.Right, style.paddingRight);
+  applyEdge(yogaNode, 'padding', Edge.Bottom, style.paddingBottom);
+  applyEdge(yogaNode, 'padding', Edge.Left, style.paddingLeft);
+
+  applyEdge(yogaNode, 'margin', Edge.Top, style.marginTop);
+  applyEdge(yogaNode, 'margin', Edge.Right, style.marginRight);
+  applyEdge(yogaNode, 'margin', Edge.Bottom, style.marginBottom);
+  applyEdge(yogaNode, 'margin', Edge.Left, style.marginLeft);
+
+  // Position
+  if (style.positionType) {
+    const map: Record<string, PositionType> = {
+      static: PositionType.Static,
+      relative: PositionType.Relative,
+      absolute: PositionType.Absolute,
+    };
+    yogaNode.setPositionType(map[style.positionType] ?? PositionType.Static);
   }
+  applyPositionEdge(yogaNode, Edge.Top, style.positionTop);
+  applyPositionEdge(yogaNode, Edge.Right, style.positionRight);
+  applyPositionEdge(yogaNode, Edge.Bottom, style.positionBottom);
+  applyPositionEdge(yogaNode, Edge.Left, style.positionLeft);
+}
 
-  if (style.gap !== undefined) yogaNode.setGap(Gutter.All, style.gap);
-  if (style.rowGap !== undefined) yogaNode.setGap(Gutter.Row, style.rowGap);
-  if (style.columnGap !== undefined) yogaNode.setGap(Gutter.Column, style.columnGap);
+function applyGap(yogaNode: YogaNode, gutter: Gutter, value: FlexValue | undefined): void {
+  if (value === undefined) return;
+  if (typeof value === 'string' && value.endsWith('%')) {
+    yogaNode.setGapPercent(gutter, parseFloat(value));
+    return;
+  }
+  // gap does not support 'auto'
+  if (typeof value === 'number') yogaNode.setGap(gutter, value);
+}
 
-  if (style.paddingTop !== undefined) yogaNode.setPadding(Edge.Top, style.paddingTop);
-  if (style.paddingRight !== undefined) yogaNode.setPadding(Edge.Right, style.paddingRight);
-  if (style.paddingBottom !== undefined) yogaNode.setPadding(Edge.Bottom, style.paddingBottom);
-  if (style.paddingLeft !== undefined) yogaNode.setPadding(Edge.Left, style.paddingLeft);
+function applyEdge(
+  yogaNode: YogaNode,
+  prop: 'padding' | 'margin',
+  edge: Edge,
+  value: FlexValue | undefined,
+): void {
+  if (value === undefined) return;
+  if (value === 'auto' && prop === 'margin') {
+    yogaNode.setMarginAuto(edge);
+    return;
+  }
+  if (typeof value === 'string' && value.endsWith('%')) {
+    if (prop === 'padding') yogaNode.setPaddingPercent(edge, parseFloat(value));
+    else yogaNode.setMarginPercent(edge, parseFloat(value));
+    return;
+  }
+  if (typeof value === 'number') {
+    if (prop === 'padding') yogaNode.setPadding(edge, value);
+    else yogaNode.setMargin(edge, value);
+  }
+}
 
-  if (style.marginTop !== undefined) yogaNode.setMargin(Edge.Top, style.marginTop);
-  if (style.marginRight !== undefined) yogaNode.setMargin(Edge.Right, style.marginRight);
-  if (style.marginBottom !== undefined) yogaNode.setMargin(Edge.Bottom, style.marginBottom);
-  if (style.marginLeft !== undefined) yogaNode.setMargin(Edge.Left, style.marginLeft);
+function applyPositionEdge(
+  yogaNode: YogaNode,
+  edge: Edge,
+  value: FlexValue | undefined,
+): void {
+  if (value === undefined) return;
+  if (typeof value === 'string' && value.endsWith('%')) {
+    yogaNode.setPositionPercent(edge, parseFloat(value));
+    return;
+  }
+  if (typeof value === 'number') {
+    yogaNode.setPosition(edge, value);
+  }
 }
 
 export function calculateLayout(
@@ -155,6 +243,15 @@ export function buildYogaTree(
     const yogaNode = yoga.Node.create();
 
     applyFlexStyle(yogaNode, canvasNode.flexStyle);
+
+    // Text nodes: use measureFunc so Yoga computes height from content
+    if (canvasNode.type === 'text' && canvasNode.textProps && canvasNode.children.length === 0) {
+      yogaNode.setMeasureFunc((width) => {
+        const h = measureTextHeight(canvasNode.textProps!, canvasNode.flexStyle, width);
+        return { width, height: h };
+      });
+    }
+
     yogaNodes.set(nodeId, yogaNode);
 
     canvasNode.children.forEach((childId, index) => {

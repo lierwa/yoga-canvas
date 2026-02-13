@@ -1,24 +1,20 @@
-import { Plus, BoxSelect, Trash2, Layers } from 'lucide-react';
+import { Undo2, Redo2, BoxSelect, Play } from 'lucide-react';
 
 interface ToolbarProps {
-  selectedNodeId: string | null;
-  isRoot: boolean;
-  hasChildren: boolean;
-  onAddChild: () => void;
-  onAddContainer: () => void;
-  onDelete: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  onPreview: () => void;
 }
 
 export default function Toolbar({
-  selectedNodeId,
-  isRoot,
-  onAddChild,
-  onAddContainer,
-  onDelete,
+  canUndo,
+  canRedo,
+  onUndo,
+  onRedo,
+  onPreview,
 }: ToolbarProps) {
-  const canAdd = selectedNodeId !== null;
-  const canDelete = selectedNodeId !== null && !isRoot;
-
   return (
     <div className="flex items-center gap-1 px-3 py-2 bg-white border-b border-gray-200">
       <div className="flex items-center gap-1 mr-4">
@@ -28,42 +24,42 @@ export default function Toolbar({
       <div className="h-5 w-px bg-gray-300 mx-1" />
 
       <button
-        onClick={onAddChild}
-        disabled={!canAdd}
+        onClick={onUndo}
+        disabled={!canUndo}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-          enabled:hover:bg-blue-50 enabled:hover:text-blue-600
+          enabled:hover:bg-gray-100 enabled:hover:text-gray-800
           disabled:opacity-40 disabled:cursor-not-allowed
           text-gray-600 transition-colors"
-        title="Add child item to selected node"
+        title="Undo (⌘Z)"
       >
-        <Plus size={14} />
-        <span>Add Item</span>
+        <Undo2 size={14} />
+        <span>Undo</span>
       </button>
 
       <button
-        onClick={onAddContainer}
-        disabled={!canAdd}
+        onClick={onRedo}
+        disabled={!canRedo}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-          enabled:hover:bg-purple-50 enabled:hover:text-purple-600
+          enabled:hover:bg-gray-100 enabled:hover:text-gray-800
           disabled:opacity-40 disabled:cursor-not-allowed
           text-gray-600 transition-colors"
-        title="Add flex container to selected node"
+        title="Redo (⌘⇧Z)"
       >
-        <Layers size={14} />
-        <span>Add Container</span>
+        <Redo2 size={14} />
+        <span>Redo</span>
       </button>
 
+      <div className="h-5 w-px bg-gray-300 mx-1" />
+
       <button
-        onClick={onDelete}
-        disabled={!canDelete}
+        onClick={onPreview}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
-          enabled:hover:bg-red-50 enabled:hover:text-red-600
-          disabled:opacity-40 disabled:cursor-not-allowed
+          hover:bg-green-50 hover:text-green-700
           text-gray-600 transition-colors"
-        title="Delete selected node"
+        title="Preview"
       >
-        <Trash2 size={14} />
-        <span>Delete</span>
+        <Play size={14} />
+        <span>Preview</span>
       </button>
 
       <div className="flex-1" />
