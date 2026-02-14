@@ -1,0 +1,42 @@
+{
+  "name": "@yaga-canvas/core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic Canvas layout engine powered by Yoga (flexbox). Supports H5 and WeChat Mini Program.",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch"
+  },
+  "dependencies": {
+    "yoga-layout": "^3.2.1"
+  },
+  "devDependencies": {
+    "tsup": "^8.3.0",
+    "typescript": "~5.6.2"
+  },
+  "keywords": [
+    "canvas",
+    "flexbox",
+    "yoga-layout",
+    "layout",
+    "mini-program",
+    "h5",
+    "weixin"
+  ],
+  "license": "MIT",
+  "sideEffects": false
+}
