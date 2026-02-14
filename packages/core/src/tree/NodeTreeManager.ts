@@ -120,6 +120,7 @@ export class NodeTreeManager {
       if (desc.type === 'scrollview') {
         node.scrollViewProps = {
           scrollDirection: desc.scrollDirection ?? 'vertical',
+          scrollBarVisibility: desc.scrollBarVisibility ?? 'auto',
         };
       }
 
@@ -407,6 +408,7 @@ export class NodeTreeManager {
     if (desc.type === 'scrollview') {
       node.scrollViewProps = {
         scrollDirection: desc.scrollDirection ?? 'vertical',
+        scrollBarVisibility: desc.scrollBarVisibility ?? 'auto',
       };
     }
 

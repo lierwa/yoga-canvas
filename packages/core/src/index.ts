@@ -17,6 +17,7 @@ export type {
   NodeType,
   TextProps,
   ImageProps,
+  ScrollBarVisibility,
   ScrollViewProps,
   ComputedLayout,
   CanvasNode,

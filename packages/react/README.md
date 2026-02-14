@@ -61,3 +61,8 @@ function App() {
 ## License
 
 MIT
+
+## todo
+
+- 现在在scrollView的点击indicator显示没有跟随滚动
+- 现在文字节点，宽度没有岁自身内容自适应，类似于 inlineFlex

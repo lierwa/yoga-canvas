@@ -84,7 +84,11 @@ function renderNode(
 
     // Draw scrollbar on top (not affected by scroll translate)
     if (options.scrollManager) {
-      drawScrollViewScrollbar(ctx, node, options.scrollManager.getState(nodeId));
+      const visibility = node.scrollViewProps?.scrollBarVisibility ?? 'auto';
+      if (visibility !== 'hidden') {
+        const opacity = visibility === 'always' ? 1 : options.scrollManager.getScrollBarOpacity(nodeId);
+        drawScrollViewScrollbar(ctx, node, options.scrollManager.getState(nodeId), opacity);
+      }
     }
   } else {
     for (const childId of node.children) {

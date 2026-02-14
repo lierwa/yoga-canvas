@@ -4,7 +4,6 @@ import type { ScrollState } from '../../scroll/ScrollManager';
 const SCROLLBAR_SIZE = 4;
 const SCROLLBAR_MIN_THUMB = 20;
 const SCROLLBAR_PADDING = 2;
-const SCROLLBAR_COLOR = 'rgba(0, 0, 0, 0.25)';
 const SCROLLBAR_RADIUS = 2;
 
 /**
@@ -14,9 +13,13 @@ export function drawScrollViewScrollbar(
   ctx: CanvasContextLike,
   node: CanvasNode,
   scrollState: ScrollState,
+  scrollBarOpacity = 1,
 ): void {
+  if (scrollBarOpacity <= 0) return;
+
   const { left, top, width, height } = node.computedLayout;
   const isVertical = node.scrollViewProps?.scrollDirection !== 'horizontal';
+  const barColor = `rgba(0, 0, 0, ${0.25 * scrollBarOpacity})`;
 
   ctx.save();
 
@@ -30,7 +33,7 @@ export function drawScrollViewScrollbar(
     const thumbY = top + SCROLLBAR_PADDING + scrollRatio * (trackHeight - thumbHeight);
     const thumbX = left + width - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
 
-    drawRoundedBar(ctx, thumbX, thumbY, SCROLLBAR_SIZE, thumbHeight, SCROLLBAR_RADIUS);
+    drawRoundedBar(ctx, thumbX, thumbY, SCROLLBAR_SIZE, thumbHeight, SCROLLBAR_RADIUS, barColor);
   }
 
   if (!isVertical && scrollState.contentWidth > scrollState.viewportWidth) {
@@ -43,7 +46,7 @@ export function drawScrollViewScrollbar(
     const thumbX = left + SCROLLBAR_PADDING + scrollRatio * (trackWidth - thumbWidth);
     const thumbY = top + height - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
 
-    drawRoundedBar(ctx, thumbX, thumbY, thumbWidth, SCROLLBAR_SIZE, SCROLLBAR_RADIUS);
+    drawRoundedBar(ctx, thumbX, thumbY, thumbWidth, SCROLLBAR_SIZE, SCROLLBAR_RADIUS, barColor);
   }
 
   ctx.restore();
@@ -56,9 +59,10 @@ function drawRoundedBar(
   w: number,
   h: number,
   r: number,
+  color: string,
 ): void {
   r = Math.min(r, w / 2, h / 2);
-  ctx.setFillStyle(SCROLLBAR_COLOR);
+  ctx.setFillStyle(color);
   ctx.beginPath();
   ctx.moveTo(x + r, y);
   ctx.arcTo(x + w, y, x + w, y + h, r);

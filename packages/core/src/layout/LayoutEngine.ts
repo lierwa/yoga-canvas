@@ -30,8 +30,9 @@ export function buildYogaTree(
       const textProps = canvasNode.textProps;
       const flexStyle = canvasNode.flexStyle;
       yogaNode.setMeasureFunc((width) => {
-        const h = measureTextWithAdapter(adapter, textProps, flexStyle, width);
-        return { width, height: h };
+        const measuredWidth = isFinite(width) ? width : 100000;
+        const result = measureTextFullWithAdapter(adapter, textProps, flexStyle, measuredWidth);
+        return { width: Math.min(result.width, measuredWidth), height: result.height };
       });
     }
 
@@ -111,13 +112,13 @@ export function freeYogaTree(yogaNodes: Map<string, YogaNode>): void {
 /**
  * Measure text height using the platform adapter.
  */
-function measureTextWithAdapter(
+function measureTextFullWithAdapter(
   adapter: PlatformAdapter,
   textProps: TextProps,
   flexStyle: FlexStyle,
   availableWidth: number,
-): number {
-  const result = adapter.measureText({
+): { width: number; height: number } {
+  return adapter.measureText({
     content: textProps.content,
     fontSize: textProps.fontSize,
     fontWeight: textProps.fontWeight,
@@ -125,7 +126,6 @@ function measureTextWithAdapter(
     lineHeight: textProps.lineHeight,
     availableWidth,
   });
-  return result.height;
 }
 
 /**

@@ -100,6 +100,7 @@ function convertElementToDescriptor(
         name: props.name as string | undefined,
         style: (props.style as NodeDescriptor['style']) ?? {},
         scrollDirection: props.scrollDirection as NodeDescriptor['scrollDirection'],
+        scrollBarVisibility: props.scrollBarVisibility as NodeDescriptor['scrollBarVisibility'],
         children: props.children
           ? convertChildrenToDescriptors(props.children as React.ReactNode)
           : undefined,

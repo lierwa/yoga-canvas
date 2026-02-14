@@ -50,6 +50,7 @@ export class YagaCanvas {
   private logicalHeight: number;
   private initialized = false;
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
+  private scrollBarTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
   constructor(canvas: unknown, layout: NodeDescriptor, options: YagaCanvasOptions = {}) {
     this.canvas = canvas;
@@ -291,6 +292,11 @@ export class YagaCanvas {
       (this.canvas as HTMLCanvasElement).removeEventListener('wheel', this.wheelHandler);
       this.wheelHandler = null;
     }
+    // Clear all scrollbar fade-out timers
+    for (const timer of this.scrollBarTimers.values()) {
+      clearTimeout(timer);
+    }
+    this.scrollBarTimers.clear();
     this.ctx = null;
     this.initialized = false;
     this.emitter.emit('destroy');
@@ -333,11 +339,27 @@ export class YagaCanvas {
 
       if (changed) {
         e.preventDefault();
+        // Show scrollbar and schedule fade-out
+        this.scrollManager.showScrollBar(scrollViewId);
+        this.scheduleScrollBarFadeOut(scrollViewId);
         this.render();
         this.emitter.emit('scroll', scrollViewId, this.scrollManager.getOffset(scrollViewId));
       }
     };
     el.addEventListener('wheel', this.wheelHandler, { passive: false });
+  }
+
+  private scheduleScrollBarFadeOut(nodeId: string): void {
+    // Clear existing timer for this node
+    const existing = this.scrollBarTimers.get(nodeId);
+    if (existing) clearTimeout(existing);
+
+    const timer = setTimeout(() => {
+      this.scrollBarTimers.delete(nodeId);
+      this.scrollManager.setScrollBarOpacity(nodeId, 0);
+      this.render();
+    }, 800);
+    this.scrollBarTimers.set(nodeId, timer);
   }
 
   private createImageGetter(): (src: string) => CanvasImageLike | null {

@@ -29,8 +29,11 @@ export interface ImageProps {
 /**
  * ScrollView-specific properties on a node.
  */
+export type ScrollBarVisibility = 'always' | 'auto' | 'hidden';
+
 export interface ScrollViewProps {
   scrollDirection: 'vertical' | 'horizontal';
+  scrollBarVisibility: ScrollBarVisibility;
 }
 
 /**
@@ -83,4 +86,5 @@ export interface NodeDescriptor {
   src?: string;              // Image
   objectFit?: 'cover' | 'contain' | 'fill';  // Image
   scrollDirection?: 'vertical' | 'horizontal'; // ScrollView
+  scrollBarVisibility?: ScrollBarVisibility; // ScrollView
 }

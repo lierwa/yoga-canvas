@@ -372,14 +372,22 @@ const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
     <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#8b5cf6' }}>128</Text>
       <Text style={{ fontSize: 11, color: '#94a3b8' }}>Nodes</Text>
+      {/* Absolute positioned badge */}
+      <View name="Badge" style={{
+        positionType: 'absolute', positionTop: -4, positionRight: -4,
+        backgroundColor: '#ef4444', borderRadius: 8,
+        padding: 2, paddingLeft: 6, paddingRight: 6,
+      }}>
+        <Text style={{ fontSize: 9, width: 22, height: 12, flexDirection: 'row', fontWeight: 'bold', color: '#ffffff' }}>NEW</Text>
+      </View>
     </View>
     <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#06b6d4' }}>16ms</Text>
       <Text style={{ fontSize: 11, color: '#94a3b8' }}>Render</Text>
     </View>
-    <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+    <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#10b981' }}>60</Text>
-      <Text style={{ fontSize: 11, color: '#94a3b8' }}>FPS</Text>
+      <Text style={{ fontSize: 11,flex: 1, color: '#94a3b8' }}>FPS</Text>
     </View>
   </View>
 

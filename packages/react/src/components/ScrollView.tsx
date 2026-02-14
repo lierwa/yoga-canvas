@@ -1,9 +1,10 @@
-import type { StyleProps } from '@yaga-canvas/core';
+import type { StyleProps, ScrollBarVisibility } from '@yaga-canvas/core';
 
 export interface ScrollViewJSXProps {
   name?: string;
   style?: StyleProps;
   scrollDirection?: 'vertical' | 'horizontal';
+  scrollBarVisibility?: ScrollBarVisibility;
   children?: React.ReactNode;
 }
 

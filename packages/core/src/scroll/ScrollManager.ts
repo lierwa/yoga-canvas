@@ -8,6 +8,7 @@ export interface ScrollState {
   contentHeight: number;
   viewportWidth: number;
   viewportHeight: number;
+  scrollBarOpacity: number;
 }
 
 /**
@@ -28,6 +29,7 @@ export class ScrollManager {
         contentHeight: 0,
         viewportWidth: 0,
         viewportHeight: 0,
+        scrollBarOpacity: 0,
       };
       this.states.set(nodeId, state);
     }
@@ -84,6 +86,23 @@ export class ScrollManager {
     const maxY = Math.max(0, contentHeight - viewportHeight);
     state.offsetX = clamp(state.offsetX, 0, maxX);
     state.offsetY = clamp(state.offsetY, 0, maxY);
+  }
+
+  /** Set scrollbar opacity to 1 (fully visible). */
+  showScrollBar(nodeId: string): void {
+    const state = this.getState(nodeId);
+    state.scrollBarOpacity = 1;
+  }
+
+  /** Get current scrollbar opacity (0–1). */
+  getScrollBarOpacity(nodeId: string): number {
+    return this.states.get(nodeId)?.scrollBarOpacity ?? 0;
+  }
+
+  /** Set scrollbar opacity directly. */
+  setScrollBarOpacity(nodeId: string, opacity: number): void {
+    const state = this.getState(nodeId);
+    state.scrollBarOpacity = Math.max(0, Math.min(1, opacity));
   }
 
   /** Check if a node has scroll state. */
