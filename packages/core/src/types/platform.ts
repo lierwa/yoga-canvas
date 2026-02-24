@@ -16,6 +16,7 @@ export interface TextMeasureOptions {
   fontFamily: string;
   lineHeight: number;
   availableWidth: number;
+  whiteSpace: 'normal' | 'nowrap';
 }
 
 /**

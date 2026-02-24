@@ -122,8 +122,8 @@ function buildTextCSSString(node: CanvasNode): string {
     `color:${t.color};`,
     `line-height:${t.lineHeight};`,
     `text-align:${t.textAlign};`,
-    'white-space:pre-wrap;',
-    'word-break:break-word;',
+    `white-space:${t.whiteSpace === 'nowrap' ? 'nowrap' : 'pre-wrap'};`,
+    t.whiteSpace === 'nowrap' ? 'word-break:normal;' : 'word-break:break-word;',
   ];
   if (t.fontFamily) parts.push(`font-family:${t.fontFamily};`);
   return parts.join('');

@@ -109,18 +109,27 @@ export class WxAdapter implements PlatformAdapter {
 
     ctx.font = `${options.fontWeight === 'bold' ? 'bold ' : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
     const lineH = options.fontSize * options.lineHeight;
-    const words = options.content.split('');
+    const chars = options.content.split('');
     let currentLineWidth = 0;
+    let maxLineWidth = 0;
     let lineCount = 1;
 
-    for (const char of words) {
+    if (options.whiteSpace === 'nowrap') {
+      const singleLine = options.content.replace(/\n/g, ' ');
+      const width = ctx.measureText(singleLine).width;
+      return { width, height: lineH };
+    }
+
+    for (const char of chars) {
       if (char === '\n') {
+        maxLineWidth = Math.max(maxLineWidth, currentLineWidth);
         lineCount++;
         currentLineWidth = 0;
         continue;
       }
       const charWidth = ctx.measureText(char).width;
       if (currentLineWidth + charWidth > options.availableWidth && currentLineWidth > 0) {
+        maxLineWidth = Math.max(maxLineWidth, currentLineWidth);
         lineCount++;
         currentLineWidth = charWidth;
       } else {
@@ -129,7 +138,7 @@ export class WxAdapter implements PlatformAdapter {
     }
 
     return {
-      width: options.availableWidth,
+      width: Math.min(Math.max(maxLineWidth, currentLineWidth), options.availableWidth),
       height: lineCount * lineH,
     };
   }
@@ -174,11 +183,15 @@ export class WxAdapter implements PlatformAdapter {
  */
 function estimateTextSize(options: TextMeasureOptions): { width: number; height: number } {
   const avgCharWidth = options.fontSize * 0.6;
+  if (options.whiteSpace === 'nowrap') {
+    const width = options.content.replace(/\n/g, ' ').length * avgCharWidth;
+    return { width, height: options.fontSize * options.lineHeight };
+  }
   const charsPerLine = Math.max(1, Math.floor(options.availableWidth / avgCharWidth));
   const lineCount = Math.ceil(options.content.length / charsPerLine);
   const lineH = options.fontSize * options.lineHeight;
   return {
-    width: options.availableWidth,
+    width: Math.min(options.content.length * avgCharWidth, options.availableWidth),
     height: lineCount * lineH,
   };
 }

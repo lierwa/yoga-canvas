@@ -105,13 +105,26 @@ export class H5Adapter implements PlatformAdapter {
 
   measureText(options: TextMeasureOptions): { width: number; height: number } {
     const div = getMeasureDiv();
-    div.style.width = `${options.availableWidth}px`;
     div.style.fontSize = `${options.fontSize}px`;
     div.style.fontWeight = options.fontWeight === 'bold' ? 'bold' : 'normal';
     div.style.fontFamily = options.fontFamily || 'sans-serif';
     div.style.lineHeight = `${options.lineHeight}`;
     div.textContent = options.content;
-    return { width: div.offsetWidth, height: div.offsetHeight };
+
+    if (options.whiteSpace === 'nowrap') {
+      div.style.whiteSpace = 'nowrap';
+      div.style.wordBreak = 'normal';
+      div.style.width = 'auto';
+      div.style.maxWidth = 'none';
+      return { width: div.scrollWidth, height: div.offsetHeight };
+    }
+
+    div.style.whiteSpace = 'pre-wrap';
+    div.style.wordBreak = 'break-word';
+    div.style.width = `${options.availableWidth}px`;
+    div.style.maxWidth = 'none';
+    const width = Math.min(div.scrollWidth, options.availableWidth);
+    return { width, height: div.offsetHeight };
   }
 
   loadImage(src: string): Promise<CanvasImageLike> {

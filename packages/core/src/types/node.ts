@@ -16,6 +16,7 @@ export interface TextProps {
   color: string;
   lineHeight: number;
   textAlign: 'left' | 'center' | 'right';
+  whiteSpace: 'normal' | 'nowrap';
 }
 
 /**

@@ -325,7 +325,7 @@ function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
 function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   if (!node.textProps) return;
   const { left, top, width } = node.computedLayout;
-  const { content, fontSize, fontWeight, color, lineHeight, textAlign } = node.textProps;
+  const { content, fontSize, fontWeight, color, lineHeight, textAlign, whiteSpace } = node.textProps;
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
   const padRight = flexValueToPx(node.flexStyle.paddingRight);
   const padTop = flexValueToPx(node.flexStyle.paddingTop);
@@ -338,7 +338,6 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   ctx.textBaseline = 'top';
   ctx.textAlign = textAlign;
 
-  const lines = content.split('\n');
   const lineH = fontSize * lineHeight;
   const halfLeading = (lineH - fontSize) / 2;
   let y = top + padTop + halfLeading;
@@ -346,6 +345,17 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   if (textAlign === 'center') textX = left + width / 2;
   else if (textAlign === 'right') textX = left + width - padRight;
 
+  if (whiteSpace === 'nowrap') {
+    ctx.beginPath();
+    ctx.rect(left, top, width, node.computedLayout.height);
+    ctx.clip();
+    const singleLine = content.replace(/\n/g, ' ');
+    ctx.fillText(singleLine, textX, y);
+    ctx.restore();
+    return;
+  }
+
+  const lines = content.split('\n');
   for (const line of lines) {
     // Word wrap
     const words = line.split(' ');
@@ -355,10 +365,26 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
       const tw = ctx.measureText(testLine).width;
       if (tw > maxWidth && currentLine) {
         ctx.fillText(currentLine, textX, y);
-        currentLine = word;
+        currentLine = '';
         y += lineH;
+      }
+
+      if (ctx.measureText(word).width > maxWidth) {
+        let chunk = '';
+        for (const char of word) {
+          const nextChunk = chunk + char;
+          if (ctx.measureText(nextChunk).width > maxWidth && chunk) {
+            ctx.fillText(chunk, textX, y);
+            y += lineH;
+            chunk = char;
+          } else {
+            chunk = nextChunk;
+          }
+        }
+        currentLine = currentLine ? `${currentLine} ${chunk}` : chunk;
       } else {
-        currentLine = testLine;
+        const nextLine = currentLine ? `${currentLine} ${word}` : word;
+        currentLine = nextLine;
       }
     }
     if (currentLine) {

@@ -1,5 +1,5 @@
 import type { Node as YogaNode } from 'yoga-layout/load';
-import { Direction } from 'yoga-layout/load';
+import { Direction, MeasureMode } from 'yoga-layout/load';
 import type { CanvasNode, NodeTree, ComputedLayout, TextProps, FlexStyle, PlatformAdapter } from '../types';
 import { getYoga, applyFlexStyle } from './YogaManager';
 
@@ -29,10 +29,20 @@ export function buildYogaTree(
     ) {
       const textProps = canvasNode.textProps;
       const flexStyle = canvasNode.flexStyle;
-      yogaNode.setMeasureFunc((width) => {
-        const measuredWidth = isFinite(width) ? width : 100000;
-        const result = measureTextFullWithAdapter(adapter, textProps, flexStyle, measuredWidth);
-        return { width: Math.min(result.width, measuredWidth), height: result.height };
+      yogaNode.setMeasureFunc((width, widthMode) => {
+        const isUndefined = widthMode === MeasureMode.Undefined;
+        const isExactly = widthMode === MeasureMode.Exactly;
+        const availableWidth = isFinite(width) ? width : 100000;
+        const measureWidth = isUndefined ? 100000 : availableWidth;
+        const result = measureTextFullWithAdapter(adapter, textProps, flexStyle, measureWidth);
+        const shouldFillWidth = flexStyle.width !== undefined
+          || flexStyle.flex !== undefined
+          || flexStyle.flexGrow !== undefined
+          || flexStyle.flexBasis !== undefined;
+        const nextWidth = isExactly && shouldFillWidth
+          ? availableWidth
+          : Math.min(result.width, availableWidth);
+        return { width: nextWidth, height: result.height };
       });
     }
 
@@ -125,6 +135,7 @@ function measureTextFullWithAdapter(
     fontFamily: textProps.fontFamily,
     lineHeight: textProps.lineHeight,
     availableWidth,
+    whiteSpace: textProps.whiteSpace,
   });
 }
 

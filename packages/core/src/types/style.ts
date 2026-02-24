@@ -72,6 +72,7 @@ export interface TextStyle {
   color?: string;
   lineHeight?: number;
   textAlign?: 'left' | 'center' | 'right';
+  whiteSpace?: 'normal' | 'nowrap';
 }
 
 export interface CSSStyleProps {
@@ -113,6 +114,7 @@ export interface CSSStyleProps {
   'font-family'?: string;
   'line-height'?: number;
   'text-align'?: TextStyle['textAlign'];
+  'white-space'?: TextStyle['whiteSpace'];
 }
 
 export interface LegacyStyleProps {
@@ -185,7 +187,7 @@ export function splitStyle(style: StyleProps): {
   ];
 
   const textKeys: (keyof TextStyle)[] = [
-    'fontSize', 'fontWeight', 'fontFamily', 'color', 'lineHeight', 'textAlign',
+    'fontSize', 'fontWeight', 'fontFamily', 'color', 'lineHeight', 'textAlign', 'whiteSpace',
   ];
 
   const src = expanded as Record<string, unknown>;
@@ -248,6 +250,7 @@ function normalizeStyleProps(style: StyleProps): StyleProps {
     ['font-family', 'fontFamily'],
     ['line-height', 'lineHeight'],
     ['text-align', 'textAlign'],
+    ['white-space', 'whiteSpace'],
   ];
   for (const [from, to] of kebabToCamel) {
     if (next[to] === undefined && next[from] !== undefined) {

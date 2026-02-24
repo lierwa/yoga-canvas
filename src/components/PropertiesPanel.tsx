@@ -32,6 +32,7 @@ const JUSTIFY_OPTIONS = [
 ] as const;
 const ALIGN_OPTIONS = ["flex-start", "center", "flex-end", "stretch"] as const;
 const WRAP_OPTIONS = ["nowrap", "wrap"] as const;
+const TEXT_WRAP_OPTIONS = ["wrap", "nowrap"] as const;
 
 type DimUnit = "px" | "%" | "auto";
 
@@ -200,6 +201,15 @@ export default function PropertiesPanel({
                 }
               />
             </FieldGrid>
+            <SelectField
+              inline
+              label="Wrap"
+              value={node.textProps.whiteSpace === "nowrap" ? "nowrap" : "wrap"}
+              options={TEXT_WRAP_OPTIONS}
+              onChange={(val) =>
+                updateText({ whiteSpace: val === "nowrap" ? "nowrap" : "normal" })
+              }
+            />
           </div>
         </Section>
       )}

@@ -40,6 +40,7 @@ const DEFAULT_TEXT_PROPS: TextProps = {
   color: '#000000',
   lineHeight: 1.4,
   textAlign: 'left',
+  whiteSpace: 'normal',
 };
 
 /**
@@ -107,6 +108,7 @@ export class NodeTreeManager {
           ...(textStyle.color !== undefined && { color: textStyle.color }),
           ...(textStyle.lineHeight !== undefined && { lineHeight: textStyle.lineHeight }),
           ...(textStyle.textAlign !== undefined && { textAlign: textStyle.textAlign }),
+          ...(textStyle.whiteSpace !== undefined && { whiteSpace: textStyle.whiteSpace }),
         };
       }
 
@@ -395,6 +397,7 @@ export class NodeTreeManager {
         ...(textStyle.color !== undefined && { color: textStyle.color }),
         ...(textStyle.lineHeight !== undefined && { lineHeight: textStyle.lineHeight }),
         ...(textStyle.textAlign !== undefined && { textAlign: textStyle.textAlign }),
+        ...(textStyle.whiteSpace !== undefined && { whiteSpace: textStyle.whiteSpace }),
       };
     }
 
