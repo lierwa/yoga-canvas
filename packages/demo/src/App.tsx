@@ -2,18 +2,28 @@ import { useState, useRef, useCallback } from 'react';
 import {
   YagaCanvas,
   hitTest,
+  NodeTreePanel,
+  SelectionOverlay,
   type YagaCanvasRef,
   type YagaCanvasCore as YagaCanvasCoreType,
   type CanvasNode,
   type NodeTree,
   type NodeDescriptor,
 } from '@yaga-canvas/react';
+import { computeScrollContentSizes, type ScrollManager } from '@yaga-canvas/core';
 import {
   Download,
+  Box,
+  ChevronDown,
+  ChevronRight,
   Code2,
+  Crosshair,
   FileJson,
   Eye,
+  ImageIcon,
   Palette,
+  ScrollText,
+  Trash2,
   Type,
   Square,
   Move,
@@ -67,6 +77,44 @@ export default function App() {
     setNodeTree(inst.getNodeTree());
   }, []);
 
+  const locateNode = useCallback((nodeId: string | null) => {
+    if (!nodeId) return;
+    const inst = instanceRef.current;
+    if (!inst) return;
+    const tree = inst.getNodeTree();
+    const scrollManager = inst.getScrollManager();
+    if (!tree.nodes[nodeId]) return;
+    revealNodeInScrollViews(tree, nodeId, scrollManager);
+    computeScrollContentSizes(inst.getNodeTree(), scrollManager);
+    inst.render();
+    setNodeTree(inst.getNodeTree());
+  }, []);
+
+  const handleSelectFromTree = useCallback((nodeId: string | null) => {
+    setSelectedNodeId(nodeId);
+    locateNode(nodeId);
+  }, [locateNode]);
+
+  const handleDeleteFromTree = useCallback((nodeId: string) => {
+    const inst = instanceRef.current;
+    if (!inst) return;
+    inst.deleteNode(nodeId);
+    computeScrollContentSizes(inst.getNodeTree(), inst.getScrollManager());
+    inst.render();
+    const nextTree = inst.getNodeTree();
+    setNodeTree(nextTree);
+    setSelectedNodeId((prev) => (prev && nextTree.nodes[prev] ? prev : null));
+  }, []);
+
+  const handleMoveFromTree = useCallback((nodeId: string, newParentId: string, insertIndex?: number) => {
+    const inst = instanceRef.current;
+    if (!inst) return;
+    inst.moveNode(nodeId, newParentId, insertIndex);
+    computeScrollContentSizes(inst.getNodeTree(), inst.getScrollManager());
+    inst.render();
+    setNodeTree(inst.getNodeTree());
+  }, []);
+
   const selectedNode = selectedNodeId && nodeTree ? nodeTree.nodes[selectedNodeId] ?? null : null;
 
   const handleExportJSON = useCallback(() => {
@@ -113,19 +161,51 @@ export default function App() {
             onRender={handleRender}
           />
         )}
-        {selectedNode && <SelectionOverlay node={selectedNode} />}
+        {nodeTree && selectedNodeId && (
+          <SelectionOverlay
+            tree={nodeTree}
+            nodeId={selectedNodeId}
+            scrollManager={instanceRef.current?.getScrollManager() ?? null}
+            eventSource={instanceRef.current}
+          />
+        )}
       </div>
     </div>
   );
 
   const rightPanel = (
     <div className="bg-white flex flex-col h-full">
-      <div className="p-3 border-b border-gray-200">
-        <h2 className="text-sm font-bold text-gray-700">Node Tree</h2>
-      </div>
-      <div className="flex-1 overflow-auto p-2 text-xs border-b border-gray-200" style={{ maxHeight: '40%' }}>
+      <div className="border-b border-gray-200" style={{ maxHeight: '40%' }}>
         {nodeTree && (
-          <NodeTreeView tree={nodeTree} nodeId={nodeTree.rootId} selectedId={selectedNodeId} onSelect={setSelectedNodeId} depth={0} />
+          <NodeTreePanel
+            tree={nodeTree}
+            selectedNodeId={selectedNodeId}
+            onSelectNode={handleSelectFromTree}
+            canDelete
+            onDeleteNode={handleDeleteFromTree}
+            onMoveNode={handleMoveFromTree}
+            icons={{
+              reveal: <Crosshair size={14} />,
+              delete: <Trash2 size={10} />,
+              expand: <ChevronRight size={10} />,
+              collapse: <ChevronDown size={10} />,
+              renderNodeType: (node: CanvasNode) => {
+                switch (node.type) {
+                  case 'view':
+                    return <Box size={11} className="shrink-0" />;
+                  case 'text':
+                    return <Type size={11} className="shrink-0" />;
+                  case 'image':
+                    return <ImageIcon size={11} className="shrink-0" />;
+                  case 'scrollview':
+                    return <ScrollText size={11} className="shrink-0" />;
+                  default:
+                    return null;
+                }
+              },
+            }}
+            className="text-xs"
+          />
         )}
       </div>
       <div className="p-3 border-b border-gray-200">
@@ -181,42 +261,54 @@ export default function App() {
 
 // ============ UI Sub Components ============
 
-function NodeTreeView({ tree, nodeId, selectedId, onSelect, depth }: {
-  tree: NodeTree; nodeId: string; selectedId: string | null; onSelect: (id: string) => void; depth: number;
-}) {
-  const node = tree.nodes[nodeId];
-  if (!node) return null;
-  const isSelected = nodeId === selectedId;
-  const typeColor: Record<string, string> = { view: 'text-blue-500', text: 'text-amber-500', image: 'text-pink-500', scrollview: 'text-teal-500' };
-  return (
-    <div>
-      <div
-        className={`flex items-center gap-1 px-2 py-1 rounded cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 text-indigo-700' : 'hover:bg-gray-50 text-gray-600'}`}
-        style={{ paddingLeft: depth * 12 + 8 }}
-        onClick={() => onSelect(nodeId)}
-      >
-        <span className={`text-[10px] font-mono font-bold ${typeColor[node.type] || 'text-gray-400'}`}>
-          {node.type.toUpperCase().charAt(0)}
-        </span>
-        <span className="truncate text-[11px]">{node.name}</span>
-      </div>
-      {node.children.map((childId: string) => (
-        <NodeTreeView key={childId} tree={tree} nodeId={childId} selectedId={selectedId} onSelect={onSelect} depth={depth + 1} />
-      ))}
-    </div>
-  );
-}
+function revealNodeInScrollViews(tree: NodeTree, nodeId: string, scrollManager: ScrollManager): void {
+  const pairs: Array<{ scrollViewId: string; childId: string }> = [];
+  let currentId: string | null = nodeId;
+  while (currentId) {
+    const current: CanvasNode | undefined = tree.nodes[currentId];
+    if (!current?.parentId) break;
+    const parent: CanvasNode | undefined = tree.nodes[current.parentId];
+    if (parent?.type === 'scrollview') {
+      pairs.push({ scrollViewId: parent.id, childId: currentId });
+    }
+    currentId = parent?.id ?? null;
+  }
 
-function SelectionOverlay({ node }: { node: CanvasNode }) {
-  const { left, top, width, height } = node.computedLayout;
-  return (
-    <div className="absolute pointer-events-none border-2 border-indigo-500 rounded-sm"
-      style={{ left, top, width, height, boxShadow: '0 0 0 1px rgba(99, 102, 241, 0.2)' }}>
-      <div className="absolute -top-5 left-0 bg-indigo-500 text-white text-[9px] px-1.5 py-0.5 rounded-sm whitespace-nowrap font-medium">
-        {node.name} ({Math.round(width)}x{Math.round(height)})
-      </div>
-    </div>
-  );
+  pairs.reverse();
+
+  for (const { scrollViewId, childId } of pairs) {
+    const scrollViewNode = tree.nodes[scrollViewId];
+    const childNode = tree.nodes[childId];
+    if (!scrollViewNode || !childNode) continue;
+
+    const state = scrollManager.getState(scrollViewId);
+    const isVertical = scrollViewNode.scrollViewProps?.scrollDirection !== 'horizontal';
+    const padding = 12;
+
+    let nextX = state.offsetX;
+    let nextY = state.offsetY;
+
+    if (isVertical) {
+      const relTop = childNode.computedLayout.top - scrollViewNode.computedLayout.top;
+      const relBottom = relTop + childNode.computedLayout.height;
+      if (relTop < state.offsetY + padding) nextY = relTop - padding;
+      else if (relBottom > state.offsetY + state.viewportHeight - padding) {
+        nextY = relBottom + padding - state.viewportHeight;
+      }
+    } else {
+      const relLeft = childNode.computedLayout.left - scrollViewNode.computedLayout.left;
+      const relRight = relLeft + childNode.computedLayout.width;
+      if (relLeft < state.offsetX + padding) nextX = relLeft - padding;
+      else if (relRight > state.offsetX + state.viewportWidth - padding) {
+        nextX = relRight + padding - state.viewportWidth;
+      }
+    }
+
+    if (nextX !== state.offsetX || nextY !== state.offsetY) {
+      scrollManager.setOffset(scrollViewId, nextX, nextY);
+      scrollManager.showScrollBar(scrollViewId);
+    }
+  }
 }
 
 function PropertiesPanel({ node }: { node: CanvasNode }) {
@@ -374,7 +466,7 @@ const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
       <Text style={{ fontSize: 11, color: '#94a3b8' }}>Nodes</Text>
       {/* Absolute positioned badge */}
       <View name="Badge" style={{
-        positionType: 'absolute', positionTop: -4, positionRight: -4,
+        position: 'absolute', top: -4, right: -4,
         backgroundColor: '#ef4444', borderRadius: 8,
         padding: 2, paddingLeft: 6, paddingRight: 6,
       }}>

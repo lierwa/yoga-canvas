@@ -1,4 +1,4 @@
-import type { FlexStyle, VisualStyle, TextStyle } from './style';
+import type { FlexStyle, VisualStyle, StyleProps } from './style';
 
 /**
  * Supported node types.
@@ -79,7 +79,7 @@ export interface NodeTree {
 export interface NodeDescriptor {
   type: NodeType;
   name?: string;
-  style: FlexStyle & VisualStyle & TextStyle;
+  style: StyleProps;
   children?: NodeDescriptor[];
   // Type-specific props
   content?: string;          // Text

@@ -29,7 +29,7 @@ const DEFAULT_VISUAL_STYLE: Required<VisualStyle> = {
   borderWidth: 0,
   borderRadius: 0,
   opacity: 1,
-  rotation: 0,
+  rotate: 0,
 };
 
 const DEFAULT_TEXT_PROPS: TextProps = {

@@ -35,18 +35,18 @@ function renderNode(
   const node = tree.nodes[nodeId];
   if (!node) return;
 
-  const { opacity, rotation } = node.visualStyle;
+  const { opacity, rotate } = node.visualStyle;
   const { left, top, width, height } = node.computedLayout;
 
   ctx.save();
   ctx.setGlobalAlpha(opacity);
 
   // Apply rotation around node center
-  if (rotation && rotation !== 0) {
+  if (rotate && rotate !== 0) {
     const cx = left + width / 2;
     const cy = top + height / 2;
     ctx.translate(cx, cy);
-    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.rotate((rotate * Math.PI) / 180);
     ctx.translate(-cx, -cy);
   }
 

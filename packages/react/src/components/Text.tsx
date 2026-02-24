@@ -19,6 +19,7 @@ export interface TextJSXProps {
  * ```
  */
 export function Text(_props: TextJSXProps): React.ReactElement | null {
+  void _props;
   return null;
 }
 

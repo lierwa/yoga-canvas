@@ -84,11 +84,11 @@ function buildCSSString(node: CanvasNode): string {
   addProp('margin-bottom', s.marginBottom);
   addProp('margin-left', s.marginLeft);
 
-  if (s.positionType && s.positionType !== 'static') parts.push(`position:${s.positionType};`);
-  addProp('top', s.positionTop);
-  addProp('right', s.positionRight);
-  addProp('bottom', s.positionBottom);
-  addProp('left', s.positionLeft);
+  if (s.position && s.position !== 'static') parts.push(`position:${s.position};`);
+  addProp('top', s.top);
+  addProp('right', s.right);
+  addProp('bottom', s.bottom);
+  addProp('left', s.left);
 
   if (v.backgroundColor && v.backgroundColor !== 'transparent') {
     parts.push(`background-color:${v.backgroundColor};`);
@@ -102,8 +102,8 @@ function buildCSSString(node: CanvasNode): string {
   if (v.opacity !== undefined && v.opacity < 1) {
     parts.push(`opacity:${v.opacity};`);
   }
-  if (v.rotation) {
-    parts.push(`transform:rotate(${v.rotation}deg);`);
+  if (v.rotate) {
+    parts.push(`transform:rotate(${v.rotate}deg);`);
   }
   if (node.type === 'scrollview') {
     parts.push('overflow:auto;');

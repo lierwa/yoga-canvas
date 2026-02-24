@@ -12,6 +12,7 @@ export type {
   ImageJSXProps,
   ScrollViewJSXProps,
 } from './components';
+export { SelectionOverlay, NodeTreePanel } from './components';
 
 // JSX converter utility
 export { convertChildrenToDescriptors } from './jsx/convertJSX';

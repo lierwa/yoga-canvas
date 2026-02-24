@@ -9,3 +9,7 @@ export type { ImageJSXProps } from './Image';
 
 export { ScrollView } from './ScrollView';
 export type { ScrollViewJSXProps } from './ScrollView';
+
+export { SelectionOverlay } from './SelectionOverlay';
+
+export { NodeTreePanel } from './NodeTreePanel';

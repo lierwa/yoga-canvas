@@ -1,6 +1,8 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import type { SelectionState, NodeTree, DropIndicator } from '../types';
-import { hitTest, hitTestAll, hitTestResizeHandle, hitTestRotationHandle } from '../core/CanvasRenderer';
+import { hitTest, hitTestAll } from '@yaga-canvas/core';
+import type { ScrollManager } from '@yaga-canvas/core';
+import { getResizeHandlePositions, getRotationHandlePosition } from '../core/CanvasRenderer';
 
 interface DragState {
   type: 'none' | 'pan' | 'resize' | 'rotate' | 'move';
@@ -59,6 +61,63 @@ function findDropTargetNode(
   return nodeId;
 }
 
+function getAncestorScrollOffset(tree: NodeTree, nodeId: string, scrollManager: ScrollManager): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  let current = tree.nodes[nodeId];
+  while (current?.parentId) {
+    const parent = tree.nodes[current.parentId];
+    if (!parent) break;
+    if (parent.type === 'scrollview') {
+      const off = scrollManager.getOffset(parent.id);
+      x += off.x;
+      y += off.y;
+    }
+    current = parent;
+  }
+  return { x, y };
+}
+
+function hitTestRotationHandleWithScroll(
+  node: NodeTree['nodes'][string],
+  x: number,
+  y: number,
+  scale: number,
+  offsetX: number,
+  offsetY: number,
+  scrollOffset: { x: number; y: number }
+): boolean {
+  if (!node) return false;
+  const canvasX = (x - offsetX) / scale + scrollOffset.x;
+  const canvasY = (y - offsetY) / scale + scrollOffset.y;
+  const pos = getRotationHandlePosition(node);
+  const threshold = (6 + 2) / scale;
+  return Math.hypot(canvasX - pos.x, canvasY - pos.y) <= threshold;
+}
+
+function hitTestResizeHandleWithScroll(
+  node: NodeTree['nodes'][string],
+  x: number,
+  y: number,
+  scale: number,
+  offsetX: number,
+  offsetY: number,
+  scrollOffset: { x: number; y: number }
+): string | null {
+  if (!node) return null;
+  const canvasX = (x - offsetX) / scale + scrollOffset.x;
+  const canvasY = (y - offsetY) / scale + scrollOffset.y;
+  const handles = getResizeHandlePositions(node);
+  const threshold = (8 / 2 + 2) / scale;
+
+  for (const handle of handles) {
+    if (Math.abs(canvasX - handle.x) <= threshold && Math.abs(canvasY - handle.y) <= threshold) {
+      return handle.position;
+    }
+  }
+  return null;
+}
+
 const INSERT_THRESHOLD = 14;
 
 function tryInsertionInContainer(
@@ -71,7 +130,7 @@ function tryInsertionInContainer(
   const container = tree.nodes[containerId];
   if (!container || container.type === 'text') return null;
 
-  const siblings = container.children.filter((id) => id !== excludeId);
+  const siblings = container.children.filter((id: string) => id !== excludeId);
   if (siblings.length === 0) return null;
 
   const dir = container.flexStyle.flexDirection ?? 'column';
@@ -161,7 +220,8 @@ export function useCanvasInteraction(
   onResize: (nodeId: string, width: number, height: number) => void,
   onRotate?: (nodeId: string, rotation: number) => void,
   onMove?: (nodeId: string, newParentId: string, insertIndex?: number) => void,
-  onDragEnd?: () => void
+  onDragEnd?: () => void,
+  scrollManager?: ScrollManager
 ) {
   const [selection, setSelection] = useState<SelectionState>({
     selectedNodeId: null,
@@ -171,6 +231,7 @@ export function useCanvasInteraction(
   });
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 100, y: 100 });
+  const [scrollTick, setScrollTick] = useState(0);
   const dragRef = useRef<DragState>({
     type: 'none',
     startX: 0,
@@ -183,6 +244,15 @@ export function useCanvasInteraction(
     nodeCenterY: 0,
   });
   const lastOffsetRef = useRef({ x: 100, y: 100 });
+  const scrollFadeTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  useEffect(() => {
+    const timeouts = scrollFadeTimeoutsRef.current;
+    return () => {
+      for (const timeout of timeouts.values()) clearTimeout(timeout);
+      timeouts.clear();
+    };
+  }, []);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
@@ -194,7 +264,10 @@ export function useCanvasInteraction(
       if (selection.selectedNodeId) {
         const selectedNode = tree.nodes[selection.selectedNodeId];
         if (selectedNode) {
-          if (hitTestRotationHandle(selectedNode, x, y, scale, offset.x, offset.y)) {
+          const scrollOffset = scrollManager
+            ? getAncestorScrollOffset(tree, selection.selectedNodeId, scrollManager)
+            : { x: 0, y: 0 };
+          if (hitTestRotationHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset)) {
             const { left, top, width, height } = selectedNode.computedLayout;
             dragRef.current = {
               type: 'rotate',
@@ -203,13 +276,13 @@ export function useCanvasInteraction(
               resizeHandle: null,
               originalWidth: 0,
               originalHeight: 0,
-              originalRotation: selectedNode.visualStyle.rotation || 0,
+              originalRotation: selectedNode.visualStyle.rotate || 0,
               nodeCenterX: left + width / 2,
               nodeCenterY: top + height / 2,
             };
             return;
           }
-          const handle = hitTestResizeHandle(selectedNode, x, y, scale, offset.x, offset.y);
+          const handle = hitTestResizeHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset);
           if (handle) {
             dragRef.current = {
               type: 'resize',
@@ -228,7 +301,9 @@ export function useCanvasInteraction(
       }
 
       // Hit test for node selection
-      const hitNodeId = hitTest(tree, x, y, scale, offset.x, offset.y);
+      const canvasX = (x - offset.x) / scale;
+      const canvasY = (y - offset.y) / scale;
+      const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
       if (hitNodeId) {
         if (hitNodeId === selection.selectedNodeId && hitNodeId !== tree.rootId) {
           dragRef.current = {
@@ -262,7 +337,7 @@ export function useCanvasInteraction(
         lastOffsetRef.current = { ...offset };
       }
     },
-    [tree, scale, offset, selection.selectedNodeId]
+    [tree, scale, offset, selection.selectedNodeId, scrollManager]
   );
 
   const handleMouseMove = useCallback(
@@ -341,7 +416,9 @@ export function useCanvasInteraction(
       }
 
       // Hover detection
-      const hitNodeId = hitTest(tree, x, y, scale, offset.x, offset.y);
+      const canvasX = (x - offset.x) / scale;
+      const canvasY = (y - offset.y) / scale;
+      const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
       setSelection((prev) => {
         if (prev.hoveredNodeId !== hitNodeId) {
           return { ...prev, hoveredNodeId: hitNodeId };
@@ -353,8 +430,11 @@ export function useCanvasInteraction(
       if (selection.selectedNodeId) {
         const selectedNode = tree.nodes[selection.selectedNodeId];
         if (selectedNode) {
-          const handle = hitTestResizeHandle(selectedNode, x, y, scale, offset.x, offset.y);
-          if (hitTestRotationHandle(selectedNode, x, y, scale, offset.x, offset.y)) {
+          const scrollOffset = scrollManager
+            ? getAncestorScrollOffset(tree, selection.selectedNodeId, scrollManager)
+            : { x: 0, y: 0 };
+          const handle = hitTestResizeHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset);
+          if (hitTestRotationHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset)) {
             e.currentTarget.style.cursor = 'grab';
             return;
           }
@@ -374,7 +454,7 @@ export function useCanvasInteraction(
       }
       e.currentTarget.style.cursor = hitNodeId ? 'pointer' : 'grab';
     },
-    [tree, scale, offset, selection.selectedNodeId, onResize, onRotate]
+    [tree, scale, offset, selection.selectedNodeId, onResize, onRotate, scrollManager]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -414,12 +494,56 @@ export function useCanvasInteraction(
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
-      e.preventDefault();
       const target = e.target as HTMLCanvasElement;
       const rect = target.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
       const mouseY = e.clientY - rect.top;
 
+      const canvasX = (mouseX - offset.x) / scale;
+      const canvasY = (mouseY - offset.y) / scale;
+
+      if (scrollManager) {
+        const hitPath = hitTestAll(tree, canvasX, canvasY, { scrollManager });
+        let scrollViewId: string | null = null;
+        for (let i = hitPath.length - 1; i >= 0; i--) {
+          const id = hitPath[i];
+          if (tree.nodes[id]?.type === 'scrollview') {
+            scrollViewId = id;
+            break;
+          }
+        }
+
+        if (scrollViewId) {
+          const sv = tree.nodes[scrollViewId];
+          const dir = sv?.scrollViewProps?.scrollDirection ?? 'vertical';
+          const state = scrollManager.getState(scrollViewId);
+          const canScroll =
+            dir === 'horizontal'
+              ? state.contentWidth > state.viewportWidth
+              : state.contentHeight > state.viewportHeight;
+
+          if (canScroll) {
+            e.preventDefault();
+            scrollManager.showScrollBar(scrollViewId);
+            const dx = dir === 'horizontal' ? (e.deltaX || e.deltaY) : 0;
+            const dy = dir === 'horizontal' ? 0 : (e.deltaY || e.deltaX);
+            scrollManager.scroll(scrollViewId, dx, dy);
+
+            const existing = scrollFadeTimeoutsRef.current.get(scrollViewId);
+            if (existing) clearTimeout(existing);
+            const timeout = setTimeout(() => {
+              scrollManager.setScrollBarOpacity(scrollViewId, 0);
+              setScrollTick((t) => t + 1);
+            }, 800);
+            scrollFadeTimeoutsRef.current.set(scrollViewId, timeout);
+
+            setScrollTick((t) => t + 1);
+            return;
+          }
+        }
+      }
+
+      e.preventDefault();
       const zoomFactor = e.deltaY < 0 ? 1.1 : 0.9;
       const newScale = Math.min(Math.max(scale * zoomFactor, 0.1), 5);
 
@@ -429,7 +553,7 @@ export function useCanvasInteraction(
       setScale(newScale);
       setOffset({ x: newOffsetX, y: newOffsetY });
     },
-    [scale, offset]
+    [scale, offset, tree, scrollManager]
   );
 
   const selectNode = useCallback((nodeId: string | null) => {
@@ -441,7 +565,9 @@ export function useCanvasInteraction(
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
-      const allHit = hitTestAll(tree, x, y, scale, offset.x, offset.y);
+      const canvasX = (x - offset.x) / scale;
+      const canvasY = (y - offset.y) / scale;
+      const allHit = hitTestAll(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
       if (allHit.length === 0) return;
 
       if (selection.selectedNodeId) {
@@ -454,7 +580,7 @@ export function useCanvasInteraction(
       // Select deepest node
       setSelection((prev) => ({ ...prev, selectedNodeId: allHit[allHit.length - 1] }));
     },
-    [tree, scale, offset, selection.selectedNodeId]
+    [tree, scale, offset, selection.selectedNodeId, scrollManager]
   );
 
   const focusNode = useCallback(
@@ -479,12 +605,26 @@ export function useCanvasInteraction(
     [tree.nodes]
   );
 
+  const setScaleAt = useCallback(
+    (nextScale: number, anchorX: number, anchorY: number) => {
+      const newScale = Math.min(Math.max(nextScale, 0.1), 5);
+      const newOffsetX = anchorX - (anchorX - offset.x) * (newScale / scale);
+      const newOffsetY = anchorY - (anchorY - offset.y) * (newScale / scale);
+      setScale(newScale);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+      lastOffsetRef.current = { x: newOffsetX, y: newOffsetY };
+    },
+    [scale, offset]
+  );
+
   return {
     selection,
     scale,
     offset,
+    scrollTick,
     selectNode,
     focusNode,
+    setScaleAt,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,

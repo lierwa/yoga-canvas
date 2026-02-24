@@ -13,6 +13,7 @@ export interface ScrollViewJSXProps {
  * Does NOT render to DOM — used by YagaCanvas to build the descriptor tree.
  */
 export function ScrollView(_props: ScrollViewJSXProps): React.ReactElement | null {
+  void _props;
   return null;
 }
 

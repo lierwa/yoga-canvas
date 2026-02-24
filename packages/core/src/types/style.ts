@@ -43,11 +43,11 @@ export interface FlexStyle {
 
   overflow?: 'visible' | 'hidden' | 'scroll';
 
-  positionType?: 'static' | 'relative' | 'absolute';
-  positionTop?: FlexValue;
-  positionRight?: FlexValue;
-  positionBottom?: FlexValue;
-  positionLeft?: FlexValue;
+  position?: 'static' | 'relative' | 'absolute';
+  top?: FlexValue;
+  right?: FlexValue;
+  bottom?: FlexValue;
+  left?: FlexValue;
 }
 
 /**
@@ -59,7 +59,7 @@ export interface VisualStyle {
   borderWidth?: number;
   borderRadius?: number;
   opacity?: number;
-  rotation?: number;
+  rotate?: number;
 }
 
 /**
@@ -74,11 +74,61 @@ export interface TextStyle {
   textAlign?: 'left' | 'center' | 'right';
 }
 
+export interface CSSStyleProps {
+  'min-width'?: FlexValue;
+  'min-height'?: FlexValue;
+  'max-width'?: FlexValue;
+  'max-height'?: FlexValue;
+
+  'flex-direction'?: FlexStyle['flexDirection'];
+  'justify-content'?: FlexStyle['justifyContent'];
+  'align-items'?: FlexStyle['alignItems'];
+  'align-self'?: FlexStyle['alignSelf'];
+  'flex-wrap'?: FlexStyle['flexWrap'];
+
+  'flex-grow'?: number;
+  'flex-shrink'?: number;
+  'flex-basis'?: FlexValue;
+
+  'row-gap'?: FlexValue;
+  'column-gap'?: FlexValue;
+
+  'padding-top'?: FlexValue;
+  'padding-right'?: FlexValue;
+  'padding-bottom'?: FlexValue;
+  'padding-left'?: FlexValue;
+
+  'margin-top'?: FlexValue;
+  'margin-right'?: FlexValue;
+  'margin-bottom'?: FlexValue;
+  'margin-left'?: FlexValue;
+
+  'background-color'?: string;
+  'border-color'?: string;
+  'border-width'?: number;
+  'border-radius'?: number;
+
+  'font-size'?: number;
+  'font-weight'?: TextStyle['fontWeight'];
+  'font-family'?: string;
+  'line-height'?: number;
+  'text-align'?: TextStyle['textAlign'];
+}
+
+export interface LegacyStyleProps {
+  positionType?: FlexStyle['position'];
+  positionTop?: FlexValue;
+  positionRight?: FlexValue;
+  positionBottom?: FlexValue;
+  positionLeft?: FlexValue;
+  rotation?: number;
+}
+
 /**
  * Unified style props — combines flex, visual, and text styles.
  * Used by the component DSL for a CSS-like developer experience.
  */
-export type StyleProps = FlexStyle & VisualStyle & TextStyle;
+export type StyleProps = FlexStyle & VisualStyle & TextStyle & CSSStyleProps & LegacyStyleProps;
 
 /**
  * Expand shorthand properties (padding, margin) into individual edges.
@@ -113,7 +163,8 @@ export function splitStyle(style: StyleProps): {
   visualStyle: VisualStyle;
   textStyle: TextStyle;
 } {
-  const expanded = expandShorthand(style);
+  const normalized = normalizeStyleProps(style);
+  const expanded = expandShorthand(normalized);
 
   const flexStyle: FlexStyle = {};
   const visualStyle: VisualStyle = {};
@@ -126,11 +177,11 @@ export function splitStyle(style: StyleProps): {
     'gap', 'rowGap', 'columnGap',
     'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
     'marginTop', 'marginRight', 'marginBottom', 'marginLeft',
-    'overflow', 'positionType', 'positionTop', 'positionRight', 'positionBottom', 'positionLeft',
+    'overflow', 'position', 'top', 'right', 'bottom', 'left',
   ];
 
   const visualKeys: (keyof VisualStyle)[] = [
-    'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'opacity', 'rotation',
+    'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'opacity', 'rotate',
   ];
 
   const textKeys: (keyof TextStyle)[] = [
@@ -159,4 +210,77 @@ export function splitStyle(style: StyleProps): {
   }
 
   return { flexStyle, visualStyle, textStyle };
+}
+
+function normalizeStyleProps(style: StyleProps): StyleProps {
+  const s = style as Record<string, unknown>;
+  const next: Record<string, unknown> = { ...s };
+
+  const kebabToCamel: Array<[from: string, to: string]> = [
+    ['min-width', 'minWidth'],
+    ['min-height', 'minHeight'],
+    ['max-width', 'maxWidth'],
+    ['max-height', 'maxHeight'],
+    ['flex-direction', 'flexDirection'],
+    ['justify-content', 'justifyContent'],
+    ['align-items', 'alignItems'],
+    ['align-self', 'alignSelf'],
+    ['flex-wrap', 'flexWrap'],
+    ['flex-grow', 'flexGrow'],
+    ['flex-shrink', 'flexShrink'],
+    ['flex-basis', 'flexBasis'],
+    ['row-gap', 'rowGap'],
+    ['column-gap', 'columnGap'],
+    ['padding-top', 'paddingTop'],
+    ['padding-right', 'paddingRight'],
+    ['padding-bottom', 'paddingBottom'],
+    ['padding-left', 'paddingLeft'],
+    ['margin-top', 'marginTop'],
+    ['margin-right', 'marginRight'],
+    ['margin-bottom', 'marginBottom'],
+    ['margin-left', 'marginLeft'],
+    ['background-color', 'backgroundColor'],
+    ['border-color', 'borderColor'],
+    ['border-width', 'borderWidth'],
+    ['border-radius', 'borderRadius'],
+    ['font-size', 'fontSize'],
+    ['font-weight', 'fontWeight'],
+    ['font-family', 'fontFamily'],
+    ['line-height', 'lineHeight'],
+    ['text-align', 'textAlign'],
+  ];
+  for (const [from, to] of kebabToCamel) {
+    if (next[to] === undefined && next[from] !== undefined) {
+      next[to] = next[from];
+    }
+    delete next[from];
+  }
+
+  if (next.position === undefined && next.positionType !== undefined) {
+    next.position = next.positionType;
+  }
+  if (next.top === undefined && next.positionTop !== undefined) {
+    next.top = next.positionTop;
+  }
+  if (next.right === undefined && next.positionRight !== undefined) {
+    next.right = next.positionRight;
+  }
+  if (next.bottom === undefined && next.positionBottom !== undefined) {
+    next.bottom = next.positionBottom;
+  }
+  if (next.left === undefined && next.positionLeft !== undefined) {
+    next.left = next.positionLeft;
+  }
+  if (next.rotate === undefined && next.rotation !== undefined) {
+    next.rotate = next.rotation;
+  }
+
+  delete next.positionType;
+  delete next.positionTop;
+  delete next.positionRight;
+  delete next.positionBottom;
+  delete next.positionLeft;
+  delete next.rotation;
+
+  return next as StyleProps;
 }

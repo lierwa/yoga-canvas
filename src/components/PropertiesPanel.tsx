@@ -105,7 +105,7 @@ export default function PropertiesPanel({
   };
 
   return (
-    <div className="w-72 border-l border-gray-200 bg-white overflow-y-auto shrink-0">
+    <div className="h-full w-full border-l border-gray-200 bg-white overflow-y-auto">
       <Section noBorder>
         <h3 className="text-sm font-semibold text-gray-800">{node.name}</h3>
         <p className="text-xs text-gray-400 mt-0.5">ID: {node.id}</p>
@@ -259,33 +259,33 @@ export default function PropertiesPanel({
           <SelectField
             inline
             label="Type"
-            value={s.positionType ?? "static"}
+            value={s.position ?? "static"}
             options={["static", "relative", "absolute"] as const}
             onChange={(v) =>
-              update({ positionType: v as FlexStyle["positionType"] })
+              update({ position: v as FlexStyle["position"] })
             }
           />
-          {s.positionType && s.positionType !== "static" && (
+          {s.position && s.position !== "static" && (
             <FieldGrid cols={2}>
               <DimensionField
                 label="Top"
-                value={s.positionTop}
-                onChange={(v) => update({ positionTop: v })}
+                value={s.top}
+                onChange={(v) => update({ top: v })}
               />
               <DimensionField
                 label="Right"
-                value={s.positionRight}
-                onChange={(v) => update({ positionRight: v })}
+                value={s.right}
+                onChange={(v) => update({ right: v })}
               />
               <DimensionField
                 label="Bottom"
-                value={s.positionBottom}
-                onChange={(v) => update({ positionBottom: v })}
+                value={s.bottom}
+                onChange={(v) => update({ bottom: v })}
               />
               <DimensionField
                 label="Left"
-                value={s.positionLeft}
-                onChange={(v) => update({ positionLeft: v })}
+                value={s.left}
+                onChange={(v) => update({ left: v })}
               />
             </FieldGrid>
           )}
@@ -324,8 +324,8 @@ export default function PropertiesPanel({
             />
             <NumberField
               label="Rotation"
-              value={v.rotation}
-              onChange={(val) => updateVisual({ rotation: val ?? 0 })}
+              value={v.rotate}
+              onChange={(val) => updateVisual({ rotate: val ?? 0 })}
             />
           </FieldGrid>
         </div>

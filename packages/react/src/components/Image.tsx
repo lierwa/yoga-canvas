@@ -12,6 +12,7 @@ export interface ImageJSXProps {
  * Does NOT render to DOM — used by YagaCanvas to build the descriptor tree.
  */
 export function Image(_props: ImageJSXProps): React.ReactElement | null {
+  void _props;
   return null;
 }
 

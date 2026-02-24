@@ -147,18 +147,18 @@ export function applyFlexStyle(yogaNode: YogaNode, style: FlexStyle): void {
   applyEdge(yogaNode, 'margin', Edge.Left, style.marginLeft);
 
   // Position
-  if (style.positionType) {
+  if (style.position) {
     const map: Record<string, PositionType> = {
       static: PositionType.Static,
       relative: PositionType.Relative,
       absolute: PositionType.Absolute,
     };
-    yogaNode.setPositionType(map[style.positionType] ?? PositionType.Static);
+    yogaNode.setPositionType(map[style.position] ?? PositionType.Static);
   }
-  applyPositionEdge(yogaNode, Edge.Top, style.positionTop);
-  applyPositionEdge(yogaNode, Edge.Right, style.positionRight);
-  applyPositionEdge(yogaNode, Edge.Bottom, style.positionBottom);
-  applyPositionEdge(yogaNode, Edge.Left, style.positionLeft);
+  applyPositionEdge(yogaNode, Edge.Top, style.top);
+  applyPositionEdge(yogaNode, Edge.Right, style.right);
+  applyPositionEdge(yogaNode, Edge.Bottom, style.bottom);
+  applyPositionEdge(yogaNode, Edge.Left, style.left);
 }
 
 function applyGap(yogaNode: YogaNode, gutter: Gutter, value: FlexValue | undefined): void {

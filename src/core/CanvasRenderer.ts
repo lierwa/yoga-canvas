@@ -1,4 +1,5 @@
 import type { CanvasNode, NodeTree, SelectionState, FlexValue } from '../types';
+import type { ScrollManager } from '@yaga-canvas/core';
 
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 24;
@@ -6,10 +7,13 @@ const ROTATION_HANDLE_RADIUS = 6;
 
 // Image cache for canvas rendering
 const imageCache = new Map<string, HTMLImageElement>();
-let renderCallback: (() => void) | null = null;
+const renderCallbacks = new Set<() => void>();
 
 export function setRenderCallback(cb: () => void) {
-  renderCallback = cb;
+  renderCallbacks.add(cb);
+  return () => {
+    renderCallbacks.delete(cb);
+  };
 }
 
 function getCachedImage(src: string): HTMLImageElement | null {
@@ -19,7 +23,7 @@ function getCachedImage(src: string): HTMLImageElement | null {
   if (!cached) {
     const img = new Image();
     img.onload = () => {
-      renderCallback?.();
+      for (const cb of renderCallbacks) cb();
     };
     img.src = src;
     imageCache.set(src, img);
@@ -35,19 +39,22 @@ export function renderCanvas(
   canvasHeight: number,
   scale: number,
   offsetX: number,
-  offsetY: number
+  offsetY: number,
+  options?: { showGrid?: boolean; scrollManager?: ScrollManager | null }
 ): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
   // Draw background grid
-  drawGrid(ctx, canvasWidth, canvasHeight, scale, offsetX, offsetY);
+  if (options?.showGrid !== false) {
+    drawGrid(ctx, canvasWidth, canvasHeight, scale, offsetX, offsetY);
+  }
 
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
 
   // Render nodes recursively
-  renderNode(ctx, tree, tree.rootId, selection);
+  renderNode(ctx, tree, tree.rootId, selection, options?.scrollManager ?? null);
 
   ctx.restore();
 }
@@ -85,7 +92,8 @@ function renderNode(
   ctx: CanvasRenderingContext2D,
   tree: NodeTree,
   nodeId: string,
-  selection: SelectionState
+  selection: SelectionState,
+  scrollManager: ScrollManager | null
 ): void {
   const node = tree.nodes[nodeId];
   if (!node) return;
@@ -97,12 +105,12 @@ function renderNode(
   ctx.globalAlpha = opacity;
 
   // Apply rotation (visual only, around node center)
-  const rotation = node.visualStyle.rotation || 0;
-  if (rotation !== 0) {
+  const rotate = node.visualStyle.rotate || 0;
+  if (rotate !== 0) {
     const cx = left + width / 2;
     const cy = top + height / 2;
     ctx.translate(cx, cy);
-    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.rotate((rotate * Math.PI) / 180);
     ctx.translate(-cx, -cy);
   }
 
@@ -138,7 +146,7 @@ function renderNode(
       drawImageContent(ctx, node);
       break;
     case 'scrollview':
-      drawScrollViewIndicator(ctx, node);
+      if (!scrollManager) drawScrollViewIndicator(ctx, node);
       break;
     default:
       break;
@@ -148,17 +156,25 @@ function renderNode(
 
   // Draw children (clip for scrollview)
   if (node.type === 'scrollview') {
+    const scrollOffset = scrollManager?.getOffset(nodeId) ?? { x: 0, y: 0 };
     ctx.save();
     ctx.beginPath();
     ctx.rect(left, top, width, height);
     ctx.clip();
+    ctx.translate(-scrollOffset.x, -scrollOffset.y);
     for (const childId of node.children) {
-      renderNode(ctx, tree, childId, selection);
+      renderNode(ctx, tree, childId, selection, scrollManager);
     }
     ctx.restore();
+
+    if (scrollManager) {
+      const state = scrollManager.getState(nodeId);
+      const scrollBarOpacity = scrollManager.getScrollBarOpacity(nodeId);
+      drawScrollViewScrollbar(ctx, node, state, scrollBarOpacity);
+    }
   } else {
     for (const childId of node.children) {
-      renderNode(ctx, tree, childId, selection);
+      renderNode(ctx, tree, childId, selection, scrollManager);
     }
   }
 
@@ -452,6 +468,53 @@ function drawScrollViewIndicator(ctx: CanvasRenderingContext2D, node: CanvasNode
   ctx.restore();
 }
 
+function drawScrollViewScrollbar(
+  ctx: CanvasRenderingContext2D,
+  node: CanvasNode,
+  scrollState: { offsetX: number; offsetY: number; contentWidth: number; contentHeight: number; viewportWidth: number; viewportHeight: number },
+  scrollBarOpacity = 1
+): void {
+  if (scrollBarOpacity <= 0) return;
+  const { left, top, width, height } = node.computedLayout;
+  const isVertical = node.scrollViewProps?.scrollDirection !== 'horizontal';
+
+  const SCROLLBAR_SIZE = 4;
+  const SCROLLBAR_MIN_THUMB = 20;
+  const SCROLLBAR_PADDING = 2;
+  const SCROLLBAR_RADIUS = 2;
+
+  const color = `rgba(0, 0, 0, ${0.25 * scrollBarOpacity})`;
+
+  ctx.save();
+  ctx.fillStyle = color;
+
+  if (isVertical && scrollState.contentHeight > scrollState.viewportHeight) {
+    const trackHeight = height - SCROLLBAR_PADDING * 2;
+    const ratio = scrollState.viewportHeight / scrollState.contentHeight;
+    const thumbHeight = Math.max(trackHeight * ratio, SCROLLBAR_MIN_THUMB);
+    const maxScroll = scrollState.contentHeight - scrollState.viewportHeight;
+    const scrollRatio = maxScroll > 0 ? scrollState.offsetY / maxScroll : 0;
+    const thumbY = top + SCROLLBAR_PADDING + scrollRatio * (trackHeight - thumbHeight);
+    const thumbX = left + width - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+    drawRoundedRect(ctx, thumbX, thumbY, SCROLLBAR_SIZE, thumbHeight, SCROLLBAR_RADIUS);
+    ctx.fill();
+  }
+
+  if (!isVertical && scrollState.contentWidth > scrollState.viewportWidth) {
+    const trackWidth = width - SCROLLBAR_PADDING * 2;
+    const ratio = scrollState.viewportWidth / scrollState.contentWidth;
+    const thumbWidth = Math.max(trackWidth * ratio, SCROLLBAR_MIN_THUMB);
+    const maxScroll = scrollState.contentWidth - scrollState.viewportWidth;
+    const scrollRatio = maxScroll > 0 ? scrollState.offsetX / maxScroll : 0;
+    const thumbX = left + SCROLLBAR_PADDING + scrollRatio * (trackWidth - thumbWidth);
+    const thumbY = top + height - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+    drawRoundedRect(ctx, thumbX, thumbY, thumbWidth, SCROLLBAR_SIZE, SCROLLBAR_RADIUS);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 function drawRoundedRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -468,76 +531,6 @@ function drawRoundedRect(
   ctx.arcTo(x, y + h, x, y, r);
   ctx.arcTo(x, y, x + w, y, r);
   ctx.closePath();
-}
-
-export function hitTest(
-  tree: NodeTree,
-  x: number,
-  y: number,
-  scale: number,
-  offsetX: number,
-  offsetY: number
-): string | null {
-  const canvasX = (x - offsetX) / scale;
-  const canvasY = (y - offsetY) / scale;
-
-  return hitTestNode(tree, tree.rootId, canvasX, canvasY);
-}
-
-function hitTestNode(
-  tree: NodeTree,
-  nodeId: string,
-  x: number,
-  y: number
-): string | null {
-  const node = tree.nodes[nodeId];
-  if (!node) return null;
-
-  // Test children in reverse order (top-most first)
-  for (let i = node.children.length - 1; i >= 0; i--) {
-    const result = hitTestNode(tree, node.children[i], x, y);
-    if (result) return result;
-  }
-
-  const { left, top, width, height } = node.computedLayout;
-  if (x >= left && x <= left + width && y >= top && y <= top + height) {
-    return nodeId;
-  }
-
-  return null;
-}
-
-export function hitTestAll(
-  tree: NodeTree,
-  x: number,
-  y: number,
-  scale: number,
-  offsetX: number,
-  offsetY: number
-): string[] {
-  const canvasX = (x - offsetX) / scale;
-  const canvasY = (y - offsetY) / scale;
-  const result: string[] = [];
-  collectHitNodes(tree, tree.rootId, canvasX, canvasY, result);
-  return result;
-}
-
-function collectHitNodes(
-  tree: NodeTree,
-  nodeId: string,
-  x: number,
-  y: number,
-  result: string[]
-): void {
-  const node = tree.nodes[nodeId];
-  if (!node) return;
-  const { left, top, width, height } = node.computedLayout;
-  if (x >= left && x <= left + width && y >= top && y <= top + height) {
-    result.push(nodeId);
-    for (const childId of node.children) {
-      collectHitNodes(tree, childId, x, y, result);
-    }
-  }
 }
 
 export function getRotationHandlePosition(node: CanvasNode) {

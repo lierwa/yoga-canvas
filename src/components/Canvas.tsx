@@ -2,12 +2,16 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Crosshair } from 'lucide-react';
 import { renderCanvas, setRenderCallback } from '../core/CanvasRenderer';
 import type { NodeTree, SelectionState } from '../types';
+import type { ScrollManager } from '@yaga-canvas/core';
 
 interface CanvasProps {
   tree: NodeTree;
   selection: SelectionState;
   scale: number;
   offset: { x: number; y: number };
+  scrollManager: ScrollManager;
+  renderTick?: number;
+  showGrid?: boolean;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseUp: () => void;
@@ -21,6 +25,9 @@ export default function Canvas({
   selection,
   scale,
   offset,
+  scrollManager,
+  renderTick,
+  showGrid,
   onMouseDown,
   onMouseMove,
   onMouseUp,
@@ -33,11 +40,13 @@ export default function Canvas({
 
   // Register callback so image cache loads trigger canvas re-render
   useEffect(() => {
-    setRenderCallback(() => setImageLoadTick((t) => t + 1));
-    return () => setRenderCallback(() => {});
+    const unsubscribe = setRenderCallback(() => setImageLoadTick((t) => t + 1));
+    return unsubscribe;
   }, []);
 
   const draw = useCallback(() => {
+    void imageLoadTick;
+    void renderTick;
     const canvas = canvasRef.current;
     if (!canvas) return;
     const dpr = window.devicePixelRatio || 1;
@@ -47,8 +56,11 @@ export default function Canvas({
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
     ctx.scale(dpr, dpr);
-    renderCanvas(ctx, tree, selection, rect.width, rect.height, scale, offset.x, offset.y);
-  }, [tree, selection, scale, offset, imageLoadTick]);
+    renderCanvas(ctx, tree, selection, rect.width, rect.height, scale, offset.x, offset.y, {
+      showGrid,
+      scrollManager,
+    });
+  }, [tree, selection, scale, offset, imageLoadTick, renderTick, showGrid, scrollManager]);
 
   useEffect(() => {
     const canvas = canvasRef.current;

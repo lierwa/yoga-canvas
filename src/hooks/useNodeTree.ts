@@ -1,17 +1,16 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { CanvasNode, NodeTree, FlexStyle, VisualStyle, TextProps, ImageProps, NodeType, CanvasContainerConfig, FlexValue } from '../types';
-import {
-  initYoga,
-  buildYogaTree,
-  freeYogaTree,
-  calculateLayout,
-} from '../core/YogaManager';
-import type { YogaNode } from '../core/YogaManager';
-
-let idCounter = 0;
-function generateId(): string {
-  return `node_${++idCounter}`;
-}
+import type {
+  CanvasNode,
+  NodeTree,
+  FlexStyle,
+  VisualStyle,
+  TextProps,
+  ImageProps,
+  NodeType,
+  CanvasContainerConfig,
+} from '../types';
+import { H5Adapter, initYoga, NodeTreeManager, ScrollManager, computeScrollContentSizes } from '@yaga-canvas/core';
+import type { NodeDescriptor } from '@yaga-canvas/core';
 
 const COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#22c55e',
@@ -23,33 +22,294 @@ function pickColor(index: number): string {
   return COLORS[index % COLORS.length];
 }
 
-function flexValueToNum(v: FlexValue | undefined, fallback: number): number {
-  if (v === undefined || v === 'auto') return fallback;
-  if (typeof v === 'number') return v;
-  return fallback;
+function createDefaultDescriptor(): NodeDescriptor {
+  return {
+    type: 'view',
+    name: 'Root',
+    style: {
+      width: 375,
+      height: 667,
+      flexDirection: 'column',
+      backgroundColor: '#fff',
+      padding: 16,
+      gap: 12,
+    },
+    children: [
+      {
+        type: 'view',
+        name: 'Header',
+        style: {
+          flexDirection: 'row',
+          alignItems: 'center',
+          backgroundColor: '#6366f1',
+          borderRadius: 12,
+          padding: 16,
+          gap: 12,
+        },
+        children: [
+          {
+            type: 'image',
+            name: 'Avatar',
+            src: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yaga',
+            style: { width: 48, height: 48, borderRadius: 24 },
+          },
+          {
+            type: 'view',
+            name: 'UserInfo',
+            style: { flex: 1, flexDirection: 'column', gap: 4 },
+            children: [
+              {
+                type: 'text',
+                name: 'Username',
+                content: 'Yaga Canvas',
+                style: { fontSize: 18, fontWeight: 'bold', color: '#ffffff' },
+              },
+              {
+                type: 'text',
+                name: 'Bio',
+                content: 'A powerful canvas layout engine',
+                style: { fontSize: 12, color: '#c7d2fe' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'view',
+        name: 'StatsRow',
+        style: { flexDirection: 'row', gap: 8 },
+        children: [
+          {
+            type: 'view',
+            name: 'Stats1',
+            style: {
+              flex: 1,
+              flexDirection: 'column',
+              alignItems: 'center',
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              padding: 12,
+              gap: 4,
+              borderWidth: 1,
+              borderColor: '#e2e8f0',
+            },
+            children: [
+              {
+                type: 'text',
+                name: 'NodesValue',
+                content: '128',
+                style: { fontSize: 20, fontWeight: 'bold', color: '#8b5cf6' },
+              },
+              {
+                type: 'text',
+                name: 'NodesLabel',
+                content: 'Nodes',
+                style: { fontSize: 11, color: '#94a3b8' },
+              },
+              {
+                type: 'view',
+                name: 'Badge',
+                style: {
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  backgroundColor: '#ef4444',
+                  borderRadius: 8,
+                  padding: 2,
+                  paddingLeft: 6,
+                  paddingRight: 6,
+                },
+                children: [
+                  {
+                    type: 'text',
+                    name: 'BadgeText',
+                    content: 'NEW',
+                    style: {
+                      fontSize: 9,
+                      width: 22,
+                      height: 12,
+                      flexDirection: 'row',
+                      fontWeight: 'bold',
+                      color: '#ffffff',
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          {
+            type: 'view',
+            name: 'Stats2',
+            style: {
+              flex: 1,
+              flexDirection: 'column',
+              alignItems: 'center',
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              padding: 12,
+              gap: 4,
+              borderWidth: 1,
+              borderColor: '#e2e8f0',
+            },
+            children: [
+              {
+                type: 'text',
+                name: 'RenderValue',
+                content: '16ms',
+                style: { fontSize: 20, fontWeight: 'bold', color: '#06b6d4' },
+              },
+              {
+                type: 'text',
+                name: 'RenderLabel',
+                content: 'Render',
+                style: { fontSize: 11, color: '#94a3b8' },
+              },
+            ],
+          },
+          {
+            type: 'view',
+            name: 'Stats3',
+            style: {
+              flex: 1,
+              flexDirection: 'row',
+              flexWrap: 'wrap',
+              alignItems: 'center',
+              backgroundColor: '#fff',
+              borderRadius: 10,
+              padding: 12,
+              gap: 4,
+              borderWidth: 1,
+              borderColor: '#e2e8f0',
+            },
+            children: [
+              {
+                type: 'text',
+                name: 'FPSValue',
+                content: '60',
+                style: { fontSize: 20, fontWeight: 'bold', color: '#10b981' },
+              },
+              {
+                type: 'text',
+                name: 'FPSLabel',
+                content: 'FPS',
+                style: { fontSize: 11, flex: 1, color: '#94a3b8' },
+              },
+            ],
+          },
+        ],
+      },
+      {
+        type: 'view',
+        name: 'ContentCard',
+        style: {
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          borderRadius: 12,
+          padding: 16,
+          gap: 8,
+          borderWidth: 1,
+          borderColor: '#e2e8f0',
+        },
+        children: [
+          {
+            type: 'text',
+            name: 'Title',
+            content: 'Flexbox Layout Engine',
+            style: { fontSize: 16, fontWeight: 'bold', color: '#1e293b' },
+          },
+          {
+            type: 'text',
+            name: 'Description',
+            content: 'Build complex canvas layouts with familiar CSS flexbox. Powered by yoga-layout.',
+            style: { fontSize: 13, color: '#64748b', lineHeight: 1.6 },
+          },
+        ],
+      },
+      {
+        type: 'scrollview',
+        name: 'FeatureList',
+        scrollDirection: 'vertical',
+        style: {
+          flex: 1,
+          flexDirection: 'column',
+          backgroundColor: '#ffffff',
+          borderRadius: 12,
+          padding: 12,
+          gap: 8,
+          borderWidth: 1,
+          borderColor: '#e2e8f0',
+        },
+        children: [
+          featureRowDescriptor('View', 'Flex container with all CSS props', '#6366f1', '#6366f10a'),
+          featureRowDescriptor('Text', 'Auto word-wrapping text node', '#f59e0b', '#f59e0b0a'),
+          featureRowDescriptor('Image', 'Cover / Contain / Fill modes', '#ec4899', '#ec48990a'),
+          featureRowDescriptor('ScrollView', 'Real scrolling with wheel events!', '#14b8a6', '#14b8a60a'),
+          featureRowDescriptor('Export', 'JSON / DataURL / DOM string', '#8b5cf6', '#8b5cf60a'),
+          featureRowDescriptor('Hit Test', 'Click to select nodes', '#ef4444', '#ef44440a'),
+          featureRowDescriptor('JSX API', 'Write layouts as React components', '#22c55e', '#22c55e0a'),
+        ],
+      },
+    ],
+  };
 }
 
-function createNodeByType(type: NodeType, parentId: string, index: number): CanvasNode {
-  const id = generateId();
-  const base = {
-    id,
-    parentId,
-    children: [],
-    computedLayout: { left: 0, top: 0, width: 0, height: 0 },
+function featureRowDescriptor(title: string, subtitle: string, dotColor: string, bg: string): NodeDescriptor {
+  return {
+    type: 'view',
+    style: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: 10,
+      backgroundColor: bg,
+      borderRadius: 8,
+      padding: 10,
+    },
+    children: [
+      {
+        type: 'view',
+        style: { width: 8, height: 8, borderRadius: 4, backgroundColor: dotColor },
+      },
+      {
+        type: 'view',
+        style: { flex: 1, flexDirection: 'column', gap: 2 },
+        children: [
+          {
+            type: 'text',
+            content: title,
+            style: { fontSize: 13, fontWeight: 'bold', color: '#334155' },
+          },
+          {
+            type: 'text',
+            content: subtitle,
+            style: { fontSize: 11, color: '#94a3b8' },
+          },
+        ],
+      },
+    ],
   };
+}
 
+function createDescriptorByType(type: NodeType, index: number): NodeDescriptor {
   switch (type) {
     case 'text':
       return {
-        ...base,
-        name: `Text ${index}`,
         type: 'text',
-        flexStyle: { paddingTop: 4, paddingRight: 4, paddingBottom: 4, paddingLeft: 4 },
-        visualStyle: { backgroundColor: 'transparent', borderColor: 'transparent', borderWidth: 0, borderRadius: 0, opacity: 1, rotation: 0 },
-        textProps: {
-          content: 'Text',
+        name: `Text ${index}`,
+        content: 'Text',
+        style: {
+          paddingTop: 4,
+          paddingRight: 4,
+          paddingBottom: 4,
+          paddingLeft: 4,
+          backgroundColor: 'transparent',
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 0,
+          opacity: 1,
+          rotate: 0,
           fontSize: 14,
           fontWeight: 'normal',
+          fontFamily: 'sans-serif',
           color: '#1f2937',
           lineHeight: 1.4,
           textAlign: 'left',
@@ -57,329 +317,270 @@ function createNodeByType(type: NodeType, parentId: string, index: number): Canv
       };
     case 'image':
       return {
-        ...base,
-        name: `Image ${index}`,
         type: 'image',
-        flexStyle: { width: 120, height: 120 },
-        visualStyle: { backgroundColor: '#e0e7ff', borderColor: '#6366f1', borderWidth: 1, borderRadius: 6, opacity: 1, rotation: 0 },
-        imageProps: {
-          src: '',
-          objectFit: 'cover',
+        name: `Image ${index}`,
+        src: '',
+        objectFit: 'cover',
+        style: {
+          width: 120,
+          height: 120,
+          backgroundColor: '#e0e7ff',
+          borderColor: '#6366f1',
+          borderWidth: 1,
+          borderRadius: 6,
+          opacity: 1,
+          rotate: 0,
         },
       };
     case 'scrollview':
       return {
-        ...base,
-        name: `ScrollView ${index}`,
         type: 'scrollview',
-        flexStyle: {
+        name: `ScrollView ${index}`,
+        scrollDirection: 'vertical',
+        scrollBarVisibility: 'auto',
+        style: {
           flex: 1,
           flexDirection: 'column',
-          overflow: 'scroll',
           gap: 8,
-          paddingTop: 8, paddingRight: 8, paddingBottom: 8, paddingLeft: 8,
+          padding: 12,
+          backgroundColor: '#ffffff',
+          borderColor: '#e2e8f0',
+          borderWidth: 1,
+          borderRadius: 12,
         },
-        visualStyle: { backgroundColor: '#f1f5f9', borderColor: '#94a3b8', borderWidth: 1, borderRadius: 6, opacity: 1, rotation: 0 },
-        scrollViewProps: { scrollDirection: 'vertical' },
       };
-    case 'box':
+    case 'view':
     default:
       return {
-        ...base,
+        type: 'view',
         name: `Box ${index}`,
-        type: 'box',
-        flexStyle: { flex: 1 },
-        visualStyle: {
+        style: {
+          flex: 1,
           backgroundColor: 'transparent',
           borderColor: '#d1d5db',
           borderWidth: 1,
           borderRadius: 0,
           opacity: 1,
-          rotation: 0,
+          rotate: 0,
         },
       };
   }
 }
 
-function createDefaultTree(): NodeTree {
-  const rootId = generateId();
-
-  const nodes: Record<string, CanvasNode> = {
-    [rootId]: {
-      id: rootId,
-      name: 'Phone Screen',
-      type: 'box',
-      flexStyle: {
-        width: 375,
-        height: 667,
-        flexDirection: 'column',
-        justifyContent: 'flex-start',
-        alignItems: 'stretch',
-        flexWrap: 'nowrap',
-        paddingTop: 0,
-        paddingRight: 0,
-        paddingBottom: 0,
-        paddingLeft: 0,
-      },
-      visualStyle: {
-        backgroundColor: '#f5f5f5',
-        borderColor: '#d1d5db',
-        borderWidth: 0,
-        borderRadius: 0,
-        opacity: 1,
-        rotation: 0,
-      },
-      children: [],
-      parentId: null,
-      computedLayout: { left: 0, top: 0, width: 375, height: 667 },
+function createContainerDescriptor(index: number): NodeDescriptor {
+  return {
+    type: 'view',
+    name: `Container ${index}`,
+    style: {
+      flex: 1,
+      flexDirection: 'column',
+      gap: 6,
+      paddingTop: 6,
+      paddingRight: 6,
+      paddingBottom: 6,
+      paddingLeft: 6,
+      backgroundColor: '#334155',
+      borderColor: '#64748b',
+      borderWidth: 1,
+      borderRadius: 6,
+      opacity: 1,
+      rotate: 0,
     },
+    children: [
+      {
+        type: 'view',
+        name: 'Sub 1',
+        style: {
+          flex: 1,
+          backgroundColor: pickColor(index + 1),
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 4,
+          opacity: 0.9,
+          rotate: 0,
+        },
+      },
+      {
+        type: 'view',
+        name: 'Sub 2',
+        style: {
+          flex: 1,
+          backgroundColor: pickColor(index + 2),
+          borderColor: 'transparent',
+          borderWidth: 0,
+          borderRadius: 4,
+          opacity: 0.9,
+          rotate: 0,
+        },
+      },
+    ],
   };
-
-  return { rootId, nodes };
 }
 
-const MAX_HISTORY = 50;
-
 export function useNodeTree() {
-  const [tree, setTree] = useState<NodeTree>(createDefaultTree);
+  const [tree, setTree] = useState<NodeTree>({ rootId: '', nodes: {} });
   const [ready, setReady] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
-  const yogaNodesRef = useRef<Map<string, YogaNode>>(new Map());
-  const historyRef = useRef<{ past: NodeTree[]; future: NodeTree[] }>({ past: [], future: [] });
-  const liveUpdateBaseRef = useRef<NodeTree | null>(null);
 
-  const computeLayout = useCallback((newTree: NodeTree) => {
-    freeYogaTree(yogaNodesRef.current);
-    const yogaNodes = buildYogaTree(newTree);
-    yogaNodesRef.current = yogaNodes;
-    const rootNode = newTree.nodes[newTree.rootId];
-    return calculateLayout(
-      newTree,
-      yogaNodes,
-      flexValueToNum(rootNode.flexStyle.width, 800),
-      flexValueToNum(rootNode.flexStyle.height, 600)
-    );
-  }, []);
+  const adapterRef = useRef<H5Adapter | null>(null);
+  const managerRef = useRef<NodeTreeManager | null>(null);
+  const scrollManagerRef = useRef<ScrollManager>(new ScrollManager());
 
-  const commitMutation = useCallback(
-    (mutate: (prev: NodeTree) => NodeTree | null) => {
-      setTree((prev) => {
-        const newTree = mutate(prev);
-        if (!newTree) return prev;
-        const h = historyRef.current;
-        h.past = [...h.past.slice(-(MAX_HISTORY - 1)), prev];
-        h.future = [];
-        setCanUndo(true);
-        setCanRedo(false);
-        return computeLayout(newTree);
-      });
-    },
-    [computeLayout]
-  );
-
-  const applyLiveUpdate = useCallback(
-    (mutate: (prev: NodeTree) => NodeTree | null) => {
-      setTree((prev) => {
-        if (!liveUpdateBaseRef.current) {
-          liveUpdateBaseRef.current = prev;
-        }
-        const newTree = mutate(prev);
-        if (!newTree) return prev;
-        return computeLayout(newTree);
-      });
-    },
-    [computeLayout]
-  );
-
-  const commitLiveUpdate = useCallback(() => {
-    if (liveUpdateBaseRef.current) {
-      const h = historyRef.current;
-      h.past = [...h.past.slice(-(MAX_HISTORY - 1)), liveUpdateBaseRef.current];
-      h.future = [];
-      setCanUndo(true);
-      setCanRedo(false);
-      liveUpdateBaseRef.current = null;
-    }
-  }, []);
-
-  const undo = useCallback(() => {
-    setTree((prev) => {
-      const h = historyRef.current;
-      if (h.past.length === 0) return prev;
-      const previous = h.past[h.past.length - 1];
-      h.past = h.past.slice(0, -1);
-      h.future = [prev, ...h.future];
-      setCanUndo(h.past.length > 0);
-      setCanRedo(true);
-      freeYogaTree(yogaNodesRef.current);
-      const yogaNodes = buildYogaTree(previous);
-      yogaNodesRef.current = yogaNodes;
-      return previous;
-    });
-  }, []);
-
-  const redo = useCallback(() => {
-    setTree((prev) => {
-      const h = historyRef.current;
-      if (h.future.length === 0) return prev;
-      const next = h.future[0];
-      h.past = [...h.past, prev];
-      h.future = h.future.slice(1);
-      setCanUndo(true);
-      setCanRedo(h.future.length > 0);
-      freeYogaTree(yogaNodesRef.current);
-      const yogaNodes = buildYogaTree(next);
-      yogaNodesRef.current = yogaNodes;
-      return next;
-    });
+  const refresh = useCallback(() => {
+    const manager = managerRef.current;
+    if (!manager) return;
+    const nextTree = manager.getTree();
+    computeScrollContentSizes(nextTree, scrollManagerRef.current);
+    setTree(nextTree);
+    setCanUndo(manager.canUndo);
+    setCanRedo(manager.canRedo);
   }, []);
 
   useEffect(() => {
+    const adapter = new H5Adapter();
+    const manager = new NodeTreeManager(adapter);
+    const scrollManager = scrollManagerRef.current;
+    adapterRef.current = adapter;
+    managerRef.current = manager;
+
     initYoga().then(() => {
+      manager.buildFromDescriptor(createDefaultDescriptor());
+      manager.computeLayout();
+      refresh();
       setReady(true);
     });
-  }, []);
 
-  useEffect(() => {
-    if (ready) {
-      setTree((prev) => computeLayout(prev));
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
+    return () => {
+      manager.destroy();
+      scrollManager.reset();
+      adapterRef.current = null;
+      managerRef.current = null;
+    };
+  }, [refresh]);
 
   const updateNodeFlexStyle = useCallback(
     (nodeId: string, updates: Partial<FlexStyle>) => {
-      commitMutation((prev) => {
-        const node = prev.nodes[nodeId];
-        if (!node) return null;
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [nodeId]: { ...node, flexStyle: { ...node.flexStyle, ...updates } },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateFlexStyle(nodeId, updates);
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const updateNodeVisualStyle = useCallback(
     (nodeId: string, updates: Partial<VisualStyle>) => {
-      commitMutation((prev) => {
-        const node = prev.nodes[nodeId];
-        if (!node) return null;
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [nodeId]: { ...node, visualStyle: { ...node.visualStyle, ...updates } },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateVisualStyle(nodeId, updates);
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const updateTextProps = useCallback(
     (nodeId: string, updates: Partial<TextProps>) => {
-      commitMutation((prev) => {
-        const node = prev.nodes[nodeId];
-        if (!node || !node.textProps) return null;
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [nodeId]: { ...node, textProps: { ...node.textProps, ...updates } },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateTextProps(nodeId, updates);
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const updateImageProps = useCallback(
     (nodeId: string, updates: Partial<ImageProps>) => {
-      commitMutation((prev) => {
-        const node = prev.nodes[nodeId];
-        if (!node || !node.imageProps) return null;
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [nodeId]: { ...node, imageProps: { ...node.imageProps, ...updates } },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateImageProps(nodeId, updates);
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
-  const adaptFlexStyleForParent = (
-    node: CanvasNode,
-    newParent: CanvasNode,
-    allNodes: Record<string, CanvasNode>,
-  ): FlexStyle => {
-    const dir = newParent.flexStyle.flexDirection ?? 'column';
-    const isRow = dir === 'row' || dir === 'row-reverse';
+  const commitLiveUpdate = useCallback(() => {
+    const manager = managerRef.current;
+    if (!manager) return;
+    manager.commitLive();
+    refresh();
+  }, [refresh]);
 
-    // Collect existing siblings (excluding the moved node)
-    const siblings = newParent.children
-      .filter((id) => id !== node.id)
-      .map((id) => allNodes[id])
-      .filter(Boolean);
+  const undo = useCallback(() => {
+    const manager = managerRef.current;
+    if (!manager) return;
+    if (!manager.undo()) return;
+    refresh();
+  }, [refresh]);
 
-    const adapted: FlexStyle = { ...node.flexStyle };
+  const redo = useCallback(() => {
+    const manager = managerRef.current;
+    if (!manager) return;
+    if (!manager.redo()) return;
+    refresh();
+  }, [refresh]);
 
-    // If node was absolute, reset to static so it participates in flow
-    if (adapted.positionType === 'absolute') {
-      adapted.positionType = undefined;
-      adapted.positionTop = undefined;
-      adapted.positionRight = undefined;
-      adapted.positionBottom = undefined;
-      adapted.positionLeft = undefined;
-    }
+  const adaptFlexStyleForParent = useCallback(
+    (node: CanvasNode, newParent: CanvasNode, allNodes: Record<string, CanvasNode>): FlexStyle => {
+      const dir = newParent.flexStyle.flexDirection ?? 'column';
+      const isRow = dir === 'row' || dir === 'row-reverse';
 
-    // Empty parent → keep original style (just fix absolute)
-    if (siblings.length === 0) {
+      const siblings: CanvasNode[] = [];
+      for (const childId of newParent.children) {
+        if (childId === node.id) continue;
+        const sibling = allNodes[childId];
+        if (sibling) siblings.push(sibling);
+      }
+
+      const adapted: FlexStyle = { ...node.flexStyle };
+
+      if (adapted.position === 'absolute') {
+        adapted.position = undefined;
+        adapted.top = undefined;
+        adapted.right = undefined;
+        adapted.bottom = undefined;
+        adapted.left = undefined;
+      }
+
+      if (siblings.length === 0) return adapted;
+
+      const flexCount = siblings.filter((sibling) => sibling.flexStyle.flex !== undefined).length;
+      const growCount = siblings.filter((sibling) => (sibling.flexStyle.flexGrow ?? 0) > 0).length;
+      const usesFlex = flexCount >= Math.ceil(siblings.length / 2);
+      const usesGrow = !usesFlex && growCount >= Math.ceil(siblings.length / 2);
+
+      if (usesFlex) {
+        const avgFlex = siblings.reduce((sum, sibling) => sum + (sibling.flexStyle.flex ?? 0), 0) / flexCount;
+        adapted.flex = avgFlex > 0 ? Math.round(avgFlex) : 1;
+        adapted.flexGrow = undefined;
+        adapted.flexShrink = undefined;
+        adapted.flexBasis = undefined;
+        if (isRow) adapted.width = undefined;
+        else adapted.height = undefined;
+      } else if (usesGrow) {
+        const avgGrow = siblings.reduce((sum, sibling) => sum + (sibling.flexStyle.flexGrow ?? 0), 0) / growCount;
+        adapted.flexGrow = avgGrow > 0 ? Math.round(avgGrow) : 1;
+        adapted.flex = undefined;
+        if (isRow) adapted.width = undefined;
+        else adapted.height = undefined;
+      } else {
+        adapted.flex = undefined;
+        adapted.flexGrow = undefined;
+        adapted.flexShrink = undefined;
+        adapted.flexBasis = undefined;
+      }
+
       return adapted;
-    }
-
-    // Has siblings → adopt the dominant sizing pattern from siblings
-    const flexCount = siblings.filter((s) => s.flexStyle.flex !== undefined).length;
-    const growCount = siblings.filter((s) => (s.flexStyle.flexGrow ?? 0) > 0).length;
-    const usesFlex = flexCount >= Math.ceil(siblings.length / 2);
-    const usesGrow = !usesFlex && growCount >= Math.ceil(siblings.length / 2);
-
-    if (usesFlex) {
-      // Siblings use flex shorthand → match that
-      const avgFlex = siblings.reduce((sum, s) => sum + (s.flexStyle.flex ?? 0), 0) / flexCount;
-      adapted.flex = avgFlex > 0 ? Math.round(avgFlex) : 1;
-      adapted.flexGrow = undefined;
-      adapted.flexShrink = undefined;
-      adapted.flexBasis = undefined;
-      if (isRow) { adapted.width = undefined; } else { adapted.height = undefined; }
-    } else if (usesGrow) {
-      // Siblings use flexGrow → match that
-      const avgGrow = siblings.reduce((sum, s) => sum + (s.flexStyle.flexGrow ?? 0), 0) / growCount;
-      adapted.flexGrow = avgGrow > 0 ? Math.round(avgGrow) : 1;
-      adapted.flex = undefined;
-      if (isRow) { adapted.width = undefined; } else { adapted.height = undefined; }
-    } else {
-      // Siblings use fixed/auto sizing → clear flex properties so node uses its natural size
-      adapted.flex = undefined;
-      adapted.flexGrow = undefined;
-      adapted.flexShrink = undefined;
-      adapted.flexBasis = undefined;
-    }
-
-    return adapted;
-  };
+    },
+    [],
+  );
 
   const moveNode = useCallback(
     (nodeId: string, newParentId: string, insertIndex?: number) => {
-      commitMutation((prev) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+
+      manager.commit((prev: NodeTree) => {
         const node = prev.nodes[nodeId];
         const newParent = prev.nodes[newParentId];
         if (!node || !newParent || !node.parentId) return null;
@@ -388,19 +589,15 @@ export function useNodeTree() {
         if (!oldParent) return null;
 
         const isSameParent = node.parentId === newParentId;
-        // Remove from old parent
-        const oldChildren = oldParent.children.filter((id) => id !== nodeId);
+        const oldChildren = oldParent.children.filter((id: string) => id !== nodeId);
 
         let newChildren: string[];
         if (isSameParent) {
-          // Reorder within same parent
           if (insertIndex === undefined) return null;
           newChildren = [...oldChildren];
-          // Adjust index since we already removed the node
           const clampedIndex = Math.min(insertIndex, newChildren.length);
           newChildren.splice(clampedIndex, 0, nodeId);
         } else {
-          // Move to different parent
           const targetChildren = [...newParent.children];
           if (insertIndex !== undefined) {
             targetChildren.splice(Math.min(insertIndex, targetChildren.length), 0, nodeId);
@@ -412,7 +609,6 @@ export function useNodeTree() {
 
         const updatedNodes = { ...prev.nodes };
 
-        // When moving to a different parent, adapt flex style to fit the new layout
         if (!isSameParent) {
           const adaptedStyle = adaptFlexStyleForParent(node, newParent, prev.nodes);
           updatedNodes[nodeId] = { ...node, parentId: newParentId, flexStyle: adaptedStyle };
@@ -429,129 +625,60 @@ export function useNodeTree() {
 
         return { ...prev, nodes: updatedNodes };
       });
+
+      refresh();
     },
-    [commitMutation]
+    [adaptFlexStyleForParent, refresh],
   );
 
   const addNodeByType = useCallback(
     (parentId: string, type: NodeType) => {
-      commitMutation((prev) => {
-        const parent = prev.nodes[parentId];
-        if (!parent) return null;
-        if (parent.type === 'text') return null;
-        const index = Object.keys(prev.nodes).length;
-        const newNode = createNodeByType(type, parentId, index);
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [newNode.id]: newNode,
-            [parentId]: { ...parent, children: [...parent.children, newNode.id] },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      const current = manager.getTree();
+      const parent = current.nodes[parentId];
+      if (!parent || parent.type === 'text') return;
+      const index = Object.keys(current.nodes).length;
+      manager.addChild(parentId, createDescriptorByType(type, index));
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const addChildNode = useCallback(
-    (parentId: string) => addNodeByType(parentId, 'box'),
-    [addNodeByType]
+    (parentId: string) => addNodeByType(parentId, 'view'),
+    [addNodeByType],
   );
 
   const addContainerNode = useCallback(
     (parentId: string) => {
-      commitMutation((prev) => {
-        const parent = prev.nodes[parentId];
-        if (!parent) return null;
-        if (parent.type === 'text') return null;
-
-        const childCount = Object.keys(prev.nodes).length;
-        const newId = generateId();
-        const innerChild1 = generateId();
-        const innerChild2 = generateId();
-
-        const container: CanvasNode = {
-          id: newId,
-          name: `Container ${childCount}`,
-          type: 'box',
-          flexStyle: {
-            flex: 1, flexDirection: 'column', gap: 6,
-            paddingTop: 6, paddingRight: 6, paddingBottom: 6, paddingLeft: 6,
-          },
-          visualStyle: {
-            backgroundColor: '#334155', borderColor: '#64748b',
-            borderWidth: 1, borderRadius: 6, opacity: 1, rotation: 0,
-          },
-          children: [innerChild1, innerChild2],
-          parentId,
-          computedLayout: { left: 0, top: 0, width: 0, height: 0 },
-        };
-
-        const child1: CanvasNode = {
-          id: innerChild1, name: `Sub 1`, type: 'box',
-          flexStyle: { flex: 1 },
-          visualStyle: { backgroundColor: pickColor(childCount + 1), borderColor: 'transparent', borderWidth: 0, borderRadius: 4, opacity: 0.9, rotation: 0 },
-          children: [], parentId: newId,
-          computedLayout: { left: 0, top: 0, width: 0, height: 0 },
-        };
-
-        const child2: CanvasNode = {
-          id: innerChild2, name: `Sub 2`, type: 'box',
-          flexStyle: { flex: 1 },
-          visualStyle: { backgroundColor: pickColor(childCount + 2), borderColor: 'transparent', borderWidth: 0, borderRadius: 4, opacity: 0.9, rotation: 0 },
-          children: [], parentId: newId,
-          computedLayout: { left: 0, top: 0, width: 0, height: 0 },
-        };
-
-        return {
-          ...prev,
-          nodes: {
-            ...prev.nodes,
-            [newId]: container,
-            [innerChild1]: child1,
-            [innerChild2]: child2,
-            [parentId]: { ...parent, children: [...parent.children, newId] },
-          },
-        };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      const current = manager.getTree();
+      const parent = current.nodes[parentId];
+      if (!parent || parent.type === 'text') return;
+      const index = Object.keys(current.nodes).length;
+      manager.addChild(parentId, createContainerDescriptor(index));
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const deleteNode = useCallback(
     (nodeId: string) => {
-      commitMutation((prev) => {
-        if (nodeId === prev.rootId) return null;
-        const node = prev.nodes[nodeId];
-        if (!node || !node.parentId) return null;
-
-        const newNodes = { ...prev.nodes };
-        const parent = newNodes[node.parentId];
-        newNodes[node.parentId] = {
-          ...parent,
-          children: parent.children.filter((id) => id !== nodeId),
-        };
-
-        const toDelete = [nodeId];
-        while (toDelete.length > 0) {
-          const id = toDelete.pop()!;
-          const n = newNodes[id];
-          if (n) {
-            toDelete.push(...n.children);
-            delete newNodes[id];
-          }
-        }
-
-        return { ...prev, nodes: newNodes };
-      });
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.deleteNode(nodeId);
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   const resizeNode = useCallback(
     (nodeId: string, width: number, height: number) => {
-      applyLiveUpdate((prev) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.applyLive((prev: NodeTree) => {
         const node = prev.nodes[nodeId];
         if (!node) return null;
         return {
@@ -570,13 +697,16 @@ export function useNodeTree() {
           },
         };
       });
+      refresh();
     },
-    [applyLiveUpdate]
+    [refresh],
   );
 
   const rotateNodeLive = useCallback(
-    (nodeId: string, rotation: number) => {
-      applyLiveUpdate((prev) => {
+    (nodeId: string, rotate: number) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.applyLive((prev: NodeTree) => {
         const node = prev.nodes[nodeId];
         if (!node) return null;
         return {
@@ -585,18 +715,21 @@ export function useNodeTree() {
             ...prev.nodes,
             [nodeId]: {
               ...node,
-              visualStyle: { ...node.visualStyle, rotation },
+              visualStyle: { ...node.visualStyle, rotate },
             },
           },
         };
       });
+      refresh();
     },
-    [applyLiveUpdate]
+    [refresh],
   );
 
   const updateCanvasContainer = useCallback(
     (config: CanvasContainerConfig) => {
-      commitMutation((prev) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.commit((prev: NodeTree) => {
         const root = prev.nodes[prev.rootId];
         if (!root) return null;
         return {
@@ -611,8 +744,9 @@ export function useNodeTree() {
           },
         };
       });
+      refresh();
     },
-    [commitMutation]
+    [refresh],
   );
 
   return {
@@ -620,6 +754,7 @@ export function useNodeTree() {
     ready,
     canUndo,
     canRedo,
+    scrollManager: scrollManagerRef.current,
     undo,
     redo,
     updateNodeFlexStyle,
