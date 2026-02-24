@@ -112,44 +112,46 @@ export default function PropertiesPanel({
         <p className="text-xs text-gray-400 mt-0.5">ID: {node.id}</p>
       </Section>
 
-      <Section title="Layout">
-        <div className="space-y-2.5">
-          <SelectField
-            inline
-            label="Direction"
-            value={s.flexDirection ?? "column"}
-            options={FLEX_DIRECTIONS}
-            onChange={(v) =>
-              update({ flexDirection: v as FlexStyle["flexDirection"] })
-            }
-          />
-          <SelectField
-            inline
-            label="Justify"
-            value={s.justifyContent ?? "flex-start"}
-            options={JUSTIFY_OPTIONS}
-            onChange={(v) =>
-              update({ justifyContent: v as FlexStyle["justifyContent"] })
-            }
-          />
-          <SelectField
-            inline
-            label="Align Items"
-            value={s.alignItems ?? "stretch"}
-            options={ALIGN_OPTIONS}
-            onChange={(v) =>
-              update({ alignItems: v as FlexStyle["alignItems"] })
-            }
-          />
-          <SelectField
-            inline
-            label="Wrap"
-            value={s.flexWrap ?? "nowrap"}
-            options={WRAP_OPTIONS}
-            onChange={(v) => update({ flexWrap: v as FlexStyle["flexWrap"] })}
-          />
-        </div>
-      </Section>
+      {node.type !== "text" && (
+        <Section title="Layout">
+          <div className="space-y-2.5">
+            <SelectField
+              inline
+              label="Direction"
+              value={s.flexDirection ?? "column"}
+              options={FLEX_DIRECTIONS}
+              onChange={(v) =>
+                update({ flexDirection: v as FlexStyle["flexDirection"] })
+              }
+            />
+            <SelectField
+              inline
+              label="Justify"
+              value={s.justifyContent ?? "flex-start"}
+              options={JUSTIFY_OPTIONS}
+              onChange={(v) =>
+                update({ justifyContent: v as FlexStyle["justifyContent"] })
+              }
+            />
+            <SelectField
+              inline
+              label="Align Items"
+              value={s.alignItems ?? "stretch"}
+              options={ALIGN_OPTIONS}
+              onChange={(v) =>
+                update({ alignItems: v as FlexStyle["alignItems"] })
+              }
+            />
+            <SelectField
+              inline
+              label="Wrap"
+              value={s.flexWrap ?? "nowrap"}
+              options={WRAP_OPTIONS}
+              onChange={(v) => update({ flexWrap: v as FlexStyle["flexWrap"] })}
+            />
+          </div>
+        </Section>
+      )}
 
       {node.textProps && (
         <Section title="Text">
