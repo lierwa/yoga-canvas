@@ -21,7 +21,7 @@ import { exportToDataURL, exportToTempFilePath } from './export';
 import { H5Adapter } from './platform/H5Adapter';
 import { WxAdapter } from './platform/WxAdapter';
 
-export interface YagaCanvasOptions {
+export interface YogaCanvasOptions {
   /** Platform: 'h5' (default) or 'wx'. */
   platform?: 'h5' | 'wx';
   /** Device pixel ratio. Defaults to 1. */
@@ -35,9 +35,9 @@ export interface YagaCanvasOptions {
 }
 
 /**
- * The main YagaCanvas engine instance.
+ * The main YogaCanvas engine instance.
  */
-export class YagaCanvas {
+export class YogaCanvas {
   private canvas: unknown;
   private ctx: CanvasContextLike | null = null;
   private adapter: PlatformAdapter;
@@ -52,7 +52,7 @@ export class YagaCanvas {
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
   private scrollBarTimers = new Map<string, ReturnType<typeof setTimeout>>();
 
-  constructor(canvas: unknown, layout: NodeDescriptor, options: YagaCanvasOptions = {}) {
+  constructor(canvas: unknown, layout: NodeDescriptor, options: YogaCanvasOptions = {}) {
     this.canvas = canvas;
     this.layout = layout;
     this.pixelRatio = options.pixelRatio ?? 1;
@@ -374,13 +374,13 @@ export class YagaCanvas {
 }
 
 /**
- * Create a YagaCanvas instance.
+ * Create a YogaCanvas instance.
  * This is the main entry point for the library.
  */
-export function createYagaCanvas(
+export function createYogaCanvas(
   canvas: unknown,
   layout: NodeDescriptor,
-  options?: YagaCanvasOptions,
-): YagaCanvas {
-  return new YagaCanvas(canvas, layout, options);
+  options?: YogaCanvasOptions,
+): YogaCanvas {
+  return new YogaCanvas(canvas, layout, options);
 }

@@ -1,8 +1,8 @@
-// React bindings — YagaCanvas component (supports both layout prop and JSX children)
-export { YagaCanvasComponent as YagaCanvas } from './YagaCanvasComponent';
-export type { YagaCanvasProps, YagaCanvasRef } from './YagaCanvasComponent';
-export { useYagaCanvas } from './useYagaCanvas';
-export type { UseYagaCanvasOptions, UseYagaCanvasReturn } from './useYagaCanvas';
+// React bindings — YogaCanvas component (supports both layout prop and JSX children)
+export { YogaCanvasComponent as YogaCanvas } from './YogaCanvasComponent';
+export type { YogaCanvasProps, YogaCanvasRef } from './YogaCanvasComponent';
+export { useYogaCanvas } from './useYogaCanvas';
+export type { UseYogaCanvasOptions, UseYogaCanvasReturn } from './useYogaCanvas';
 
 // JSX marker components — primary React API
 export { View, Text, Image, ScrollView } from './components';
@@ -23,13 +23,13 @@ export {
   Text as createText,
   Image as createImage,
   ScrollView as createScrollView,
-  createYagaCanvas,
-  YagaCanvas as YagaCanvasCore,
+  createYogaCanvas,
+  YogaCanvas as YogaCanvasCore,
   initYoga,
   H5Adapter,
   hitTest,
   hitTestAll,
-} from '@yaga-canvas/core';
+} from '@yoga-canvas/core';
 
 // Core types
 export type {
@@ -40,9 +40,9 @@ export type {
   FlexStyle,
   VisualStyle,
   TextStyle,
-  YagaCanvasOptions,
+  YogaCanvasOptions,
   HitTestOptions,
   ScrollState,
-} from '@yaga-canvas/core';
+} from '@yoga-canvas/core';
 
-export { ScrollManager } from '@yaga-canvas/core';
+export { ScrollManager } from '@yoga-canvas/core';

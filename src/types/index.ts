@@ -9,7 +9,7 @@ export type {
   NodeType,
   CanvasNode,
   NodeTree,
-} from '@yaga-canvas/core';
+} from '@yoga-canvas/core';
 
 export interface CanvasContainerConfig {
   name: string;

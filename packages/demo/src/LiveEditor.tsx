@@ -9,7 +9,7 @@ import {
   ScrollView,
   convertChildrenToDescriptors,
   type NodeDescriptor,
-} from '@yaga-canvas/react';
+} from '@yoga-canvas/react';
 
 interface LiveEditorProps {
   defaultCode: string;
@@ -34,7 +34,7 @@ export function LiveEditor({ defaultCode, onDescriptorChange }: LiveEditorProps)
           production: true,
         });
 
-        // Eval with Yaga components in scope
+        // Eval with Yoga components in scope
         const fn = new Function('React', 'View', 'Text', 'Image', 'ScrollView', result.code);
         const element = fn(React, View, Text, Image, ScrollView);
 
@@ -46,7 +46,7 @@ export function LiveEditor({ defaultCode, onDescriptorChange }: LiveEditorProps)
         // Convert the React element tree to a NodeDescriptor
         const descriptors = convertChildrenToDescriptors(element);
         if (descriptors.length === 0) {
-          setError('No valid Yaga nodes found');
+          setError('No valid Yoga nodes found');
           return;
         }
 

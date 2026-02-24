@@ -8,5 +8,5 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   treeshake: true,
-  external: ['react', 'react-dom', '@yaga-canvas/core'],
+  external: ['react', 'react-dom', '@yoga-canvas/core'],
 });

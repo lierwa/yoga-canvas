@@ -1,8 +1,8 @@
 import React from 'react';
-import type { NodeDescriptor } from '@yaga-canvas/core';
+import type { NodeDescriptor } from '@yoga-canvas/core';
 
-interface YagaComponent {
-  __yagaNodeType?: string;
+interface YogaComponent {
+  __yogaNodeType?: string;
 }
 
 /**
@@ -29,8 +29,8 @@ export function convertChildrenToDescriptors(
 function convertElementToDescriptor(
   element: React.ReactElement,
 ): NodeDescriptor | null {
-  const type = element.type as YagaComponent;
-  const nodeType = type?.__yagaNodeType;
+  const type = element.type as YogaComponent;
+  const nodeType = type?.__yogaNodeType;
 
   if (!nodeType) {
     // Fragment: flatten children
@@ -41,7 +41,7 @@ function convertElementToDescriptor(
       return descs.length === 1 ? descs[0] : null;
     }
 
-    // Regular function component — call it to get its Yaga element output
+    // Regular function component — call it to get its Yoga element output
     if (typeof element.type === 'function') {
       try {
         const result = (element.type as (props: Record<string, unknown>) => React.ReactElement | null)(

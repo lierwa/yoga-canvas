@@ -11,8 +11,8 @@
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.18",
-    "@yaga-canvas/core": "workspace:*",
-    "@yaga-canvas/react": "workspace:*",
+    "@yoga-canvas/core": "workspace:*",
+    "@yoga-canvas/react": "workspace:*",
     "@monaco-editor/react": "^4.7.0",
     "autoprefixer": "^10.4.24",
     "lucide-react": "^0.563.0",

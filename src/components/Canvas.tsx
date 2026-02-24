@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, useCallback } from 'react';
 import { Crosshair } from 'lucide-react';
 import { renderCanvas, setRenderCallback } from '../core/CanvasRenderer';
 import type { NodeTree, SelectionState } from '../types';
-import type { ScrollManager } from '@yaga-canvas/core';
+import type { ScrollManager } from '@yoga-canvas/core';
 
 interface CanvasProps {
   tree: NodeTree;

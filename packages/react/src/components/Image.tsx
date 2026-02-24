@@ -1,4 +1,4 @@
-import type { StyleProps } from '@yaga-canvas/core';
+import type { StyleProps } from '@yoga-canvas/core';
 
 export interface ImageJSXProps {
   name?: string;
@@ -9,11 +9,11 @@ export interface ImageJSXProps {
 
 /**
  * JSX marker component for Image nodes.
- * Does NOT render to DOM — used by YagaCanvas to build the descriptor tree.
+ * Does NOT render to DOM — used by YogaCanvas to build the descriptor tree.
  */
 export function Image(_props: ImageJSXProps): React.ReactElement | null {
   void _props;
   return null;
 }
 
-(Image as unknown as { __yagaNodeType: string }).__yagaNodeType = 'image';
+(Image as unknown as { __yogaNodeType: string }).__yogaNodeType = 'image';

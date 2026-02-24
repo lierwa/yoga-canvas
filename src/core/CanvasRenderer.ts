@@ -1,5 +1,5 @@
 import type { CanvasNode, NodeTree, SelectionState, FlexValue } from '../types';
-import type { ScrollManager } from '@yaga-canvas/core';
+import type { ScrollManager } from '@yoga-canvas/core';
 
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 24;

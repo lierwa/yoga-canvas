@@ -1,6 +1,6 @@
 // === Core Entry Point ===
-export { createYagaCanvas, YagaCanvas } from './YagaCanvas';
-export type { YagaCanvasOptions } from './YagaCanvas';
+export { createYogaCanvas, YogaCanvas } from './YogaCanvas';
+export type { YogaCanvasOptions } from './YogaCanvas';
 
 // === Component DSL ===
 export { View, Text, Image, ScrollView } from './nodes';

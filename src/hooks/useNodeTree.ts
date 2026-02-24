@@ -9,8 +9,8 @@ import type {
   NodeType,
   CanvasContainerConfig,
 } from '../types';
-import { H5Adapter, initYoga, NodeTreeManager, ScrollManager, computeScrollContentSizes } from '@yaga-canvas/core';
-import type { NodeDescriptor } from '@yaga-canvas/core';
+import { H5Adapter, initYoga, NodeTreeManager, ScrollManager, computeScrollContentSizes } from '@yoga-canvas/core';
+import type { NodeDescriptor } from '@yoga-canvas/core';
 
 const COLORS = [
   '#ef4444', '#f97316', '#f59e0b', '#22c55e',
@@ -50,7 +50,7 @@ function createDefaultDescriptor(): NodeDescriptor {
           {
             type: 'image',
             name: 'Avatar',
-            src: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yaga',
+            src: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yoga',
             style: { width: 48, height: 48, borderRadius: 24 },
           },
           {
@@ -61,7 +61,7 @@ function createDefaultDescriptor(): NodeDescriptor {
               {
                 type: 'text',
                 name: 'Username',
-                content: 'Yaga Canvas',
+                content: 'Yoga Canvas',
                 style: { fontSize: 18, fontWeight: 'bold', color: '#ffffff' },
               },
               {

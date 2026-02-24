@@ -1,22 +1,23 @@
 import { useRef, useState, useEffect, useCallback } from 'react';
+
 import {
-  createYagaCanvas,
-  YagaCanvas,
+  createYogaCanvas,
+  YogaCanvas,
   type NodeDescriptor,
   type NodeTree,
-  type YagaCanvasOptions,
-} from '@yaga-canvas/core';
+  type YogaCanvasOptions,
+} from '@yoga-canvas/core';
 
-export interface UseYagaCanvasOptions extends YagaCanvasOptions {
+export interface UseYogaCanvasOptions extends YogaCanvasOptions {
   /** Auto-render on init. Defaults to true. */
   autoRender?: boolean;
 }
 
-export interface UseYagaCanvasReturn {
+export interface UseYogaCanvasReturn {
   /** Ref to attach to a <canvas> element. */
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
-  /** The YagaCanvas instance (null until initialized). */
-  instance: YagaCanvas | null;
+  /** The YogaCanvas instance (null until initialized). */
+  instance: YogaCanvas | null;
   /** Current node tree (updates on every render). */
   nodeTree: NodeTree | null;
   /** Whether the engine is ready. */
@@ -32,14 +33,14 @@ export interface UseYagaCanvasReturn {
 }
 
 /**
- * React hook for using YagaCanvas.
+ * React hook for using YogaCanvas.
  */
-export function useYagaCanvas(
+export function useYogaCanvas(
   layout: NodeDescriptor,
-  options: UseYagaCanvasOptions = {},
-): UseYagaCanvasReturn {
+  options: UseYogaCanvasOptions = {},
+): UseYogaCanvasReturn {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const instanceRef = useRef<YagaCanvas | null>(null);
+  const instanceRef = useRef<YogaCanvas | null>(null);
   const [ready, setReady] = useState(false);
   const [nodeTree, setNodeTree] = useState<NodeTree | null>(null);
   const layoutRef = useRef(layout);
@@ -49,7 +50,7 @@ export function useYagaCanvas(
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const yaga = createYagaCanvas(canvas, layoutRef.current, {
+    const yoga = createYogaCanvas(canvas, layoutRef.current, {
       platform: options.platform ?? 'h5',
       pixelRatio: options.pixelRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio : 1),
       width: options.width,
@@ -57,18 +58,18 @@ export function useYagaCanvas(
       adapter: options.adapter,
     });
 
-    instanceRef.current = yaga;
+    instanceRef.current = yoga;
 
-    yaga.init().then(() => {
+    yoga.init().then(() => {
       if (options.autoRender !== false) {
-        yaga.render();
+        yoga.render();
       }
       setReady(true);
-      setNodeTree(yaga.getNodeTree());
+      setNodeTree(yoga.getNodeTree());
     });
 
     return () => {
-      yaga.destroy();
+      yoga.destroy();
       instanceRef.current = null;
       setReady(false);
       setNodeTree(null);
@@ -85,7 +86,7 @@ export function useYagaCanvas(
 
   const toDataURL = useCallback(async (type?: string, quality?: number) => {
     const inst = instanceRef.current;
-    if (!inst) throw new Error('YagaCanvas not initialized');
+    if (!inst) throw new Error('YogaCanvas not initialized');
     return inst.toDataURL(type, quality);
   }, []);
 

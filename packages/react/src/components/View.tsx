@@ -1,4 +1,4 @@
-import type { StyleProps } from '@yaga-canvas/core';
+import type { StyleProps } from '@yoga-canvas/core';
 
 export interface ViewJSXProps {
   name?: string;
@@ -8,11 +8,11 @@ export interface ViewJSXProps {
 
 /**
  * JSX marker component for View nodes.
- * Does NOT render to DOM — used by YagaCanvas to build the descriptor tree.
+ * Does NOT render to DOM — used by YogaCanvas to build the descriptor tree.
  */
 export function View(_props: ViewJSXProps): React.ReactElement | null {
   void _props;
   return null;
 }
 
-(View as unknown as { __yagaNodeType: string }).__yagaNodeType = 'view';
+(View as unknown as { __yogaNodeType: string }).__yogaNodeType = 'view';

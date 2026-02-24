@@ -20,14 +20,14 @@ import {
 import type { NodeTree, CanvasNode } from '../types';
 import {
   computeScrollContentSizes,
-  createYagaCanvas,
+  createYogaCanvas,
   exportToDOMString,
   exportToJSON,
   hitTest,
   type ScrollManager,
-  type YagaCanvas,
-} from '@yaga-canvas/core';
-import { NodeTreePanel, SelectionOverlay } from '@yaga-canvas/react';
+  type YogaCanvas,
+} from '@yoga-canvas/core';
+import { NodeTreePanel, SelectionOverlay } from '@yoga-canvas/react';
 
 interface PreviewModalProps {
   tree: NodeTree;
@@ -42,7 +42,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const canvasScrollRef = useRef<HTMLDivElement>(null);
   const canvasFrameRef = useRef<HTMLDivElement>(null);
-  const instanceRef = useRef<YagaCanvas | null>(null);
+  const instanceRef = useRef<YogaCanvas | null>(null);
   const [engineReady, setEngineReady] = useState(false);
   const [previewTree, setPreviewTree] = useState<NodeTree>(tree);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
@@ -51,7 +51,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const [activeTab, setActiveTab] = useState<'typescript' | 'json' | 'html'>('typescript');
 
   const loadTreeIntoEngine = useCallback(
-    (inst: YagaCanvas) => {
+    (inst: YogaCanvas) => {
       const json = exportToJSON(tree);
       inst.loadJSON(json);
       computeScrollContentSizes(inst.getNodeTree(), inst.getScrollManager());
@@ -67,7 +67,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     canvas.style.width = `${rootWidth}px`;
     canvas.style.height = `${rootHeight}px`;
 
-    const inst = createYagaCanvas(
+    const inst = createYogaCanvas(
       canvas,
       { type: 'view', name: 'Root', style: { width: rootWidth, height: rootHeight } },
       { platform: 'h5', width: rootWidth, height: rootHeight, pixelRatio: window.devicePixelRatio || 1 },
@@ -522,7 +522,7 @@ function ImagePreviewModal({ url, onClose }: { url: string; onClose: () => void 
         <div className="flex gap-2">
           <a
             href={url}
-            download="yaga-canvas.png"
+            download="yoga-canvas.png"
             className="text-xs bg-indigo-500 text-white px-4 py-1.5 rounded hover:bg-indigo-600 flex items-center gap-1 cursor-pointer"
           >
             <Download size={12} /> Download

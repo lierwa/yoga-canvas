@@ -1,11 +1,11 @@
-# @yaga-canvas/react
+# @yoga-canvas/react
 
-React bindings for `@yaga-canvas/core` — Canvas layout engine with flexbox.
+React bindings for `@yoga-canvas/core` — Canvas layout engine with flexbox.
 
 ## Installation
 
 ```bash
-npm install @yaga-canvas/react @yaga-canvas/core
+npm install @yoga-canvas/react @yoga-canvas/core
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install @yaga-canvas/react @yaga-canvas/core
 ### Component
 
 ```tsx
-import { YagaCanvas, View, Text } from '@yaga-canvas/react';
+import { YogaCanvas, View, Text } from '@yoga-canvas/react';
 
 function App() {
   const ref = useRef(null);
@@ -25,7 +25,7 @@ function App() {
   });
 
   return (
-    <YagaCanvas
+    <YogaCanvas
       ref={ref}
       layout={layout}
       width={375}
@@ -39,7 +39,7 @@ function App() {
 ### Hook
 
 ```tsx
-import { useYagaCanvas, View, Text } from '@yaga-canvas/react';
+import { useYogaCanvas, View, Text } from '@yoga-canvas/react';
 
 function App() {
   const layout = View({
@@ -49,7 +49,7 @@ function App() {
     ],
   });
 
-  const { canvasRef, ready, toDataURL, toJSON } = useYagaCanvas(layout, {
+  const { canvasRef, ready, toDataURL, toJSON } = useYogaCanvas(layout, {
     width: 375,
     height: 667,
   });

@@ -1,4 +1,4 @@
-# @yaga-canvas/core
+# @yoga-canvas/core
 
 Framework-agnostic Canvas layout engine powered by Yoga (flexbox).  
 Supports **H5 (browser)** and **WeChat Mini Program** environments.
@@ -6,22 +6,22 @@ Supports **H5 (browser)** and **WeChat Mini Program** environments.
 ## Installation
 
 ```bash
-npm install @yaga-canvas/core
+npm install @yoga-canvas/core
 # or
-pnpm add @yaga-canvas/core
+pnpm add @yoga-canvas/core
 ```
 
 ## Quick Start
 
 ```ts
-import { createYagaCanvas, View, Text, Image } from '@yaga-canvas/core';
+import { createYogaCanvas, View, Text, Image } from '@yoga-canvas/core';
 
 // 1. Define your layout using the declarative DSL
 const layout = View({
   style: { width: 375, height: 667, flexDirection: 'column', padding: 16 },
   children: [
     Text({
-      content: 'Hello Yaga Canvas!',
+      content: 'Hello Yoga Canvas!',
       style: { fontSize: 24, fontWeight: 'bold', color: '#1f2937' },
     }),
     View({
@@ -47,20 +47,20 @@ const layout = View({
 
 // 2. Create and initialize the engine
 const canvas = document.getElementById('my-canvas');
-const yaga = createYagaCanvas(canvas, layout, {
+const yoga = createYogaCanvas(canvas, layout, {
   platform: 'h5',
   pixelRatio: window.devicePixelRatio,
   width: 375,
   height: 667,
 });
 
-await yaga.init();
-yaga.render();
+await yoga.init();
+yoga.render();
 
 // 3. Use output APIs
-const json = yaga.toJSON();           // Serialize to JSON
-const dataUrl = await yaga.toDataURL(); // Export as image
-const html = yaga.toDOMString();       // Export as HTML flex layout
+const json = yoga.toJSON();           // Serialize to JSON
+const dataUrl = await yoga.toDataURL(); // Export as image
+const html = yoga.toDOMString();       // Export as HTML flex layout
 ```
 
 ## Component DSL
@@ -87,42 +87,42 @@ Shorthand `padding` / `margin` expand to all four edges.
 | Platform | Adapter | Import |
 |----------|---------|--------|
 | Browser (H5) | `H5Adapter` | Built-in default |
-| WeChat Mini Program | `WxAdapter` | `import { WxAdapter } from '@yaga-canvas/core'` |
+| WeChat Mini Program | `WxAdapter` | `import { WxAdapter } from '@yoga-canvas/core'` |
 
 ## Instance API
 
 ```ts
 // Rendering
-yaga.render()
-yaga.update(newLayout)
+yoga.render()
+yoga.update(newLayout)
 
 // Node tree
-yaga.getNodeTree()
-yaga.getNodeById(id)
-yaga.getRootNode()
+yoga.getNodeTree()
+yoga.getNodeById(id)
+yoga.getRootNode()
 
 // Mutations
-yaga.updateFlexStyle(nodeId, { flex: 2 })
-yaga.addChild(parentId, Text({ content: 'new' }))
-yaga.deleteNode(nodeId)
-yaga.moveNode(nodeId, newParentId, index)
+yoga.updateFlexStyle(nodeId, { flex: 2 })
+yoga.addChild(parentId, Text({ content: 'new' }))
+yoga.deleteNode(nodeId)
+yoga.moveNode(nodeId, newParentId, index)
 
 // Undo / Redo
-yaga.undo()
-yaga.redo()
+yoga.undo()
+yoga.redo()
 
 // Export
-yaga.toJSON()
-yaga.loadJSON(json)
-yaga.toDataURL()
-yaga.toDOMString()
+yoga.toJSON()
+yoga.loadJSON(json)
+yoga.toDataURL()
+yoga.toDOMString()
 
 // Events
-yaga.on('render', callback)
-yaga.on('ready', callback)
+yoga.on('render', callback)
+yoga.on('ready', callback)
 
 // Lifecycle
-yaga.destroy()
+yoga.destroy()
 ```
 
 ## License

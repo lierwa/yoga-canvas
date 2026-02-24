@@ -1,5 +1,5 @@
 {
-  "name": "@yaga-canvas/demo",
+  "name": "@yoga-canvas/demo",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,8 +10,8 @@
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
-    "@yaga-canvas/core": "workspace:*",
-    "@yaga-canvas/react": "workspace:*",
+    "@yoga-canvas/core": "workspace:*",
+    "@yoga-canvas/react": "workspace:*",
     "lucide-react": "^0.563.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

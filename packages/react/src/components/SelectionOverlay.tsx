@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import type { CanvasNode, NodeTree } from '@yaga-canvas/core';
-import type { ScrollManager } from '@yaga-canvas/core';
+import type { CanvasNode, NodeTree } from '@yoga-canvas/core';
+import type { ScrollManager } from '@yoga-canvas/core';
 
 export function SelectionOverlay({
   tree,

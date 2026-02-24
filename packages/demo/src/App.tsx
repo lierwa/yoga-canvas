@@ -1,16 +1,16 @@
 import { useState, useRef, useCallback } from 'react';
 import {
-  YagaCanvas,
+  YogaCanvas,
   hitTest,
   NodeTreePanel,
   SelectionOverlay,
-  type YagaCanvasRef,
-  type YagaCanvasCore as YagaCanvasCoreType,
+  type YogaCanvasRef,
+  type YogaCanvasCore as YogaCanvasCoreType,
   type CanvasNode,
   type NodeTree,
   type NodeDescriptor,
-} from '@yaga-canvas/react';
-import { computeScrollContentSizes, type ScrollManager } from '@yaga-canvas/core';
+} from '@yoga-canvas/react';
+import { computeScrollContentSizes, type ScrollManager } from '@yoga-canvas/core';
 import {
   Download,
   Box,
@@ -35,8 +35,8 @@ import { LiveEditor } from './LiveEditor';
 // ============ Main App — Live Editor Mode ============
 
 export default function App() {
-  const canvasRef = useRef<YagaCanvasRef>(null);
-  const instanceRef = useRef<YagaCanvasCoreType | null>(null);
+  const canvasRef = useRef<YogaCanvasRef>(null);
+  const instanceRef = useRef<YogaCanvasCoreType | null>(null);
 
   const [layout, setLayout] = useState<NodeDescriptor | null>(null);
   const [nodeTree, setNodeTree] = useState<NodeTree | null>(null);
@@ -48,7 +48,7 @@ export default function App() {
   const [domContent, setDomContent] = useState('');
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  const handleReady = useCallback((instance: YagaCanvasCoreType) => {
+  const handleReady = useCallback((instance: YogaCanvasCoreType) => {
     instanceRef.current = instance;
     setNodeTree(instance.getNodeTree());
   }, []);
@@ -152,7 +152,7 @@ export default function App() {
         onClick={handleCanvasClick}
       >
         {layout && (
-          <YagaCanvas
+          <YogaCanvas
             ref={canvasRef}
             layout={layout}
             width={375}
@@ -227,7 +227,7 @@ export default function App() {
     <div className="h-screen w-screen flex flex-col bg-gray-100 overflow-hidden">
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center gap-4">
-        <h1 className="text-lg font-bold text-indigo-600">Yaga Canvas</h1>
+        <h1 className="text-lg font-bold text-indigo-600">Yoga Canvas</h1>
         <span className="text-xs text-gray-400">Live JSX Editor + Real ScrollView</span>
         <div className="flex-1" />
         <button className="text-xs text-gray-600 hover:bg-gray-100 px-3 py-1.5 rounded flex items-center gap-1 cursor-pointer" onClick={handleExportJSON}>
@@ -420,7 +420,7 @@ function ImagePreviewModal({ url, onClose }: { url: string; onClose: () => void 
         <h3 className="font-bold text-gray-800">Exported Image</h3>
         <img src={url} alt="Export" className="rounded-lg border border-gray-200 shadow-sm" style={{ maxWidth: 400 }} />
         <div className="flex gap-2">
-          <a href={url} download="yaga-canvas.png" className="text-xs bg-indigo-500 text-white px-4 py-1.5 rounded hover:bg-indigo-600 flex items-center gap-1">
+          <a href={url} download="yoga-canvas.png" className="text-xs bg-indigo-500 text-white px-4 py-1.5 rounded hover:bg-indigo-600 flex items-center gap-1">
             <Download size={12} /> Download
           </a>
           <button className="text-xs text-gray-500 hover:text-gray-800 cursor-pointer px-3 py-1.5" onClick={onClose}>Close</button>
@@ -446,12 +446,12 @@ const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
   }}>
     <Image
       name="Avatar"
-      src="https://api.dicebear.com/7.x/avataaars/svg?seed=yaga"
+      src="https://api.dicebear.com/7.x/avataaars/svg?seed=yoga"
       style={{ width: 48, height: 48, borderRadius: 24 }}
     />
     <View name="UserInfo" style={{ flex: 1, flexDirection: 'column', gap: 4 }}>
       <Text name="Username" style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff' }}>
-        Yaga Canvas
+        Yoga Canvas
       </Text>
       <Text name="Bio" style={{ fontSize: 12, color: '#c7d2fe' }}>
         A powerful canvas layout engine

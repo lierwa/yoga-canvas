@@ -1,4 +1,4 @@
-import type { StyleProps, ScrollBarVisibility } from '@yaga-canvas/core';
+import type { StyleProps, ScrollBarVisibility } from '@yoga-canvas/core';
 
 export interface ScrollViewJSXProps {
   name?: string;
@@ -10,11 +10,11 @@ export interface ScrollViewJSXProps {
 
 /**
  * JSX marker component for ScrollView nodes.
- * Does NOT render to DOM — used by YagaCanvas to build the descriptor tree.
+ * Does NOT render to DOM — used by YogaCanvas to build the descriptor tree.
  */
 export function ScrollView(_props: ScrollViewJSXProps): React.ReactElement | null {
   void _props;
   return null;
 }
 
-(ScrollView as unknown as { __yagaNodeType: string }).__yagaNodeType = 'scrollview';
+(ScrollView as unknown as { __yogaNodeType: string }).__yogaNodeType = 'scrollview';

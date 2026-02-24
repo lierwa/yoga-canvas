@@ -1,7 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { SelectionState, NodeTree, DropIndicator } from '../types';
-import { hitTest, hitTestAll } from '@yaga-canvas/core';
-import type { ScrollManager } from '@yaga-canvas/core';
+import { hitTest, hitTestAll } from '@yoga-canvas/core';
+import type { ScrollManager } from '@yoga-canvas/core';
 import { getResizeHandlePositions, getRotationHandlePosition } from '../core/CanvasRenderer';
 
 interface DragState {

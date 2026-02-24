@@ -15,7 +15,7 @@ import type { Node as YogaNode } from 'yoga-layout/load';
 
 let idCounter = 0;
 function generateId(): string {
-  return `yaga_${++idCounter}`;
+  return `yoga_${++idCounter}`;
 }
 
 /** Reset the ID counter (useful for testing). */

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import type { CanvasNode, NodeTree } from '@yaga-canvas/core';
+import type { CanvasNode, NodeTree } from '@yoga-canvas/core';
 
 type DropZone = 'before' | 'inside' | 'after' | null;
 

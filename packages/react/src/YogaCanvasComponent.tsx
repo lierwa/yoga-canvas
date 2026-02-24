@@ -1,14 +1,14 @@
 import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
 import {
-  createYagaCanvas,
-  YagaCanvas,
+  createYogaCanvas,
+  YogaCanvas,
   View as createView,
   type NodeDescriptor,
-  type YagaCanvasOptions,
-} from '@yaga-canvas/core';
+  type YogaCanvasOptions,
+} from '@yoga-canvas/core';
 import { convertChildrenToDescriptors } from './jsx/convertJSX';
 
-export interface YagaCanvasProps extends Omit<YagaCanvasOptions, 'platform' | 'adapter'> {
+export interface YogaCanvasProps extends Omit<YogaCanvasOptions, 'platform' | 'adapter'> {
   /**
    * Layout descriptor tree (descriptor mode).
    * If omitted, children JSX will be used to build the descriptor.
@@ -21,7 +21,7 @@ export interface YagaCanvasProps extends Omit<YagaCanvasOptions, 'platform' | 'a
   /** Inline styles for the wrapper div. */
   style?: React.CSSProperties;
   /** Called when the engine is ready. */
-  onReady?: (instance: YagaCanvas) => void;
+  onReady?: (instance: YogaCanvas) => void;
   /** Called after each render. */
   onRender?: () => void;
   /**
@@ -31,9 +31,9 @@ export interface YagaCanvasProps extends Omit<YagaCanvasOptions, 'platform' | 'a
   children?: React.ReactNode;
 }
 
-export interface YagaCanvasRef {
-  /** The underlying YagaCanvas instance. */
-  getInstance(): YagaCanvas | null;
+export interface YogaCanvasRef {
+  /** The underlying YogaCanvas instance. */
+  getInstance(): YogaCanvas | null;
   /** Trigger a re-render. */
   render(): void;
   /** Export as data URL. */
@@ -45,10 +45,10 @@ export interface YagaCanvasRef {
 }
 
 /**
- * React component that wraps a <canvas> element with YagaCanvas engine.
+ * React component that wraps a <canvas> element with YogaCanvas engine.
  */
-export const YagaCanvasComponent = forwardRef<YagaCanvasRef, YagaCanvasProps>(
-  function YagaCanvasComponent(props, ref) {
+export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
+  function YogaCanvasComponent(props, ref) {
     const {
       layout: layoutProp,
       platform = 'h5',
@@ -80,7 +80,7 @@ export const YagaCanvasComponent = forwardRef<YagaCanvasRef, YagaCanvasProps>(
     }, [layoutProp, children, width, height]);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
-    const instanceRef = useRef<YagaCanvas | null>(null);
+    const instanceRef = useRef<YogaCanvas | null>(null);
     const [ready, setReady] = useState(false);
 
     useImperativeHandle(ref, () => ({
@@ -102,23 +102,23 @@ export const YagaCanvasComponent = forwardRef<YagaCanvasRef, YagaCanvasProps>(
       if (!canvas) return;
 
       const dpr = pixelRatio ?? (typeof window !== 'undefined' ? window.devicePixelRatio : 1);
-      const yaga = createYagaCanvas(canvas, layout, {
+      const yoga = createYogaCanvas(canvas, layout, {
         platform,
         pixelRatio: dpr,
         width,
         height,
       });
 
-      instanceRef.current = yaga;
+      instanceRef.current = yoga;
 
-      yaga.init().then(() => {
-        yaga.render();
+      yoga.init().then(() => {
+        yoga.render();
         setReady(true);
-        onReady?.(yaga);
+        onReady?.(yoga);
       });
 
       return () => {
-        yaga.destroy();
+        yoga.destroy();
         instanceRef.current = null;
         setReady(false);
       };

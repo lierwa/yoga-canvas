@@ -1,7 +1,7 @@
 {
-  "name": "@yaga-canvas/react",
+  "name": "@yoga-canvas/react",
   "version": "0.1.0",
-  "description": "React bindings for @yaga-canvas/core — Canvas layout engine with flexbox.",
+  "description": "React bindings for @yoga-canvas/core — Canvas layout engine with flexbox.",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -22,7 +22,7 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@yaga-canvas/core": "workspace:*"
+    "@yoga-canvas/core": "workspace:*"
   },
   "peerDependencies": {
     "react": ">=17.0.0",
