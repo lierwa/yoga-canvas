@@ -12,11 +12,16 @@ export interface CanvasImageLike {
 export interface TextMeasureOptions {
   content: string;
   fontSize: number;
-  fontWeight: 'normal' | 'bold';
+  fontWeight: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+  fontStyle: 'normal' | 'italic' | 'oblique';
   fontFamily: string;
   lineHeight: number;
   availableWidth: number;
   whiteSpace: 'normal' | 'nowrap';
+}
+
+export interface CanvasGradientLike {
+  addColorStop(offset: number, color: string): void;
 }
 
 /**
@@ -47,11 +52,13 @@ export interface CanvasContextLike {
   clearRect(x: number, y: number, w: number, h: number): void;
 
   // Style
-  setFillStyle(style: string): void;
-  setStrokeStyle(style: string): void;
+  setFillStyle(style: string | CanvasGradientLike): void;
+  setStrokeStyle(style: string | CanvasGradientLike): void;
   setLineWidth(width: number): void;
   setLineDash(segments: number[]): void;
   setGlobalAlpha(alpha: number): void;
+  setShadow(color: string, blur: number, offsetX: number, offsetY: number): void;
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradientLike;
 
   // Text
   setFont(font: string): void;

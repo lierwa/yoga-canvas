@@ -11,12 +11,19 @@ export type NodeType = 'view' | 'text' | 'image' | 'scrollview';
 export interface TextProps {
   content: string;
   fontSize: number;
-  fontWeight: 'normal' | 'bold';
+  fontWeight: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+  fontStyle: 'normal' | 'italic' | 'oblique';
   fontFamily: string;
   color: string;
   lineHeight: number;
   textAlign: 'left' | 'center' | 'right';
   whiteSpace: 'normal' | 'nowrap';
+  textShadow: {
+    offsetX: number;
+    offsetY: number;
+    blur: number;
+    color: string;
+  } | null;
 }
 
 /**

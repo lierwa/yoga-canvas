@@ -3,6 +3,28 @@
  */
 export type FlexValue = number | `${number}%` | 'auto';
 
+export interface ShadowStyle {
+  offsetX: number;
+  offsetY: number;
+  blur: number;
+  color: string;
+}
+
+export interface BoxShadowStyle extends ShadowStyle {
+  spread?: number;
+}
+
+export interface LinearGradientStop {
+  offset: number;
+  color: string;
+}
+
+export interface LinearGradientStyle {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  colors: LinearGradientStop[];
+}
+
 /**
  * Flex layout style properties (maps to yoga-layout).
  */
@@ -55,11 +77,14 @@ export interface FlexStyle {
  */
 export interface VisualStyle {
   backgroundColor?: string;
+  linearGradient?: LinearGradientStyle | null;
   borderColor?: string;
   borderWidth?: number;
   borderRadius?: number;
   opacity?: number;
   rotate?: number;
+  boxShadow?: BoxShadowStyle | null;
+  zIndex?: number;
 }
 
 /**
@@ -67,12 +92,14 @@ export interface VisualStyle {
  */
 export interface TextStyle {
   fontSize?: number;
-  fontWeight?: 'normal' | 'bold';
+  fontWeight?: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+  fontStyle?: 'normal' | 'italic' | 'oblique';
   fontFamily?: string;
   color?: string;
   lineHeight?: number;
   textAlign?: 'left' | 'center' | 'right';
   whiteSpace?: 'normal' | 'nowrap';
+  textShadow?: ShadowStyle | null;
 }
 
 export interface CSSStyleProps {
@@ -111,10 +138,12 @@ export interface CSSStyleProps {
 
   'font-size'?: number;
   'font-weight'?: TextStyle['fontWeight'];
+  'font-style'?: TextStyle['fontStyle'];
   'font-family'?: string;
   'line-height'?: number;
   'text-align'?: TextStyle['textAlign'];
   'white-space'?: TextStyle['whiteSpace'];
+  'z-index'?: number;
 }
 
 export interface LegacyStyleProps {
@@ -183,11 +212,11 @@ export function splitStyle(style: StyleProps): {
   ];
 
   const visualKeys: (keyof VisualStyle)[] = [
-    'backgroundColor', 'borderColor', 'borderWidth', 'borderRadius', 'opacity', 'rotate',
+    'backgroundColor', 'linearGradient', 'borderColor', 'borderWidth', 'borderRadius', 'opacity', 'rotate', 'boxShadow', 'zIndex',
   ];
 
   const textKeys: (keyof TextStyle)[] = [
-    'fontSize', 'fontWeight', 'fontFamily', 'color', 'lineHeight', 'textAlign', 'whiteSpace',
+    'fontSize', 'fontWeight', 'fontStyle', 'fontFamily', 'color', 'lineHeight', 'textAlign', 'whiteSpace', 'textShadow',
   ];
 
   const src = expanded as Record<string, unknown>;
@@ -247,10 +276,12 @@ function normalizeStyleProps(style: StyleProps): StyleProps {
     ['border-radius', 'borderRadius'],
     ['font-size', 'fontSize'],
     ['font-weight', 'fontWeight'],
+    ['font-style', 'fontStyle'],
     ['font-family', 'fontFamily'],
     ['line-height', 'lineHeight'],
     ['text-align', 'textAlign'],
     ['white-space', 'whiteSpace'],
+    ['z-index', 'zIndex'],
   ];
   for (const [from, to] of kebabToCamel) {
     if (next[to] === undefined && next[from] !== undefined) {

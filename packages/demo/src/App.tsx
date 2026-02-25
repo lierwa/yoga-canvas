@@ -438,19 +438,29 @@ const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
   backgroundColor: '#f8fafc',
   padding: 16, gap: 12,
 }}>
-  {/* Header */}
   <View name="Header" style={{
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#6366f1', borderRadius: 12,
+    backgroundColor: '#6366f1',
+    linearGradient: {
+      start: { x: 0, y: 0 },
+      end: { x: 1, y: 0 },
+      colors: [
+        { offset: 0, color: '#6366f1' },
+        { offset: 1, color: '#8b5cf6' },
+      ],
+    },
+    borderRadius: 12,
     padding: 16, gap: 12,
+    boxShadow: { color: 'rgba(15, 23, 42, 0.25)', blur: 24, offsetX: 0, offsetY: 10, spread: 0 },
   }}>
     <Image
       name="Avatar"
       src="https://api.dicebear.com/7.x/avataaars/svg?seed=yoga"
-      style={{ width: 48, height: 48, borderRadius: 24 }}
+      objectFit="cover"
+      style={{ width: 48, height: 48, borderRadius: 24, backgroundColor: '#eef2ff' }}
     />
     <View name="UserInfo" style={{ flex: 1, flexDirection: 'column', gap: 4 }}>
-      <Text name="Username" style={{ fontSize: 18, fontWeight: 'bold', color: '#ffffff' }}>
+      <Text name="Username" style={{ fontSize: 18, fontWeight: 700, color: '#ffffff', textShadow: { color: 'rgba(15, 23, 42, 0.35)', blur: 6, offsetX: 0, offsetY: 2 } }}>
         Yoga Canvas
       </Text>
       <Text name="Bio" style={{ fontSize: 12, color: '#c7d2fe' }}>
@@ -459,45 +469,71 @@ const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
     </View>
   </View>
 
-  {/* Stats Row */}
-  <View name="StatsRow" style={{ flexDirection: 'row', gap: 8 }}>
-    <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+  <View name="StatsRow" style={{ flexDirection: 'row', gap: 8, position: 'relative' }}>
+    <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0', boxShadow: { color: 'rgba(15, 23, 42, 0.18)', blur: 18, offsetX: 0, offsetY: 8, spread: 0 } }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#8b5cf6' }}>128</Text>
       <Text style={{ fontSize: 11, color: '#94a3b8' }}>Nodes</Text>
-      {/* Absolute positioned badge */}
+      <View name="BadgeBack" style={{
+        position: 'absolute', top: -6, right: -6,
+        backgroundColor: '#fde047', borderRadius: 9,
+        padding: 2, paddingLeft: 7, paddingRight: 7,
+        zIndex: 0,
+      }}>
+        <Text style={{ fontSize: 9, width: 22, height: 12, flexDirection: 'row', fontWeight: 700, color: '#78350f' }}>HOT</Text>
+      </View>
       <View name="Badge" style={{
         position: 'absolute', top: -4, right: -4,
         backgroundColor: '#ef4444', borderRadius: 8,
         padding: 2, paddingLeft: 6, paddingRight: 6,
+        zIndex: 2,
       }}>
-        <Text style={{ fontSize: 9, width: 22, height: 12, flexDirection: 'row', fontWeight: 'bold', color: '#ffffff' }}>NEW</Text>
+        <Text style={{ fontSize: 9, width: 22, height: 12, flexDirection: 'row', fontWeight: 700, color: '#ffffff' }}>NEW</Text>
       </View>
     </View>
-    <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+    <View style={{ flex: 1, flexDirection: 'column', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0', boxShadow: { color: 'rgba(15, 23, 42, 0.14)', blur: 16, offsetX: 0, offsetY: 7, spread: 0 } }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#06b6d4' }}>16ms</Text>
       <Text style={{ fontSize: 11, color: '#94a3b8' }}>Render</Text>
     </View>
-    <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0' }}>
+    <View style={{ flex: 1, flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', backgroundColor: '#fff', borderRadius: 10, padding: 12, gap: 4, borderWidth: 1, borderColor: '#e2e8f0', boxShadow: { color: 'rgba(15, 23, 42, 0.12)', blur: 14, offsetX: 0, offsetY: 6, spread: 0 } }}>
       <Text style={{ fontSize: 20, fontWeight: 'bold', color: '#10b981' }}>60</Text>
       <Text style={{ fontSize: 11,flex: 1, color: '#94a3b8' }}>FPS</Text>
     </View>
   </View>
 
-  {/* Content Card */}
   <View name="ContentCard" style={{
     flexDirection: 'column', backgroundColor: '#ffffff',
     borderRadius: 12, padding: 16, gap: 8,
     borderWidth: 1, borderColor: '#e2e8f0',
+    boxShadow: { color: 'rgba(15, 23, 42, 0.18)', blur: 20, offsetX: 0, offsetY: 10, spread: 0 },
   }}>
-    <Text style={{ fontSize: 16, fontWeight: 'bold', color: '#1e293b' }}>
+    <Text style={{ fontSize: 16, fontWeight: 700, color: '#1e293b', textShadow: { color: 'rgba(15, 23, 42, 0.15)', blur: 4, offsetX: 0, offsetY: 1 } }}>
       Flexbox Layout Engine
     </Text>
-    <Text style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6 }}>
+    <Text style={{ fontSize: 13, color: '#64748b', lineHeight: 1.6, fontStyle: 'italic' }}>
       Build complex canvas layouts with familiar CSS flexbox. Powered by yoga-layout.
     </Text>
+    <View name="MediaRow" style={{ flexDirection: 'row', gap: 10, backgroundColor: '#f8fafc', borderRadius: 10, padding: 8 }}>
+      <View name="CoverCard" style={{ flex: 1, gap: 6 }}>
+        <Image
+          name="CoverImage"
+          src="https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=400&auto=format&fit=crop"
+          objectFit="cover"
+          style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: '#e2e8f0' }}
+        />
+        <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>Image fit: cover</Text>
+      </View>
+      <View name="ContainCard" style={{ flex: 1, gap: 6 }}>
+        <Image
+          name="ContainImage"
+          src="https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=400&auto=format&fit=crop"
+          objectFit="contain"
+          style={{ width: '100%', height: 64, borderRadius: 8, backgroundColor: '#e2e8f0' }}
+        />
+        <Text style={{ fontSize: 11, color: '#64748b', textAlign: 'center' }}>Image fit: contain</Text>
+      </View>
+    </View>
   </View>
 
-  {/* ScrollView — try scrolling with mouse wheel! */}
   <ScrollView name="FeatureList" scrollDirection="vertical" style={{
     flex: 1, flexDirection: 'column', backgroundColor: '#ffffff',
     borderRadius: 12, padding: 12, gap: 8,

@@ -10,14 +10,15 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@monaco-editor/react": "^4.7.0",
     "@tailwindcss/vite": "^4.1.18",
     "@yoga-canvas/core": "workspace:*",
     "@yoga-canvas/react": "workspace:*",
-    "@monaco-editor/react": "^4.7.0",
     "autoprefixer": "^10.4.24",
     "lucide-react": "^0.563.0",
     "postcss": "^8.5.6",
     "react": "^18.3.1",
+    "react-colorful": "^5.6.1",
     "react-dom": "^18.3.1",
     "tailwindcss": "^4.1.18"
   },

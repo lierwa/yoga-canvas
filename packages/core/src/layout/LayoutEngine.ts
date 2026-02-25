@@ -132,6 +132,7 @@ function measureTextFullWithAdapter(
     content: textProps.content,
     fontSize: textProps.fontSize,
     fontWeight: textProps.fontWeight,
+    fontStyle: textProps.fontStyle,
     fontFamily: textProps.fontFamily,
     lineHeight: textProps.lineHeight,
     availableWidth,

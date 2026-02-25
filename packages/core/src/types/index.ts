@@ -23,5 +23,6 @@ export type {
   CanvasImageLike,
   TextMeasureOptions,
   CanvasContextLike,
+  CanvasGradientLike,
   PlatformAdapter,
 } from './platform';

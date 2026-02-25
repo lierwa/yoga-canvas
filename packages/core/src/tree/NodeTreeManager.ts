@@ -25,22 +25,27 @@ export function resetIdCounter(): void {
 
 const DEFAULT_VISUAL_STYLE: Required<VisualStyle> = {
   backgroundColor: 'transparent',
+  linearGradient: null,
   borderColor: 'transparent',
   borderWidth: 0,
   borderRadius: 0,
   opacity: 1,
   rotate: 0,
+  boxShadow: null,
+  zIndex: 0,
 };
 
 const DEFAULT_TEXT_PROPS: TextProps = {
   content: '',
   fontSize: 14,
   fontWeight: 'normal',
+  fontStyle: 'normal',
   fontFamily: 'sans-serif',
   color: '#000000',
   lineHeight: 1.4,
   textAlign: 'left',
   whiteSpace: 'normal',
+  textShadow: null,
 };
 
 /**
@@ -104,11 +109,13 @@ export class NodeTreeManager {
           content: desc.content ?? '',
           ...(textStyle.fontSize !== undefined && { fontSize: textStyle.fontSize }),
           ...(textStyle.fontWeight !== undefined && { fontWeight: textStyle.fontWeight }),
+          ...(textStyle.fontStyle !== undefined && { fontStyle: textStyle.fontStyle }),
           ...(textStyle.fontFamily !== undefined && { fontFamily: textStyle.fontFamily }),
           ...(textStyle.color !== undefined && { color: textStyle.color }),
           ...(textStyle.lineHeight !== undefined && { lineHeight: textStyle.lineHeight }),
           ...(textStyle.textAlign !== undefined && { textAlign: textStyle.textAlign }),
           ...(textStyle.whiteSpace !== undefined && { whiteSpace: textStyle.whiteSpace }),
+          ...(textStyle.textShadow !== undefined && { textShadow: textStyle.textShadow }),
         };
       }
 

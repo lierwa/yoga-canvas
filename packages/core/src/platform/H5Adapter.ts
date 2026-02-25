@@ -2,6 +2,7 @@ import type {
   PlatformAdapter,
   CanvasImageLike,
   CanvasContextLike,
+  CanvasGradientLike,
   TextMeasureOptions,
 } from '../types';
 
@@ -40,11 +41,20 @@ class H5CanvasContext implements CanvasContextLike {
   strokeRect(x: number, y: number, w: number, h: number): void { this.ctx.strokeRect(x, y, w, h); }
   clearRect(x: number, y: number, w: number, h: number): void { this.ctx.clearRect(x, y, w, h); }
 
-  setFillStyle(style: string): void { this.ctx.fillStyle = style; }
-  setStrokeStyle(style: string): void { this.ctx.strokeStyle = style; }
+  setFillStyle(style: string | CanvasGradientLike): void { this.ctx.fillStyle = style as CanvasFillStrokeStyles['fillStyle']; }
+  setStrokeStyle(style: string | CanvasGradientLike): void { this.ctx.strokeStyle = style as CanvasFillStrokeStyles['strokeStyle']; }
   setLineWidth(width: number): void { this.ctx.lineWidth = width; }
   setLineDash(segments: number[]): void { this.ctx.setLineDash(segments); }
   setGlobalAlpha(alpha: number): void { this.ctx.globalAlpha = alpha; }
+  setShadow(color: string, blur: number, offsetX: number, offsetY: number): void {
+    this.ctx.shadowColor = color;
+    this.ctx.shadowBlur = blur;
+    this.ctx.shadowOffsetX = offsetX;
+    this.ctx.shadowOffsetY = offsetY;
+  }
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradientLike {
+    return this.ctx.createLinearGradient(x0, y0, x1, y1);
+  }
 
   setFont(font: string): void { this.ctx.font = font; }
   setTextAlign(align: 'left' | 'center' | 'right'): void { this.ctx.textAlign = align; }
@@ -106,7 +116,8 @@ export class H5Adapter implements PlatformAdapter {
   measureText(options: TextMeasureOptions): { width: number; height: number } {
     const div = getMeasureDiv();
     div.style.fontSize = `${options.fontSize}px`;
-    div.style.fontWeight = options.fontWeight === 'bold' ? 'bold' : 'normal';
+    div.style.fontWeight = typeof options.fontWeight === 'number' ? `${options.fontWeight}` : options.fontWeight;
+    div.style.fontStyle = options.fontStyle;
     div.style.fontFamily = options.fontFamily || 'sans-serif';
     div.style.lineHeight = `${options.lineHeight}`;
     div.textContent = options.content;

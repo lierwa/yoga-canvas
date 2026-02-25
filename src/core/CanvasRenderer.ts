@@ -1,6 +1,38 @@
 import type { CanvasNode, NodeTree, SelectionState, FlexValue } from '../types';
 import type { ScrollManager } from '@yoga-canvas/core';
 
+type ShadowStyle = { offsetX: number; offsetY: number; blur: number; color: string };
+type BoxShadowStyle = ShadowStyle & { spread?: number };
+type LinearGradientStop = { offset: number; color: string };
+type LinearGradientStyle = {
+  start: { x: number; y: number };
+  end: { x: number; y: number };
+  colors: LinearGradientStop[];
+};
+type VisualStyleEx = {
+  backgroundColor?: string;
+  linearGradient?: LinearGradientStyle | null;
+  borderColor?: string;
+  borderWidth?: number;
+  borderRadius?: number;
+  opacity?: number;
+  rotate?: number;
+  boxShadow?: BoxShadowStyle | null;
+  zIndex?: number;
+};
+type TextPropsEx = {
+  content: string;
+  fontSize: number;
+  fontWeight: 'normal' | 'bold' | 'bolder' | 'lighter' | number;
+  fontStyle?: 'normal' | 'italic' | 'oblique';
+  fontFamily?: string;
+  color: string;
+  lineHeight: number;
+  textAlign: 'left' | 'center' | 'right';
+  whiteSpace: 'normal' | 'nowrap';
+  textShadow?: ShadowStyle | null;
+};
+
 const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 24;
 const ROTATION_HANDLE_RADIUS = 6;
@@ -99,7 +131,14 @@ function renderNode(
   if (!node) return;
 
   const { left, top, width, height } = node.computedLayout;
-  const { backgroundColor, borderColor, borderWidth, borderRadius, opacity } = node.visualStyle;
+  const vstyle = node.visualStyle as VisualStyleEx;
+  const backgroundColor = vstyle.backgroundColor;
+  const linearGradient = vstyle.linearGradient ?? null;
+  const borderColor = vstyle.borderColor ?? 'transparent';
+  const borderWidth = vstyle.borderWidth ?? 0;
+  const borderRadius = vstyle.borderRadius ?? 0;
+  const opacity = vstyle.opacity ?? 1;
+  const boxShadow = vstyle.boxShadow ?? null;
 
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -114,9 +153,34 @@ function renderNode(
     ctx.translate(-cx, -cy);
   }
 
+  if (boxShadow) {
+    const spread = boxShadow.spread ?? 0;
+    const shadowLeft = left - spread;
+    const shadowTop = top - spread;
+    const shadowWidth = width + spread * 2;
+    const shadowHeight = height + spread * 2;
+    ctx.save();
+    // ctx.fillStyle = "rgba(0, 0, 0, 0)";
+    ctx.shadowColor = boxShadow.color;
+    ctx.shadowBlur = boxShadow.blur;
+    ctx.shadowOffsetX = boxShadow.offsetX;
+    ctx.shadowOffsetY = boxShadow.offsetY;
+    if (borderRadius > 0) {
+      drawRoundedRect(ctx, shadowLeft, shadowTop, shadowWidth, shadowHeight, borderRadius + spread);
+      ctx.fill();
+    } else {
+      ctx.fillRect(shadowLeft, shadowTop, shadowWidth, shadowHeight);
+    }
+    ctx.restore();
+  }
+
   // Draw background
-  if (backgroundColor) {
-    ctx.fillStyle = backgroundColor;
+  if ((backgroundColor && backgroundColor !== 'transparent') || linearGradient) {
+    const fillStyle = linearGradient
+      ? buildLinearGradient(ctx, left, top, width, height, linearGradient)
+      : backgroundColor;
+    if (!fillStyle) return;
+    ctx.fillStyle = fillStyle;
     if (borderRadius > 0) {
       drawRoundedRect(ctx, left, top, width, height, borderRadius);
       ctx.fill();
@@ -162,7 +226,8 @@ function renderNode(
     ctx.rect(left, top, width, height);
     ctx.clip();
     ctx.translate(-scrollOffset.x, -scrollOffset.y);
-    for (const childId of node.children) {
+    const orderedChildren = getOrderedChildren(tree, node);
+    for (const childId of orderedChildren) {
       renderNode(ctx, tree, childId, selection, scrollManager);
     }
     ctx.restore();
@@ -173,7 +238,8 @@ function renderNode(
       drawScrollViewScrollbar(ctx, node, state, scrollBarOpacity);
     }
   } else {
-    for (const childId of node.children) {
+    const orderedChildren = getOrderedChildren(tree, node);
+    for (const childId of orderedChildren) {
       renderNode(ctx, tree, childId, selection, scrollManager);
     }
   }
@@ -325,7 +391,17 @@ function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
 function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   if (!node.textProps) return;
   const { left, top, width } = node.computedLayout;
-  const { content, fontSize, fontWeight, color, lineHeight, textAlign, whiteSpace } = node.textProps;
+  const tp = node.textProps as TextPropsEx;
+  const content = tp.content;
+  const fontSize = tp.fontSize;
+  const fontWeight = tp.fontWeight;
+  const fontStyle = tp.fontStyle ?? 'normal';
+  const fontFamily = tp.fontFamily;
+  const color = tp.color;
+  const lineHeight = tp.lineHeight;
+  const textAlign = tp.textAlign as CanvasTextAlign;
+  const whiteSpace = tp.whiteSpace;
+  const textShadow = tp.textShadow ?? null;
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
   const padRight = flexValueToPx(node.flexStyle.paddingRight);
   const padTop = flexValueToPx(node.flexStyle.paddingTop);
@@ -334,9 +410,17 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
 
   ctx.save();
   ctx.fillStyle = color;
-  ctx.font = `${fontWeight === 'bold' ? 'bold ' : ''}${fontSize}px Inter, sans-serif`;
+  const weightPart = typeof fontWeight === 'number' ? `${fontWeight} ` : fontWeight !== 'normal' ? `${fontWeight} ` : '';
+  const stylePart = fontStyle && fontStyle !== 'normal' ? `${fontStyle} ` : '';
+  ctx.font = `${stylePart}${weightPart}${fontSize}px ${fontFamily || 'Inter, sans-serif'}`;
   ctx.textBaseline = 'top';
   ctx.textAlign = textAlign;
+  if (textShadow) {
+    ctx.shadowColor = textShadow.color;
+    ctx.shadowBlur = textShadow.blur;
+    ctx.shadowOffsetX = textShadow.offsetX;
+    ctx.shadowOffsetY = textShadow.offsetY;
+  }
 
   const lineH = fontSize * lineHeight;
   const halfLeading = (lineH - fontSize) / 2;
@@ -395,6 +479,40 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   ctx.restore();
 }
 
+function buildLinearGradient(
+  ctx: CanvasRenderingContext2D,
+  left: number,
+  top: number,
+  width: number,
+  height: number,
+  gradient: LinearGradientStyle,
+): CanvasGradient | null {
+  if (!gradient || gradient.colors.length === 0) return null;
+  const x0 = left + gradient.start.x * width;
+  const y0 = top + gradient.start.y * height;
+  const x1 = left + gradient.end.x * width;
+  const y1 = top + gradient.end.y * height;
+  const canvasGradient = ctx.createLinearGradient(x0, y0, x1, y1);
+  for (const stop of gradient.colors) {
+    canvasGradient.addColorStop(stop.offset, stop.color);
+  }
+  return canvasGradient;
+}
+
+function getOrderedChildren(tree: NodeTree, node: CanvasNode): string[] {
+  if (node.children.length <= 1) return node.children;
+  return node.children
+    .map((id, index) => ({ id, index }))
+    .sort((a, b) => {
+      const nodeA = tree.nodes[a.id];
+      const nodeB = tree.nodes[b.id];
+      const zA = (nodeA?.visualStyle as VisualStyleEx | undefined)?.zIndex ?? 0;
+      const zB = (nodeB?.visualStyle as VisualStyleEx | undefined)?.zIndex ?? 0;
+      if (zA !== zB) return zA - zB;
+      return a.index - b.index;
+    })
+    .map((item) => item.id);
+}
 function drawImageContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   const { left, top, width, height } = node.computedLayout;
   const src = node.imageProps?.src;

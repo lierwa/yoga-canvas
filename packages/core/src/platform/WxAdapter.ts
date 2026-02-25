@@ -2,6 +2,7 @@ import type {
   PlatformAdapter,
   CanvasImageLike,
   CanvasContextLike,
+  CanvasGradientLike,
   TextMeasureOptions,
 } from '../types';
 
@@ -42,11 +43,25 @@ class WxCanvasContext implements CanvasContextLike {
   strokeRect(x: number, y: number, w: number, h: number): void { this.ctx.strokeRect(x, y, w, h); }
   clearRect(x: number, y: number, w: number, h: number): void { this.ctx.clearRect(x, y, w, h); }
 
-  setFillStyle(style: string): void { this.ctx.fillStyle = style; }
-  setStrokeStyle(style: string): void { this.ctx.strokeStyle = style; }
+  setFillStyle(style: string | CanvasGradientLike): void { this.ctx.fillStyle = style as CanvasFillStrokeStyles['fillStyle']; }
+  setStrokeStyle(style: string | CanvasGradientLike): void { this.ctx.strokeStyle = style as CanvasFillStrokeStyles['strokeStyle']; }
   setLineWidth(width: number): void { this.ctx.lineWidth = width; }
   setLineDash(segments: number[]): void { this.ctx.setLineDash(segments); }
   setGlobalAlpha(alpha: number): void { this.ctx.globalAlpha = alpha; }
+  setShadow(color: string, blur: number, offsetX: number, offsetY: number): void {
+    if (typeof (this.ctx as unknown as { setShadow?: (...args: unknown[]) => void }).setShadow === 'function') {
+      (this.ctx as unknown as { setShadow: (x: number, y: number, blur: number, color: string) => void })
+        .setShadow(offsetX, offsetY, blur, color);
+    } else {
+      (this.ctx as CanvasRenderingContext2D).shadowColor = color;
+      (this.ctx as CanvasRenderingContext2D).shadowBlur = blur;
+      (this.ctx as CanvasRenderingContext2D).shadowOffsetX = offsetX;
+      (this.ctx as CanvasRenderingContext2D).shadowOffsetY = offsetY;
+    }
+  }
+  createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradientLike {
+    return this.ctx.createLinearGradient(x0, y0, x1, y1);
+  }
 
   setFont(font: string): void { this.ctx.font = font; }
   setTextAlign(align: 'left' | 'center' | 'right'): void { this.ctx.textAlign = align; }
@@ -107,7 +122,9 @@ export class WxAdapter implements PlatformAdapter {
       return estimateTextSize(options);
     }
 
-    ctx.font = `${options.fontWeight === 'bold' ? 'bold ' : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
+    const fontWeight = typeof options.fontWeight === 'number' ? options.fontWeight : options.fontWeight;
+    const fontStyle = options.fontStyle && options.fontStyle !== 'normal' ? `${options.fontStyle} ` : '';
+    ctx.font = `${fontStyle}${fontWeight !== 'normal' ? `${fontWeight} ` : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
     const lineH = options.fontSize * options.lineHeight;
     const chars = options.content.split('');
     let currentLineWidth = 0;

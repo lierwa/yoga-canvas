@@ -41,14 +41,16 @@ function hitTestNode(
     const adjustedX = x + offset.x;
     const adjustedY = y + offset.y;
 
-    for (let i = node.children.length - 1; i >= 0; i--) {
-      const result = hitTestNode(tree, node.children[i], adjustedX, adjustedY, scrollManager);
+    const orderedChildren = getOrderedChildren(tree, node);
+    for (let i = orderedChildren.length - 1; i >= 0; i--) {
+      const result = hitTestNode(tree, orderedChildren[i], adjustedX, adjustedY, scrollManager);
       if (result) return result;
     }
   } else {
     // Test children in reverse order (top-most first)
-    for (let i = node.children.length - 1; i >= 0; i--) {
-      const result = hitTestNode(tree, node.children[i], x, y, scrollManager);
+    const orderedChildren = getOrderedChildren(tree, node);
+    for (let i = orderedChildren.length - 1; i >= 0; i--) {
+      const result = hitTestNode(tree, orderedChildren[i], x, y, scrollManager);
       if (result) return result;
     }
   }
@@ -91,13 +93,30 @@ function collectHitNodes(
 
     if (node.type === 'scrollview') {
       const offset = scrollManager?.getOffset(nodeId) ?? { x: 0, y: 0 };
-      for (const childId of node.children) {
+      const orderedChildren = getOrderedChildren(tree, node);
+      for (const childId of orderedChildren) {
         collectHitNodes(tree, childId, x + offset.x, y + offset.y, result, scrollManager);
       }
     } else {
-      for (const childId of node.children) {
+      const orderedChildren = getOrderedChildren(tree, node);
+      for (const childId of orderedChildren) {
         collectHitNodes(tree, childId, x, y, result, scrollManager);
       }
     }
   }
+}
+
+function getOrderedChildren(tree: NodeTree, node: NodeTree['nodes'][string]): string[] {
+  if (node.children.length <= 1) return node.children;
+  return node.children
+    .map((id, index) => ({ id, index }))
+    .sort((a, b) => {
+      const nodeA = tree.nodes[a.id];
+      const nodeB = tree.nodes[b.id];
+      const zA = nodeA?.visualStyle?.zIndex ?? 0;
+      const zB = nodeB?.visualStyle?.zIndex ?? 0;
+      if (zA !== zB) return zA - zB;
+      return a.index - b.index;
+    })
+    .map((item) => item.id);
 }

@@ -10,7 +10,7 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (!node.textProps) return;
 
   const { left, top, width } = node.computedLayout;
-  const { content, fontSize, fontWeight, fontFamily, color, lineHeight, textAlign, whiteSpace } = node.textProps;
+  const { content, fontSize, fontWeight, fontStyle, fontFamily, color, lineHeight, textAlign, whiteSpace, textShadow } = node.textProps;
 
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
   const padRight = flexValueToPx(node.flexStyle.paddingRight);
@@ -20,9 +20,14 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
 
   ctx.save();
   ctx.setFillStyle(color);
-  ctx.setFont(`${fontWeight === 'bold' ? 'bold ' : ''}${fontSize}px ${fontFamily || 'sans-serif'}`);
+  const weightPart = typeof fontWeight === 'number' ? `${fontWeight} ` : fontWeight !== 'normal' ? `${fontWeight} ` : '';
+  const stylePart = fontStyle && fontStyle !== 'normal' ? `${fontStyle} ` : '';
+  ctx.setFont(`${stylePart}${weightPart}${fontSize}px ${fontFamily || 'sans-serif'}`);
   ctx.setTextBaseline('top');
   ctx.setTextAlign(textAlign);
+  if (textShadow) {
+    ctx.setShadow(textShadow.color, textShadow.blur, textShadow.offsetX, textShadow.offsetY);
+  }
 
   const lineH = fontSize * lineHeight;
   const halfLeading = (lineH - fontSize) / 2;
