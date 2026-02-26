@@ -1,7 +1,6 @@
-import type { Node as YogaNode } from 'yoga-layout/load';
-import { Direction, MeasureMode } from 'yoga-layout/load';
+import type { YogaNode } from './YogaManager';
 import type { CanvasNode, NodeTree, ComputedLayout, TextProps, FlexStyle, PlatformAdapter } from '../types';
-import { getYoga, applyFlexStyle } from './YogaManager';
+import { getYoga, applyFlexStyle, getMeasureMode, getDirection } from './YogaManager';
 
 /**
  * Build a yoga node tree from the canvas node tree.
@@ -30,8 +29,9 @@ export function buildYogaTree(
       const textProps = canvasNode.textProps;
       const flexStyle = canvasNode.flexStyle;
       yogaNode.setMeasureFunc((width, widthMode) => {
-        const isUndefined = widthMode === MeasureMode.Undefined;
-        const isExactly = widthMode === MeasureMode.Exactly;
+        const measureMode = getMeasureMode();
+        const isUndefined = widthMode === measureMode.Undefined;
+        const isExactly = widthMode === measureMode.Exactly;
         const availableWidth = isFinite(width) ? width : 100000;
         const measureWidth = isUndefined ? 100000 : availableWidth;
         const result = measureTextFullWithAdapter(adapter, textProps, flexStyle, measureWidth);
@@ -72,7 +72,8 @@ export function calculateLayout(
   const rootYogaNode = yogaNodes.get(tree.rootId);
   if (!rootYogaNode) return tree;
 
-  rootYogaNode.calculateLayout(canvasWidth, canvasHeight, Direction.LTR);
+  const direction = getDirection();
+  rootYogaNode.calculateLayout(canvasWidth, canvasHeight, direction.LTR);
 
   const updatedNodes = { ...tree.nodes };
   updateComputedLayouts(tree.rootId, updatedNodes, yogaNodes, 0, 0);

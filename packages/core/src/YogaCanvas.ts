@@ -246,7 +246,14 @@ export class YogaCanvas {
   }
 
   async toTempFilePath(options?: Record<string, unknown>): Promise<string> {
-    return exportToTempFilePath(this.adapter, this.canvas, options);
+    if (this.adapter.canvasToTempFilePath) {
+      return exportToTempFilePath(this.adapter, this.canvas, options);
+    }
+    return this.toDataURL('image/png', 1);
+  }
+
+  async canvasToTempFilePath(options?: Record<string, unknown>): Promise<string> {
+    return this.toTempFilePath(options);
   }
 
   // --- Events ---

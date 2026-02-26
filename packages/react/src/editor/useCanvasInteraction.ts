@@ -1,8 +1,9 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import type { SelectionState, NodeTree, DropIndicator } from '../types';
+import type { NodeTree } from '@yoga-canvas/core';
 import { hitTest, hitTestAll } from '@yoga-canvas/core';
 import type { ScrollManager } from '@yoga-canvas/core';
-import { getResizeHandlePositions, getRotationHandlePosition } from '../core/CanvasRenderer';
+import type { SelectionState, DropIndicator } from './types';
+import { getResizeHandlePositions, getRotationHandlePosition } from './CanvasRenderer';
 
 interface DragState {
   type: 'none' | 'pan' | 'resize' | 'rotate' | 'move';
@@ -56,7 +57,6 @@ function findDropTargetNode(
     const child = findDropTargetNode(tree, node.children[i], x, y, excludeId);
     if (child) return child;
   }
-  // Text nodes cannot be drop targets (no children allowed)
   if (node.type === 'text') return node.parentId;
   return nodeId;
 }
@@ -91,7 +91,7 @@ function hitTestRotationHandleWithScroll(
   const canvasX = (x - offsetX) / scale + scrollOffset.x;
   const canvasY = (y - offsetY) / scale + scrollOffset.y;
   const pos = getRotationHandlePosition(node);
-  const threshold = (6 + 2) / scale;
+  const threshold = 6 / scale;
   return Math.hypot(canvasX - pos.x, canvasY - pos.y) <= threshold;
 }
 
@@ -109,7 +109,6 @@ function hitTestResizeHandleWithScroll(
   const canvasY = (y - offsetY) / scale + scrollOffset.y;
   const handles = getResizeHandlePositions(node);
   const threshold = (8 / 2 + 2) / scale;
-
   for (const handle of handles) {
     if (Math.abs(canvasX - handle.x) <= threshold && Math.abs(canvasY - handle.y) <= threshold) {
       return handle.position;
@@ -138,7 +137,9 @@ function tryInsertionInContainer(
 
   for (let i = 0; i <= siblings.length; i++) {
     let gapPos: number;
-    let lineX: number, lineY: number, lineLen: number;
+    let lineX: number;
+    let lineY: number;
+    let lineLen: number;
 
     if (isRow) {
       if (i === 0) {
@@ -201,11 +202,9 @@ function findInsertionPoint(
   const cx = (screenX - offsetX) / scale;
   const cy = (screenY - offsetY) / scale;
 
-  // Find the deepest node under cursor (excluding dragged node)
   const deepestId = findDropTargetNode(tree, tree.rootId, cx, cy, excludeId);
   if (!deepestId) return null;
 
-  // Walk up the tree: check each container for insertion points among its children
   let currentId: string | null = deepestId;
   while (currentId) {
     const result = tryInsertionInContainer(tree, currentId, cx, cy, excludeId);
@@ -260,7 +259,6 @@ export function useCanvasInteraction(
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      // Check rotation handle first, then resize handles
       if (selection.selectedNodeId) {
         const selectedNode = tree.nodes[selection.selectedNodeId];
         if (selectedNode) {
@@ -300,7 +298,6 @@ export function useCanvasInteraction(
         }
       }
 
-      // Hit test for node selection
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
       const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
@@ -322,7 +319,6 @@ export function useCanvasInteraction(
         setSelection((prev) => ({ ...prev, selectedNodeId: hitNodeId, dropTargetId: null }));
       } else {
         setSelection((prev) => ({ ...prev, selectedNodeId: null }));
-        // Start panning
         dragRef.current = {
           type: 'pan',
           startX: x,
@@ -357,16 +353,16 @@ export function useCanvasInteraction(
       }
 
       if (dragRef.current.type === 'move' && selection.selectedNodeId) {
-        // First try insertion between siblings
         const insertion = findInsertionPoint(tree, x, y, scale, offset.x, offset.y, selection.selectedNodeId);
         if (insertion && !isDescendant(tree, selection.selectedNodeId, insertion.parentId)) {
           setSelection((prev) => ({ ...prev, dropTargetId: null, dropIndicator: insertion }));
           e.currentTarget.style.cursor = 'copy';
           return;
         }
-        // Fall back to reparent into container
         const dropId = findDropTarget(tree, x, y, scale, offset.x, offset.y, selection.selectedNodeId);
-        const validDrop = dropId && dropId !== selection.selectedNodeId &&
+        const validDrop =
+          dropId &&
+          dropId !== selection.selectedNodeId &&
           !isDescendant(tree, selection.selectedNodeId, dropId) &&
           dropId !== tree.nodes[selection.selectedNodeId]?.parentId;
         setSelection((prev) => {
@@ -400,10 +396,10 @@ export function useCanvasInteraction(
         let newWidth = dragRef.current.originalWidth;
         let newHeight = dragRef.current.originalHeight;
 
-        if (handle === 'mid-left') { newWidth -= dx; }
-        else if (handle === 'mid-right') { newWidth += dx; }
-        else if (handle === 'mid-top') { newHeight -= dy; }
-        else if (handle === 'mid-bottom') { newHeight += dy; }
+        if (handle === 'mid-left') newWidth -= dx;
+        else if (handle === 'mid-right') newWidth += dx;
+        else if (handle === 'mid-top') newHeight -= dy;
+        else if (handle === 'mid-bottom') newHeight += dy;
         else {
           if (handle?.includes('right')) newWidth += dx;
           if (handle?.includes('left')) newWidth -= dx;
@@ -415,7 +411,6 @@ export function useCanvasInteraction(
         return;
       }
 
-      // Hover detection
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
       const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
@@ -426,7 +421,6 @@ export function useCanvasInteraction(
         return prev;
       });
 
-      // Update cursor
       if (selection.selectedNodeId) {
         const selectedNode = tree.nodes[selection.selectedNodeId];
         if (selectedNode) {
@@ -468,7 +462,6 @@ export function useCanvasInteraction(
       }
     }
 
-    // Commit live updates to history after resize or rotate drag ends
     if ((dragType === 'resize' || dragType === 'rotate') && onDragEnd) {
       onDragEnd();
     }
@@ -560,6 +553,41 @@ export function useCanvasInteraction(
     setSelection((prev) => ({ ...prev, selectedNodeId: nodeId }));
   }, []);
 
+  const setScaleAt = useCallback(
+    (nextScale: number, screenX: number, screenY: number) => {
+      const canvasX = (screenX - offset.x) / scale;
+      const canvasY = (screenY - offset.y) / scale;
+
+      const newOffsetX = screenX - canvasX * nextScale;
+      const newOffsetY = screenY - canvasY * nextScale;
+      setScale(nextScale);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+    },
+    [offset, scale]
+  );
+
+  const focusNode = useCallback(
+    (nodeId: string, canvasWidth: number, canvasHeight: number) => {
+      const node = tree.nodes[nodeId];
+      if (!node) return;
+      const { left, top, width, height } = node.computedLayout;
+
+      const padding = 60;
+      const scaleX = (canvasWidth - padding * 2) / width;
+      const scaleY = (canvasHeight - padding * 2) / height;
+      const newScale = Math.min(Math.max(Math.min(scaleX, scaleY), 0.1), 5);
+
+      const centerX = left + width / 2;
+      const centerY = top + height / 2;
+      const newOffsetX = canvasWidth / 2 - centerX * newScale;
+      const newOffsetY = canvasHeight / 2 - centerY * newScale;
+
+      setScale(newScale);
+      setOffset({ x: newOffsetX, y: newOffsetY });
+    },
+    [tree.nodes]
+  );
+
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       const rect = e.currentTarget.getBoundingClientRect();
@@ -577,44 +605,9 @@ export function useCanvasInteraction(
           return;
         }
       }
-      // Select deepest node
       setSelection((prev) => ({ ...prev, selectedNodeId: allHit[allHit.length - 1] }));
     },
-    [tree, scale, offset, selection.selectedNodeId, scrollManager]
-  );
-
-  const focusNode = useCallback(
-    (nodeId: string, canvasWidth: number, canvasHeight: number) => {
-      const node = tree.nodes[nodeId];
-      if (!node) return;
-      const { left, top, width, height } = node.computedLayout;
-      const cx = left + width / 2;
-      const cy = top + height / 2;
-      const fitScale = Math.min(canvasWidth / (width + 80), canvasHeight / (height + 80), 3);
-      const newScale = Math.max(fitScale, 0.3);
-      setScale(newScale);
-      setOffset({
-        x: canvasWidth / 2 - cx * newScale,
-        y: canvasHeight / 2 - cy * newScale,
-      });
-      lastOffsetRef.current = {
-        x: canvasWidth / 2 - cx * newScale,
-        y: canvasHeight / 2 - cy * newScale,
-      };
-    },
-    [tree.nodes]
-  );
-
-  const setScaleAt = useCallback(
-    (nextScale: number, anchorX: number, anchorY: number) => {
-      const newScale = Math.min(Math.max(nextScale, 0.1), 5);
-      const newOffsetX = anchorX - (anchorX - offset.x) * (newScale / scale);
-      const newOffsetY = anchorY - (anchorY - offset.y) * (newScale / scale);
-      setScale(newScale);
-      setOffset({ x: newOffsetX, y: newOffsetY });
-      lastOffsetRef.current = { x: newOffsetX, y: newOffsetY };
-    },
-    [scale, offset]
+    [tree, selection.selectedNodeId, scale, offset, scrollManager]
   );
 
   return {
@@ -628,7 +621,7 @@ export function useCanvasInteraction(
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
-    handleDoubleClick,
     handleWheel,
+    handleDoubleClick,
   };
 }

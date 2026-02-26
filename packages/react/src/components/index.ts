@@ -13,3 +13,5 @@ export type { ScrollViewJSXProps } from './ScrollView';
 export { SelectionOverlay } from './SelectionOverlay';
 
 export { NodeTreePanel } from './NodeTreePanel';
+
+export { ResizablePanels } from './ResizablePanels';

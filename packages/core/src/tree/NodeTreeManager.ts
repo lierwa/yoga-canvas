@@ -11,7 +11,7 @@ import type {
 import { splitStyle } from '../types/style';
 import { buildYogaTree, calculateLayout, freeYogaTree, flexValueToNum } from '../layout';
 import { History } from './History';
-import type { Node as YogaNode } from 'yoga-layout/load';
+import type { YogaNode } from '../layout/YogaManager';
 
 let idCounter = 0;
 function generateId(): string {

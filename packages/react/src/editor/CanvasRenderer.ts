@@ -1,5 +1,6 @@
-import type { CanvasNode, NodeTree, SelectionState, FlexValue } from '../types';
+import type { CanvasNode, NodeTree, FlexValue } from '@yoga-canvas/core';
 import type { ScrollManager } from '@yoga-canvas/core';
+import type { SelectionState } from './types';
 
 type ShadowStyle = { offsetX: number; offsetY: number; blur: number; color: string };
 type BoxShadowStyle = ShadowStyle & { spread?: number };
@@ -37,7 +38,6 @@ const HANDLE_SIZE = 8;
 const ROTATION_HANDLE_OFFSET = 24;
 const ROTATION_HANDLE_RADIUS = 6;
 
-// Image cache for canvas rendering
 const imageCache = new Map<string, HTMLImageElement>();
 const renderCallbacks = new Set<() => void>();
 
@@ -76,7 +76,6 @@ export function renderCanvas(
 ): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
-  // Draw background grid
   if (options?.showGrid !== false) {
     drawGrid(ctx, canvasWidth, canvasHeight, scale, offsetX, offsetY);
   }
@@ -84,10 +83,7 @@ export function renderCanvas(
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
-
-  // Render nodes recursively
   renderNode(ctx, tree, tree.rootId, selection, options?.scrollManager ?? null);
-
   ctx.restore();
 }
 
@@ -102,7 +98,6 @@ function drawGrid(
   const gridSize = 20 * scale;
   ctx.strokeStyle = '#f0f0f0';
   ctx.lineWidth = 0.5;
-
   const startX = offsetX % gridSize;
   const startY = offsetY % gridSize;
 
@@ -143,7 +138,6 @@ function renderNode(
   ctx.save();
   ctx.globalAlpha = opacity;
 
-  // Apply rotation (visual only, around node center)
   const rotate = node.visualStyle.rotate || 0;
   if (rotate !== 0) {
     const cx = left + width / 2;
@@ -160,7 +154,6 @@ function renderNode(
     const shadowWidth = width + spread * 2;
     const shadowHeight = height + spread * 2;
     ctx.save();
-    // ctx.fillStyle = "rgba(0, 0, 0, 0)";
     ctx.shadowColor = boxShadow.color;
     ctx.shadowBlur = boxShadow.blur;
     ctx.shadowOffsetX = boxShadow.offsetX;
@@ -174,7 +167,6 @@ function renderNode(
     ctx.restore();
   }
 
-  // Draw background
   if ((backgroundColor && backgroundColor !== 'transparent') || linearGradient) {
     const fillStyle = linearGradient
       ? buildLinearGradient(ctx, left, top, width, height, linearGradient)
@@ -189,7 +181,6 @@ function renderNode(
     }
   }
 
-  // Draw border
   if (borderWidth > 0) {
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = borderWidth;
@@ -201,7 +192,6 @@ function renderNode(
     }
   }
 
-  // Draw type-specific content
   switch (node.type) {
     case 'text':
       drawTextContent(ctx, node);
@@ -218,7 +208,6 @@ function renderNode(
 
   ctx.restore();
 
-  // Draw children (clip for scrollview)
   if (node.type === 'scrollview') {
     const scrollOffset = scrollManager?.getOffset(nodeId) ?? { x: 0, y: 0 };
     ctx.save();
@@ -244,7 +233,6 @@ function renderNode(
     }
   }
 
-  // Draw insertion line indicator
   if (selection.dropIndicator && selection.dropIndicator.parentId === nodeId) {
     const ind = selection.dropIndicator;
     ctx.save();
@@ -259,19 +247,25 @@ function renderNode(
       ctx.lineTo(ind.x, ind.y + ind.length);
     }
     ctx.stroke();
-    // Draw small circles at endpoints
     ctx.fillStyle = '#22c55e';
     if (ind.isHorizontal) {
-      ctx.beginPath(); ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(ind.x + ind.length, ind.y, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ind.x + ind.length, ind.y, 3, 0, Math.PI * 2);
+      ctx.fill();
     } else {
-      ctx.beginPath(); ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2); ctx.fill();
-      ctx.beginPath(); ctx.arc(ind.x, ind.y + ind.length, 3, 0, Math.PI * 2); ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(ind.x, ind.y + ind.length, 3, 0, Math.PI * 2);
+      ctx.fill();
     }
     ctx.restore();
   }
 
-  // Draw drop target highlight
   if (selection.dropTargetId === nodeId) {
     ctx.save();
     ctx.strokeStyle = '#22c55e';
@@ -284,7 +278,6 @@ function renderNode(
     ctx.restore();
   }
 
-  // Draw hover highlight
   if (selection.hoveredNodeId === nodeId && selection.selectedNodeId !== nodeId) {
     ctx.save();
     ctx.strokeStyle = '#60a5fa';
@@ -295,7 +288,6 @@ function renderNode(
     ctx.restore();
   }
 
-  // Draw selection
   if (selection.selectedNodeId === nodeId) {
     drawSelection(ctx, node);
   }
@@ -303,13 +295,10 @@ function renderNode(
 
 function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   const { left, top, width, height } = node.computedLayout;
-
   ctx.save();
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 2;
   ctx.strokeRect(left, top, width, height);
-
-  // Draw resize handles
   const handles = getResizeHandlePositions(node);
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#3b82f6';
@@ -321,18 +310,12 @@ function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
     if (isMid) {
       ctx.arc(handle.x, handle.y, size / 2, 0, Math.PI * 2);
     } else {
-      ctx.rect(
-        handle.x - size / 2,
-        handle.y - size / 2,
-        size,
-        size
-      );
+      ctx.rect(handle.x - size / 2, handle.y - size / 2, size, size);
     }
     ctx.fill();
     ctx.stroke();
   }
 
-  // Draw rotation handle (circle above top-center, connected by a line)
   const rotHandleY = top - ROTATION_HANDLE_OFFSET;
   const rotHandleX = left + width / 2;
   ctx.beginPath();
@@ -350,14 +333,12 @@ function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   ctx.fill();
   ctx.stroke();
 
-  // Draw rotation icon (↻ arc arrow) inside handle
   ctx.beginPath();
   ctx.arc(rotHandleX, rotHandleY, 3, -Math.PI * 0.8, Math.PI * 0.5);
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 1.2;
   ctx.stroke();
 
-  // Draw dimension label
   const dimLabel = `${Math.round(width)} × ${Math.round(height)}`;
   ctx.fillStyle = '#3b82f6';
   ctx.font = 'bold 10px Inter, sans-serif';
@@ -422,241 +403,138 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
     ctx.shadowOffsetY = textShadow.offsetY;
   }
 
-  const lineH = fontSize * lineHeight;
-  const halfLeading = (lineH - fontSize) / 2;
-  let y = top + padTop + halfLeading;
-  let textX = left + pad;
-  if (textAlign === 'center') textX = left + width / 2;
-  else if (textAlign === 'right') textX = left + width - padRight;
+  const computedLineHeight = fontSize * lineHeight;
+  const halfLeading = (computedLineHeight - fontSize) / 2;
 
   if (whiteSpace === 'nowrap') {
     ctx.beginPath();
     ctx.rect(left, top, width, node.computedLayout.height);
     ctx.clip();
-    const singleLine = content.replace(/\n/g, ' ');
-    ctx.fillText(singleLine, textX, y);
-    ctx.restore();
-    return;
   }
 
-  const lines = content.split('\n');
+  const lines = whiteSpace === 'nowrap' ? [content] : wrapText(ctx, content, maxWidth);
+  let y = top + padTop + halfLeading;
   for (const line of lines) {
-    // Word wrap
-    const words = line.split(' ');
-    let currentLine = '';
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const tw = ctx.measureText(testLine).width;
-      if (tw > maxWidth && currentLine) {
-        ctx.fillText(currentLine, textX, y);
-        currentLine = '';
-        y += lineH;
-      }
-
-      if (ctx.measureText(word).width > maxWidth) {
-        let chunk = '';
-        for (const char of word) {
-          const nextChunk = chunk + char;
-          if (ctx.measureText(nextChunk).width > maxWidth && chunk) {
-            ctx.fillText(chunk, textX, y);
-            y += lineH;
-            chunk = char;
-          } else {
-            chunk = nextChunk;
-          }
-        }
-        currentLine = currentLine ? `${currentLine} ${chunk}` : chunk;
-      } else {
-        const nextLine = currentLine ? `${currentLine} ${word}` : word;
-        currentLine = nextLine;
-      }
-    }
-    if (currentLine) {
-      ctx.fillText(currentLine, textX, y);
-      y += lineH;
-    }
+    const x =
+      textAlign === 'left'
+        ? left + pad
+        : textAlign === 'center'
+          ? left + width / 2
+          : left + width - padRight;
+    ctx.fillText(line, x, y);
+    y += computedLineHeight;
   }
   ctx.restore();
 }
 
-function buildLinearGradient(
-  ctx: CanvasRenderingContext2D,
-  left: number,
-  top: number,
-  width: number,
-  height: number,
-  gradient: LinearGradientStyle,
-): CanvasGradient | null {
-  if (!gradient || gradient.colors.length === 0) return null;
-  const x0 = left + gradient.start.x * width;
-  const y0 = top + gradient.start.y * height;
-  const x1 = left + gradient.end.x * width;
-  const y1 = top + gradient.end.y * height;
-  const canvasGradient = ctx.createLinearGradient(x0, y0, x1, y1);
-  for (const stop of gradient.colors) {
-    canvasGradient.addColorStop(stop.offset, stop.color);
-  }
-  return canvasGradient;
-}
-
-function getOrderedChildren(tree: NodeTree, node: CanvasNode): string[] {
-  if (node.children.length <= 1) return node.children;
-  return node.children
-    .map((id, index) => ({ id, index }))
-    .sort((a, b) => {
-      const nodeA = tree.nodes[a.id];
-      const nodeB = tree.nodes[b.id];
-      const zA = (nodeA?.visualStyle as VisualStyleEx | undefined)?.zIndex ?? 0;
-      const zB = (nodeB?.visualStyle as VisualStyleEx | undefined)?.zIndex ?? 0;
-      if (zA !== zB) return zA - zB;
-      return a.index - b.index;
-    })
-    .map((item) => item.id);
-}
-function drawImageContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
-  const { left, top, width, height } = node.computedLayout;
-  const src = node.imageProps?.src;
-  const objectFit = node.imageProps?.objectFit ?? 'cover';
-
-  if (src) {
-    const img = getCachedImage(src);
-    if (img) {
-      ctx.save();
-      ctx.beginPath();
-      ctx.rect(left, top, width, height);
-      ctx.clip();
-
-      let dx = left, dy = top, dw = width, dh = height;
-      if (objectFit === 'contain' || objectFit === 'cover') {
-        const imgRatio = img.naturalWidth / img.naturalHeight;
-        const boxRatio = width / height;
-        const useWidth = objectFit === 'cover' ? imgRatio < boxRatio : imgRatio > boxRatio;
-        if (useWidth) {
-          dw = width;
-          dh = width / imgRatio;
-        } else {
-          dh = height;
-          dw = height * imgRatio;
-        }
-        dx = left + (width - dw) / 2;
-        dy = top + (height - dh) / 2;
-      }
-      ctx.drawImage(img, dx, dy, dw, dh);
-      ctx.restore();
-      return;
+function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
+  const words = text.split(' ');
+  const lines: string[] = [];
+  let current = '';
+  for (const word of words) {
+    const test = current ? `${current} ${word}` : word;
+    const metrics = ctx.measureText(test);
+    if (metrics.width > maxWidth && current) {
+      lines.push(current);
+      current = word;
+    } else {
+      current = test;
     }
   }
+  if (current) lines.push(current);
+  return lines;
+}
 
-  // Fallback placeholder
+function drawImageContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
+  const img = node.imageProps?.src ? getCachedImage(node.imageProps.src) : null;
+  if (!img) {
+    drawImagePlaceholder(ctx, node);
+    return;
+  }
+
+  const { left, top, width, height } = node.computedLayout;
+  const objectFit = node.imageProps?.objectFit ?? 'cover';
+
+  let drawWidth = width;
+  let drawHeight = height;
+  let dx = left;
+  let dy = top;
+
+  if (objectFit === 'contain') {
+    const scale = Math.min(width / img.width, height / img.height);
+    drawWidth = img.width * scale;
+    drawHeight = img.height * scale;
+    dx = left + (width - drawWidth) / 2;
+    dy = top + (height - drawHeight) / 2;
+  } else if (objectFit === 'cover') {
+    const scale = Math.max(width / img.width, height / img.height);
+    drawWidth = img.width * scale;
+    drawHeight = img.height * scale;
+    dx = left + (width - drawWidth) / 2;
+    dy = top + (height - drawHeight) / 2;
+  }
+
   ctx.save();
-  ctx.strokeStyle = '#a5b4fc';
-  ctx.lineWidth = 1;
   ctx.beginPath();
-  ctx.moveTo(left, top);
-  ctx.lineTo(left + width, top + height);
-  ctx.moveTo(left + width, top);
-  ctx.lineTo(left, top + height);
-  ctx.stroke();
+  ctx.rect(left, top, width, height);
+  ctx.clip();
+  ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+  ctx.restore();
+}
 
-  const iconSize = Math.min(32, width * 0.4, height * 0.4);
-  const cx = left + width / 2;
-  const cy = top + height / 2;
-  ctx.fillStyle = '#818cf8';
-  ctx.font = `${iconSize}px sans-serif`;
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
-  ctx.fillText('🖼', cx, cy);
+function drawImagePlaceholder(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
+  const { left, top, width, height } = node.computedLayout;
+  ctx.save();
+  ctx.fillStyle = '#f3f4f6';
+  ctx.fillRect(left, top, width, height);
+  ctx.strokeStyle = '#d1d5db';
+  ctx.lineWidth = 1;
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(left, top, width, height);
+  ctx.setLineDash([]);
   ctx.restore();
 }
 
 function drawScrollViewIndicator(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   const { left, top, width, height } = node.computedLayout;
-  const isVertical = node.scrollViewProps?.scrollDirection !== 'horizontal';
-
   ctx.save();
-  ctx.strokeStyle = '#94a3b8';
+  ctx.strokeStyle = '#d1d5db';
   ctx.lineWidth = 1;
-  ctx.setLineDash([3, 3]);
-
-  if (isVertical) {
-    // Right edge scrollbar track
-    const barX = left + width - 4;
-    const barH = Math.min(height * 0.3, 40);
-    ctx.beginPath();
-    ctx.roundRect(barX, top + 4, 3, barH, 1.5);
-    ctx.stroke();
-    // Arrow at bottom
-    const arrowY = top + height - 10;
-    ctx.beginPath();
-    ctx.moveTo(left + width / 2 - 6, arrowY);
-    ctx.lineTo(left + width / 2, arrowY + 6);
-    ctx.lineTo(left + width / 2 + 6, arrowY);
-    ctx.stroke();
-  } else {
-    // Bottom edge scrollbar track
-    const barY = top + height - 4;
-    const barW = Math.min(width * 0.3, 40);
-    ctx.beginPath();
-    ctx.roundRect(left + 4, barY, barW, 3, 1.5);
-    ctx.stroke();
-    // Arrow at right
-    const arrowX = left + width - 10;
-    ctx.beginPath();
-    ctx.moveTo(arrowX, top + height / 2 - 6);
-    ctx.lineTo(arrowX + 6, top + height / 2);
-    ctx.lineTo(arrowX, top + height / 2 + 6);
-    ctx.stroke();
-  }
-
+  ctx.setLineDash([4, 4]);
+  ctx.strokeRect(left, top, width, height);
   ctx.setLineDash([]);
   ctx.restore();
 }
 
-function drawScrollViewScrollbar(
+function getOrderedChildren(tree: NodeTree, node: CanvasNode): string[] {
+  if (!node.children?.length) return [];
+  return node.children.slice().sort((a, b) => {
+    const na = tree.nodes[a];
+    const nb = tree.nodes[b];
+    const za = (na?.visualStyle as VisualStyleEx)?.zIndex ?? 0;
+    const zb = (nb?.visualStyle as VisualStyleEx)?.zIndex ?? 0;
+    if (za === zb) return 0;
+    return za - zb;
+  });
+}
+
+function buildLinearGradient(
   ctx: CanvasRenderingContext2D,
-  node: CanvasNode,
-  scrollState: { offsetX: number; offsetY: number; contentWidth: number; contentHeight: number; viewportWidth: number; viewportHeight: number },
-  scrollBarOpacity = 1
-): void {
-  if (scrollBarOpacity <= 0) return;
-  const { left, top, width, height } = node.computedLayout;
-  const isVertical = node.scrollViewProps?.scrollDirection !== 'horizontal';
-
-  const SCROLLBAR_SIZE = 4;
-  const SCROLLBAR_MIN_THUMB = 20;
-  const SCROLLBAR_PADDING = 2;
-  const SCROLLBAR_RADIUS = 2;
-
-  const color = `rgba(0, 0, 0, ${0.25 * scrollBarOpacity})`;
-
-  ctx.save();
-  ctx.fillStyle = color;
-
-  if (isVertical && scrollState.contentHeight > scrollState.viewportHeight) {
-    const trackHeight = height - SCROLLBAR_PADDING * 2;
-    const ratio = scrollState.viewportHeight / scrollState.contentHeight;
-    const thumbHeight = Math.max(trackHeight * ratio, SCROLLBAR_MIN_THUMB);
-    const maxScroll = scrollState.contentHeight - scrollState.viewportHeight;
-    const scrollRatio = maxScroll > 0 ? scrollState.offsetY / maxScroll : 0;
-    const thumbY = top + SCROLLBAR_PADDING + scrollRatio * (trackHeight - thumbHeight);
-    const thumbX = left + width - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
-    drawRoundedRect(ctx, thumbX, thumbY, SCROLLBAR_SIZE, thumbHeight, SCROLLBAR_RADIUS);
-    ctx.fill();
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  grad: LinearGradientStyle
+): CanvasGradient | null {
+  const startX = x + grad.start.x * w;
+  const startY = y + grad.start.y * h;
+  const endX = x + grad.end.x * w;
+  const endY = y + grad.end.y * h;
+  const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
+  for (const stop of grad.colors) {
+    gradient.addColorStop(stop.offset, stop.color);
   }
-
-  if (!isVertical && scrollState.contentWidth > scrollState.viewportWidth) {
-    const trackWidth = width - SCROLLBAR_PADDING * 2;
-    const ratio = scrollState.viewportWidth / scrollState.contentWidth;
-    const thumbWidth = Math.max(trackWidth * ratio, SCROLLBAR_MIN_THUMB);
-    const maxScroll = scrollState.contentWidth - scrollState.viewportWidth;
-    const scrollRatio = maxScroll > 0 ? scrollState.offsetX / maxScroll : 0;
-    const thumbX = left + SCROLLBAR_PADDING + scrollRatio * (trackWidth - thumbWidth);
-    const thumbY = top + height - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
-    drawRoundedRect(ctx, thumbX, thumbY, thumbWidth, SCROLLBAR_SIZE, SCROLLBAR_RADIUS);
-    ctx.fill();
-  }
-
-  ctx.restore();
+  return gradient;
 }
 
 function drawRoundedRect(
@@ -677,49 +555,60 @@ function drawRoundedRect(
   ctx.closePath();
 }
 
+const SCROLLBAR_SIZE = 6;
+const SCROLLBAR_RADIUS = 3;
+const SCROLLBAR_PADDING = 4;
+const SCROLLBAR_MIN_THUMB = 16;
+
+function drawScrollViewScrollbar(
+  ctx: CanvasRenderingContext2D,
+  node: CanvasNode,
+  scrollState: {
+    offsetX: number;
+    offsetY: number;
+    contentWidth: number;
+    contentHeight: number;
+    viewportWidth: number;
+    viewportHeight: number;
+  },
+  opacity = 1
+): void {
+  const { left, top, width, height } = node.computedLayout;
+  ctx.save();
+  ctx.globalAlpha = opacity;
+  ctx.fillStyle = 'rgba(107, 114, 128, 0.45)';
+
+  if (scrollState.contentHeight > scrollState.viewportHeight) {
+    const trackHeight = height - SCROLLBAR_PADDING * 2;
+    const ratio = scrollState.viewportHeight / scrollState.contentHeight;
+    const thumbHeight = Math.max(trackHeight * ratio, SCROLLBAR_MIN_THUMB);
+    const maxScroll = scrollState.contentHeight - scrollState.viewportHeight;
+    const scrollRatio = maxScroll > 0 ? scrollState.offsetY / maxScroll : 0;
+    const thumbX = left + width - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+    const thumbY = top + SCROLLBAR_PADDING + scrollRatio * (trackHeight - thumbHeight);
+    drawRoundedRect(ctx, thumbX, thumbY, SCROLLBAR_SIZE, thumbHeight, SCROLLBAR_RADIUS);
+    ctx.fill();
+  }
+
+  if (scrollState.contentWidth > scrollState.viewportWidth) {
+    const trackWidth = width - SCROLLBAR_PADDING * 2;
+    const ratio = scrollState.viewportWidth / scrollState.contentWidth;
+    const thumbWidth = Math.max(trackWidth * ratio, SCROLLBAR_MIN_THUMB);
+    const maxScroll = scrollState.contentWidth - scrollState.viewportWidth;
+    const scrollRatio = maxScroll > 0 ? scrollState.offsetX / maxScroll : 0;
+    const thumbX = left + SCROLLBAR_PADDING + scrollRatio * (trackWidth - thumbWidth);
+    const thumbY = top + height - SCROLLBAR_SIZE - SCROLLBAR_PADDING;
+    drawRoundedRect(ctx, thumbX, thumbY, thumbWidth, SCROLLBAR_SIZE, SCROLLBAR_RADIUS);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
 export function getRotationHandlePosition(node: CanvasNode) {
   const { left, top, width } = node.computedLayout;
   return {
     x: left + width / 2,
     y: top - ROTATION_HANDLE_OFFSET,
   };
-}
-
-export function hitTestRotationHandle(
-  node: CanvasNode,
-  x: number,
-  y: number,
-  scale: number,
-  offsetX: number,
-  offsetY: number
-): boolean {
-  const canvasX = (x - offsetX) / scale;
-  const canvasY = (y - offsetY) / scale;
-  const pos = getRotationHandlePosition(node);
-  const threshold = (ROTATION_HANDLE_RADIUS + 2) / scale;
-  return Math.hypot(canvasX - pos.x, canvasY - pos.y) <= threshold;
-}
-
-export function hitTestResizeHandle(
-  node: CanvasNode,
-  x: number,
-  y: number,
-  scale: number,
-  offsetX: number,
-  offsetY: number
-): string | null {
-  const canvasX = (x - offsetX) / scale;
-  const canvasY = (y - offsetY) / scale;
-  const handles = getResizeHandlePositions(node);
-  const threshold = (HANDLE_SIZE / 2 + 2) / scale;
-
-  for (const handle of handles) {
-    if (
-      Math.abs(canvasX - handle.x) <= threshold &&
-      Math.abs(canvasY - handle.y) <= threshold
-    ) {
-      return handle.position;
-    }
-  }
-  return null;
 }

@@ -4,6 +4,7 @@ import {
   hitTest,
   NodeTreePanel,
   SelectionOverlay,
+  ResizablePanels,
   type YogaCanvasRef,
   type YogaCanvasCore as YogaCanvasCoreType,
   type CanvasNode,
@@ -29,7 +30,6 @@ import {
   Move,
   Copy,
 } from 'lucide-react';
-import { ResizablePanels } from './ResizablePanels';
 import { LiveEditor } from './LiveEditor';
 
 // ============ Main App — Live Editor Mode ============

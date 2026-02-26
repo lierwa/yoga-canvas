@@ -12,7 +12,10 @@ export type {
   ImageJSXProps,
   ScrollViewJSXProps,
 } from './components';
-export { SelectionOverlay, NodeTreePanel } from './components';
+export { SelectionOverlay, NodeTreePanel, ResizablePanels } from './components';
+export { EditorCanvas } from './editor/EditorCanvas';
+export { useCanvasInteraction } from './editor/useCanvasInteraction';
+export type { SelectionState, DropIndicator } from './editor/types';
 
 // JSX converter utility
 export { convertChildrenToDescriptors } from './jsx/convertJSX';

@@ -1,0 +1,42 @@
+{
+  "name": "@yoga-canvas/taro",
+  "version": "0.1.0",
+  "description": "Taro helpers for @yoga-canvas/core (WeChat Mini Program wasm + asset wiring).",
+  "type": "module",
+  "main": "./dist/node.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/node.cjs"
+    }
+  },
+  "files": [
+    "dist",
+    "wasm"
+  ],
+  "scripts": {
+    "build": "tsup && node ./scripts/extract-yoga-wasm.mjs",
+    "postinstall": "node ./scripts/extract-yoga-wasm.mjs"
+  },
+  "dependencies": {
+    "@yoga-canvas/core": "workspace:*",
+    "@yoga-canvas/react": "workspace:*",
+    "yoga-layout": "^3.2.1"
+  },
+  "peerDependencies": {
+    "@tarojs/components": ">=3.6.0",
+    "@tarojs/taro": ">=3.6.0",
+    "react": ">=17.0.0"
+  },
+  "devDependencies": {
+    "@tarojs/components": "^3.6.38",
+    "@tarojs/plugin-platform-weapp": "^3.6.38",
+    "@tarojs/taro": "^3.6.38",
+    "tsup": "^8.3.0",
+    "typescript": "~5.6.2"
+  },
+  "sideEffects": false
+}

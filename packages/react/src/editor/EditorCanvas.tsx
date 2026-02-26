@@ -1,15 +1,15 @@
 import { useRef, useEffect, useState, useCallback } from 'react';
-import { Crosshair } from 'lucide-react';
-import { renderCanvas, setRenderCallback } from '../core/CanvasRenderer';
-import type { NodeTree, SelectionState } from '../types';
+import type { NodeTree } from '@yoga-canvas/core';
 import type { ScrollManager } from '@yoga-canvas/core';
+import type { SelectionState } from './types';
+import { renderCanvas, setRenderCallback } from './CanvasRenderer';
 
-interface CanvasProps {
+interface EditorCanvasProps {
   tree: NodeTree;
   selection: SelectionState;
   scale: number;
   offset: { x: number; y: number };
-  scrollManager: ScrollManager;
+  scrollManager: ScrollManager | null;
   renderTick?: number;
   showGrid?: boolean;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
@@ -18,9 +18,10 @@ interface CanvasProps {
   onWheel: (e: WheelEvent) => void;
   onDoubleClick?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onFocusNode?: () => void;
+  renderFocusAction?: (onFocusNode: () => void) => React.ReactNode;
 }
 
-export default function Canvas({
+export function EditorCanvas({
   tree,
   selection,
   scale,
@@ -34,11 +35,11 @@ export default function Canvas({
   onWheel,
   onDoubleClick,
   onFocusNode,
-}: CanvasProps) {
+  renderFocusAction,
+}: EditorCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [imageLoadTick, setImageLoadTick] = useState(0);
 
-  // Register callback so image cache loads trigger canvas re-render
   useEffect(() => {
     const unsubscribe = setRenderCallback(() => setImageLoadTick((t) => t + 1));
     return unsubscribe;
@@ -94,19 +95,7 @@ export default function Canvas({
         onMouseLeave={onMouseUp}
         onDoubleClick={onDoubleClick}
       />
-      {onFocusNode && selection.selectedNodeId && (
-        <button
-          onClick={onFocusNode}
-          className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5
-            bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-sm
-            text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300
-            transition-colors"
-          title="Focus selected node"
-        >
-          <Crosshair size={14} />
-          <span>Locate</span>
-        </button>
-      )}
+      {onFocusNode && selection.selectedNodeId && renderFocusAction?.(onFocusNode)}
     </div>
   );
 }
