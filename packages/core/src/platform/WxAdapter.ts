@@ -96,6 +96,8 @@ interface WxImage extends CanvasImageLike {
   onerror: ((err: unknown) => void) | null;
 }
 
+const imageCache = new Map<string, WxImage>();
+
 declare const wx: {
   canvasToTempFilePath(options: Record<string, unknown>): void;
 };
@@ -107,6 +109,11 @@ export class WxAdapter implements PlatformAdapter {
   name = 'wx';
 
   private wxCanvas: WxCanvas | null = null;
+  private renderCallback: (() => void) | null = null;
+
+  setRenderCallback(cb: (() => void) | null): void {
+    this.renderCallback = cb;
+  }
 
   /** Must be called with the WX canvas instance before use. */
   setCanvas(canvas: WxCanvas): void {
@@ -126,10 +133,8 @@ export class WxAdapter implements PlatformAdapter {
     const fontStyle = options.fontStyle && options.fontStyle !== 'normal' ? `${options.fontStyle} ` : '';
     ctx.font = `${fontStyle}${fontWeight !== 'normal' ? `${fontWeight} ` : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
     const lineH = options.fontSize * options.lineHeight;
-    const chars = options.content.split('');
-    let currentLineWidth = 0;
     let maxLineWidth = 0;
-    let lineCount = 1;
+    let lineCount = 0;
 
     if (options.whiteSpace === 'nowrap') {
       const singleLine = options.content.replace(/\n/g, ' ');
@@ -137,26 +142,47 @@ export class WxAdapter implements PlatformAdapter {
       return { width, height: lineH };
     }
 
-    for (const char of chars) {
-      if (char === '\n') {
-        maxLineWidth = Math.max(maxLineWidth, currentLineWidth);
-        lineCount++;
-        currentLineWidth = 0;
-        continue;
+    const lines = options.content.split('\n');
+    for (const line of lines) {
+      const words = line.split(' ');
+      let currentLine = '';
+      for (const word of words) {
+        const testLine = currentLine ? `${currentLine} ${word}` : word;
+        const tw = ctx.measureText(testLine).width;
+        if (tw > options.availableWidth && currentLine) {
+          maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
+          lineCount++;
+          currentLine = '';
+        }
+
+        if (ctx.measureText(word).width > options.availableWidth) {
+          let chunk = '';
+          for (const char of word) {
+            const nextChunk = chunk + char;
+            if (ctx.measureText(nextChunk).width > options.availableWidth && chunk) {
+              maxLineWidth = Math.max(maxLineWidth, ctx.measureText(chunk).width);
+              lineCount++;
+              chunk = char;
+            } else {
+              chunk = nextChunk;
+            }
+          }
+          currentLine = currentLine ? `${currentLine} ${chunk}` : chunk;
+        } else {
+          currentLine = currentLine ? `${currentLine} ${word}` : word;
+        }
       }
-      const charWidth = ctx.measureText(char).width;
-      if (currentLineWidth + charWidth > options.availableWidth && currentLineWidth > 0) {
-        maxLineWidth = Math.max(maxLineWidth, currentLineWidth);
+      if (currentLine) {
+        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
         lineCount++;
-        currentLineWidth = charWidth;
-      } else {
-        currentLineWidth += charWidth;
+      } else if (line === '') {
+        lineCount++;
       }
     }
 
     return {
-      width: Math.min(Math.max(maxLineWidth, currentLineWidth), options.availableWidth),
-      height: lineCount * lineH,
+      width: Math.min(maxLineWidth, options.availableWidth),
+      height: Math.max(1, lineCount) * lineH,
     };
   }
 
@@ -164,12 +190,41 @@ export class WxAdapter implements PlatformAdapter {
     if (!this.wxCanvas) {
       return Promise.reject(new Error('WX canvas not set. Call setCanvas() first.'));
     }
+    const cached = imageCache.get(src);
+    if (cached && cached.width && cached.height) {
+      return Promise.resolve(cached);
+    }
     return new Promise((resolve, reject) => {
       const img = this.wxCanvas!.createImage();
-      img.onload = () => resolve(img);
-      img.onerror = (err) => reject(err);
+      img.onload = () => {
+        imageCache.set(src, img);
+        resolve(img);
+      };
+      img.onerror = (err) => {
+        imageCache.delete(src);
+        reject(err);
+      };
       img.src = src;
     });
+  }
+
+  getCachedImage(src: string): CanvasImageLike | null {
+    if (!src) return null;
+    const cached = imageCache.get(src);
+    if (cached && cached.width && cached.height) return cached;
+    if (!cached && this.wxCanvas) {
+      const img = this.wxCanvas.createImage();
+      img.onload = () => {
+        imageCache.set(src, img);
+        this.renderCallback?.();
+      };
+      img.onerror = () => {
+        imageCache.delete(src);
+      };
+      img.src = src;
+      imageCache.set(src, img);
+    }
+    return null;
   }
 
   createCanvasContext(canvas: unknown): CanvasContextLike {

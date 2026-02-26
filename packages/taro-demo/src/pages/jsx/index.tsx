@@ -1,8 +1,8 @@
 import { Button, Image, View } from '@tarojs/components';
-import { useRef, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import type { YogaCanvas } from '@yoga-canvas/core';
-import { View as YogaView, Text as YogaText } from '@yoga-canvas/react';
 import { CanvasContainer } from '@yoga-canvas/taro';
+import { createNodeTemplateJSX } from '../../templates/nodeTemplates';
 
 const CANVAS_WIDTH = 360;
 const CANVAS_HEIGHT = 640;
@@ -13,6 +13,10 @@ export default function JSXPage() {
   const [tempPath, setTempPath] = useState('');
 
   const instanceRef = useRef<YogaCanvas | null>(null);
+  const template = useMemo(
+    () => createNodeTemplateJSX({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }),
+    [],
+  );
   const canExport = ready && instanceRef.current;
 
   return (
@@ -25,9 +29,11 @@ export default function JSXPage() {
         <CanvasContainer
           width={CANVAS_WIDTH}
           height={CANVAS_HEIGHT}
-          rootStyle={{ padding: 16, backgroundColor: '#f8fafc' }}
+          rootName={template.rootName}
+          rootStyle={template.rootStyle}
           containerStyle={{ width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px` }}
           canvasStyle={{ background: '#ffffff' }}
+          debugIndicator
           onReady={(info) => {
             instanceRef.current = info.instance;
             setReady(true);
@@ -39,95 +45,7 @@ export default function JSXPage() {
             setErrorText(e.message);
           }}
         >
-          <YogaView
-            name="Header"
-            style={{
-              height: 64,
-              padding: 12,
-              backgroundColor: '#111827',
-              borderRadius: 12,
-              justifyContent: 'center',
-            }}
-          >
-            <YogaText
-              name="Title"
-              style={{
-                color: '#ffffff',
-                fontSize: 16,
-                lineHeight: 1.2,
-                fontWeight: 600,
-                whiteSpace: 'nowrap',
-              }}
-            >
-              yoga-canvas JSX (wx)
-            </YogaText>
-          </YogaView>
-
-          <YogaView name="Spacer" style={{ height: 12 }} />
-
-          <YogaView
-            name="Row"
-            style={{
-              flexDirection: 'row',
-              gap: 12,
-            }}
-          >
-            <YogaView
-              name="LeftCard"
-              style={{
-                flexGrow: 1,
-                height: 120,
-                padding: 12,
-                backgroundColor: '#ffffff',
-                borderRadius: 12,
-              }}
-            >
-              <YogaText
-                name="LeftText"
-                style={{ color: '#111827', fontSize: 14, lineHeight: 1.4, whiteSpace: 'normal' }}
-              >
-                Flex: 1 卡片{'\n'}支持换行与多行高度
-              </YogaText>
-            </YogaView>
-
-            <YogaView
-              name="RightCard"
-              style={{
-                width: 110,
-                height: 120,
-                padding: 12,
-                backgroundColor: '#e0f2fe',
-                borderRadius: 12,
-                justifyContent: 'center',
-                alignItems: 'center',
-              }}
-            >
-              <YogaText
-                name="RightText"
-                style={{ color: '#075985', fontSize: 12, lineHeight: 1.2, whiteSpace: 'nowrap' }}
-              >
-                固定宽度
-              </YogaText>
-            </YogaView>
-          </YogaView>
-
-          <YogaView name="Spacer2" style={{ height: 12 }} />
-
-          <YogaView
-            name="Footer"
-            style={{
-              padding: 12,
-              backgroundColor: '#ffffff',
-              borderRadius: 12,
-            }}
-          >
-            <YogaText
-              name="FooterText"
-              style={{ color: '#334155', fontSize: 12, lineHeight: 1.4, whiteSpace: 'normal' }}
-            >
-              JSX → descriptor → canvas 渲染{'\n'}导出图片走 wx.canvasToTempFilePath
-            </YogaText>
-          </YogaView>
+          {template.children}
         </CanvasContainer>
       </View>
 

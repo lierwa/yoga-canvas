@@ -84,8 +84,7 @@ export class YogaCanvas {
     computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.ctx = this.adapter.createCanvasContext(this.canvas);
 
-    // Setup H5 image load callback
-    if (this.adapter instanceof H5Adapter) {
+    if (this.adapter instanceof H5Adapter || this.adapter instanceof WxAdapter) {
       this.adapter.setRenderCallback(() => {
         this.render();
         this.emitter.emit('imageLoaded');
@@ -291,7 +290,7 @@ export class YogaCanvas {
     this.treeManager.destroy();
     this.scrollManager.reset();
     this.emitter.removeAllListeners();
-    if (this.adapter instanceof H5Adapter) {
+    if (this.adapter instanceof H5Adapter || this.adapter instanceof WxAdapter) {
       this.adapter.setRenderCallback(null);
     }
     // Remove wheel listener
@@ -375,7 +374,11 @@ export class YogaCanvas {
         ? (this.adapter as H5Adapter).getCachedImage(src)
         : null;
     }
-    // For other platforms, return null (images loaded asynchronously)
+    if (this.adapter instanceof WxAdapter) {
+      return (src: string) => this.adapter instanceof WxAdapter
+        ? (this.adapter as WxAdapter).getCachedImage(src)
+        : null;
+    }
     return () => null;
   }
 }

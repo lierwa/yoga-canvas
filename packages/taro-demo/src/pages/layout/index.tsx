@@ -1,116 +1,21 @@
 import { Button, Image, View } from '@tarojs/components';
 import { useMemo, useRef, useState } from 'react';
-import { Text as YogaText, View as YogaView, type YogaCanvas } from '@yoga-canvas/core';
+import type { YogaCanvas } from '@yoga-canvas/core';
 import { CanvasContainer } from '@yoga-canvas/taro';
+import { createNodeTemplateDescriptor } from '../../templates/nodeTemplates';
 
 const CANVAS_WIDTH = 360;
 const CANVAS_HEIGHT = 640;
-
-function createSampleLayout() {
-  return YogaView({
-    name: 'Root',
-    style: {
-      width: CANVAS_WIDTH,
-      height: CANVAS_HEIGHT,
-      padding: 16,
-      backgroundColor: '#f8fafc',
-    },
-    children: [
-      YogaView({
-        name: 'Header',
-        style: {
-          height: 64,
-          padding: 12,
-          backgroundColor: '#111827',
-          borderRadius: 12,
-          justifyContent: 'center',
-        },
-        children: [
-          YogaText({
-            name: 'Title',
-            style: {
-              color: '#ffffff',
-              fontSize: 16,
-              lineHeight: 1.2,
-              fontWeight: 600,
-              whiteSpace: 'nowrap',
-            },
-            content: 'yoga-canvas (wx) 渲染验证',
-          }),
-        ],
-      }),
-      YogaView({ name: 'Spacer', style: { height: 12 } }),
-      YogaView({
-        name: 'Row',
-        style: {
-          flexDirection: 'row',
-          gap: 12,
-        },
-        children: [
-          YogaView({
-            name: 'LeftCard',
-            style: {
-              flexGrow: 1,
-              height: 120,
-              padding: 12,
-              backgroundColor: '#ffffff',
-              borderRadius: 12,
-            },
-            children: [
-              YogaText({
-                name: 'LeftText',
-                style: { color: '#111827', fontSize: 14, lineHeight: 1.4, whiteSpace: 'normal' },
-                content: 'Flex: 1 卡片\n支持换行与多行高度',
-              }),
-            ],
-          }),
-          YogaView({
-            name: 'RightCard',
-            style: {
-              width: 110,
-              height: 120,
-              padding: 12,
-              backgroundColor: '#e0f2fe',
-              borderRadius: 12,
-              justifyContent: 'center',
-              alignItems: 'center',
-            },
-            children: [
-              YogaText({
-                name: 'RightText',
-                style: { color: '#075985', fontSize: 12, lineHeight: 1.2, whiteSpace: 'nowrap' },
-                content: '固定宽度',
-              }),
-            ],
-          }),
-        ],
-      }),
-      YogaView({ name: 'Spacer2', style: { height: 12 } }),
-      YogaView({
-        name: 'Footer',
-        style: {
-          padding: 12,
-          backgroundColor: '#ffffff',
-          borderRadius: 12,
-        },
-        children: [
-          YogaText({
-            name: 'FooterText',
-            style: { color: '#334155', fontSize: 12, lineHeight: 1.4, whiteSpace: 'normal' },
-            content: '点击“导出图片”调用 wx.canvasToTempFilePath',
-          }),
-        ],
-      }),
-    ],
-  });
-}
 
 export default function LayoutPage() {
   const [ready, setReady] = useState(false);
   const [errorText, setErrorText] = useState('');
   const [tempPath, setTempPath] = useState('');
 
-  const layout = useMemo(() => createSampleLayout(), []);
+  const layout = useMemo(
+    () => createNodeTemplateDescriptor({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }),
+    [],
+  );
 
   const instanceRef = useRef<YogaCanvas | null>(null);
 
@@ -129,6 +34,7 @@ export default function LayoutPage() {
           layout={layout}
           containerStyle={{ width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px` }}
           canvasStyle={{ background: '#ffffff' }}
+          debugIndicator
           onReady={(info) => {
             instanceRef.current = info.instance;
             setReady(true);

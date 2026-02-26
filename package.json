@@ -7,7 +7,11 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "build:libs": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react --filter @yoga-canvas/taro build",
+    "dev:libs": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react --filter @yoga-canvas/taro dev",
+    "build:demo": "pnpm -r --filter @yoga-canvas/demo build",
+    "build:all": "pnpm run build:libs && npm run build"
   },
   "dependencies": {
     "@monaco-editor/react": "^4.7.0",
