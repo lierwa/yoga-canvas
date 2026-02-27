@@ -704,6 +704,24 @@ export function useNodeTree() {
     setCanRedo(manager.canRedo);
   }, []);
 
+  const replaceDescriptor = useCallback(
+    (descriptor: NodeDescriptor) => {
+      const adapter = adapterRef.current;
+      const prevManager = managerRef.current;
+      if (!adapter) return;
+
+      prevManager?.destroy();
+      scrollManagerRef.current.reset();
+
+      const nextManager = new NodeTreeManager(adapter);
+      nextManager.buildFromDescriptor(descriptor);
+      nextManager.computeLayout();
+      managerRef.current = nextManager;
+      refresh();
+    },
+    [refresh],
+  );
+
   useEffect(() => {
     const adapter = new H5Adapter();
     const manager = new NodeTreeManager(adapter);
@@ -1061,6 +1079,7 @@ export function useNodeTree() {
     scrollManager: scrollManagerRef.current,
     undo,
     redo,
+    replaceDescriptor,
     updateNodeFlexStyle,
     updateNodeVisualStyle,
     updateTextProps,

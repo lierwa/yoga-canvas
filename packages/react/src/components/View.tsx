@@ -2,6 +2,8 @@ import type { StyleProps } from '@yoga-canvas/core';
 
 export interface ViewJSXProps {
   name?: string;
+  className?: string;
+  tw?: string;
   style?: StyleProps;
   children?: React.ReactNode;
 }

@@ -2,6 +2,8 @@ import type { StyleProps, ScrollBarVisibility } from '@yoga-canvas/core';
 
 export interface ScrollViewJSXProps {
   name?: string;
+  className?: string;
+  tw?: string;
   style?: StyleProps;
   scrollDirection?: 'vertical' | 'horizontal';
   scrollBarVisibility?: ScrollBarVisibility;

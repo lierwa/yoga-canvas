@@ -5,6 +5,7 @@ import Toolbar from './components/Toolbar';
 import LeftPanel from './components/LeftPanel';
 import PropertiesPanel from './components/PropertiesPanel';
 import PreviewModal from './components/PreviewModal';
+import LiveCodeEditorPanel from './components/LiveCodeEditorPanel';
 import { useNodeTree } from './hooks/useNodeTree';
 
 function App() {
@@ -27,6 +28,7 @@ function App() {
     commitLiveUpdate,
     updateImageProps,
     updateCanvasContainer,
+    replaceDescriptor,
   } = useNodeTree();
 
   const {
@@ -46,6 +48,7 @@ function App() {
 
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
+  const [showCodeEditor, setShowCodeEditor] = useState(false);
 
   const selectedNode = selection.selectedNodeId ? tree.nodes[selection.selectedNodeId] ?? null : null;
 
@@ -130,6 +133,7 @@ function App() {
         onUndo={undo}
         onRedo={redo}
         onPreview={() => setShowPreview(true)}
+        onCodeEditor={() => setShowCodeEditor(true)}
       />
       <ResizablePanels
         left={
@@ -187,6 +191,16 @@ function App() {
         defaultRightWidth={320}
         minWidth={200}
       />
+      {showCodeEditor && (
+        <LiveCodeEditorPanel
+          tree={tree}
+          onClose={() => setShowCodeEditor(false)}
+          onDescriptorChange={(descriptor) => {
+            replaceDescriptor(descriptor);
+            selectNode(null);
+          }}
+        />
+      )}
     </div>
   );
 }

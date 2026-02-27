@@ -2,6 +2,8 @@ import type { StyleProps } from '@yoga-canvas/core';
 
 export interface TextJSXProps {
   name?: string;
+  className?: string;
+  tw?: string;
   style?: StyleProps;
   /** Text content. Also accepts children string. */
   content?: string;

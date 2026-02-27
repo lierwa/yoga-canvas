@@ -412,7 +412,10 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
     ctx.clip();
   }
 
-  const lines = whiteSpace === 'nowrap' ? [content] : wrapText(ctx, content, maxWidth);
+  const lines =
+    whiteSpace === 'nowrap'
+      ? [content.replace(/\n/g, ' ')]
+      : wrapText(ctx, content, maxWidth);
   let y = top + padTop + halfLeading;
   for (const line of lines) {
     const x =
@@ -428,20 +431,55 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
 }
 
 function wrapText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] {
-  const words = text.split(' ');
+  const EPS = 0.01;
   const lines: string[] = [];
-  let current = '';
-  for (const word of words) {
-    const test = current ? `${current} ${word}` : word;
-    const metrics = ctx.measureText(test);
-    if (metrics.width > maxWidth && current) {
+  const paragraphs = text.split('\n');
+
+  for (const paragraph of paragraphs) {
+    if (paragraph === '') {
+      lines.push('');
+      continue;
+    }
+
+    const words = paragraph.split(' ');
+    let current = '';
+
+    for (const word of words) {
+      if (word === '') continue;
+
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth + EPS && current) {
+        lines.push(current);
+        current = '';
+      }
+
+      if (ctx.measureText(word).width > maxWidth + EPS) {
+        if (current) {
+          lines.push(current);
+          current = '';
+        }
+
+        let chunk = '';
+        for (const ch of word) {
+          const nextChunk = chunk + ch;
+          if (ctx.measureText(nextChunk).width > maxWidth + EPS && chunk) {
+            lines.push(chunk);
+            chunk = ch;
+          } else {
+            chunk = nextChunk;
+          }
+        }
+        current = chunk;
+      } else {
+        current = current ? `${current} ${word}` : word;
+      }
+    }
+
+    if (current) {
       lines.push(current);
-      current = word;
-    } else {
-      current = test;
     }
   }
-  if (current) lines.push(current);
+
   return lines;
 }
 

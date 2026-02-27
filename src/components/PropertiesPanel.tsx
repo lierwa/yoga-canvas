@@ -216,6 +216,7 @@ export default function PropertiesPanel({
               }
             />
             <ColorField
+              key={`${node.id}-text-color`}
               label="Color"
               value={node.textProps.color}
               clearValue="#000000"
@@ -261,6 +262,7 @@ export default function PropertiesPanel({
                 }
               />
               <ColorField
+                key={`${node.id}-text-shadow-color`}
                 label="Color"
                 value={textShadow?.color ?? "#000000"}
                 clearValue="#000000"
@@ -426,6 +428,7 @@ export default function PropertiesPanel({
       <Section title="Appearance">
         <div className="space-y-2">
           <ColorField
+            key={`${node.id}-bg-color`}
             label="Background"
             value={v.backgroundColor}
             clearValue="transparent"
@@ -508,6 +511,7 @@ export default function PropertiesPanel({
                 />
               </FieldGrid>
                 <ColorField
+                  key={`${node.id}-gradient-start-color`}
                   label="Start"
                   value={linearGradient.colors[0]?.color ?? "#000000"}
                   clearValue="#000000"
@@ -527,6 +531,7 @@ export default function PropertiesPanel({
                   }
                 />
                 <ColorField
+                  key={`${node.id}-gradient-end-color`}
                   label="End"
                   value={linearGradient.colors[linearGradient.colors.length - 1]?.color ?? "#ffffff"}
                   clearValue="#ffffff"
@@ -545,6 +550,7 @@ export default function PropertiesPanel({
             </div>
           )}
           <ColorField
+            key={`${node.id}-border-color`}
             label="Border Color"
             value={v.borderColor}
             clearValue="transparent"
@@ -590,6 +596,7 @@ export default function PropertiesPanel({
               }
             />
             <ColorField
+              key={`${node.id}-shadow-color`}
               label="Color"
               value={boxShadow?.color ?? "#000000"}
               clearValue="#000000"
@@ -1162,18 +1169,34 @@ function ColorField({
   const [editing, setEditing] = useState(false);
   const [open, setOpen] = useState(false);
   const popoverRef = useRef<HTMLDivElement | null>(null);
+  const didInitOpenRef = useRef(false);
   const [internalColor, setInternalColor] = useState<{ r: number; g: number; b: number; a: number }>(() => {
     if (ok) return { r, g, b, a };
     return { r: 0, g: 0, b: 0, a: 1 };
   });
   useEffect(() => {
-    if (!open) setFormat(guessFormat(value));
+    if (open) return;
+    didInitOpenRef.current = false;
+    setFormat(guessFormat(value));
     if (!ok) return;
     setInternalColor((prev) => {
       const nextA = hasExplicitAlpha(value) ? a : prev.a;
       return { r, g, b, a: nextA };
     });
   }, [value, open, ok, r, g, b, a]);
+  useEffect(() => {
+    if (!open) {
+      didInitOpenRef.current = false;
+      return;
+    }
+    if (didInitOpenRef.current) return;
+    didInitOpenRef.current = true;
+    if (!ok) return;
+    setInternalColor((prev) => {
+      const nextA = hasExplicitAlpha(value) ? a : prev.a;
+      return { r, g, b, a: nextA };
+    });
+  }, [open, ok, r, g, b, a, value]);
   useEffect(() => {
     if (editing) return;
     if (!ok) {
@@ -1196,7 +1219,8 @@ function ColorField({
   }, [open]);
   const commit = (next: ColorParse, overrideFormat?: ColorFormat) => {
     if (!next.ok) return;
-    onChange(toSerializedColor(next, overrideFormat ?? format));
+    const serialized = toSerializedColor(next, overrideFormat ?? format);
+    onChange(serialized);
   };
   return (
     <div className="grid grid-cols-[88px_minmax(0,1fr)] items-start gap-2">
@@ -1225,13 +1249,25 @@ function ColorField({
             onBlur={() => {
               setEditing(false);
               const next = parseColorValue(textValue);
-              if (next.ok) commit(next);
+              if (next.ok) {
+                setInternalColor((prev) => {
+                  const nextA = hasExplicitAlpha(textValue) ? next.a : prev.a;
+                  return { r: next.r, g: next.g, b: next.b, a: nextA };
+                });
+                commit(next);
+              }
             }}
             onChange={(e) => {
               const v = e.target.value;
               setTextValue(v);
               const next = parseColorValue(v);
-              if (next.ok) commit(next);
+              if (next.ok) {
+                setInternalColor((prev) => {
+                  const nextA = hasExplicitAlpha(v) ? next.a : prev.a;
+                  return { r: next.r, g: next.g, b: next.b, a: nextA };
+                });
+                commit(next);
+              }
             }}
             className="min-w-0 flex-1 text-xs border border-gray-200 rounded px-2 py-1 bg-white
               focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400"

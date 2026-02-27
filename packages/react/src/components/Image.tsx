@@ -2,6 +2,8 @@ import type { StyleProps } from '@yoga-canvas/core';
 
 export interface ImageJSXProps {
   name?: string;
+  className?: string;
+  tw?: string;
   style?: StyleProps;
   src: string;
   objectFit?: 'cover' | 'contain' | 'fill';

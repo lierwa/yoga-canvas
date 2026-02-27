@@ -1,4 +1,4 @@
-import { Undo2, Redo2, BoxSelect, Play, RotateCcw } from "lucide-react";
+import { Undo2, Redo2, BoxSelect, Code2, Play, RotateCcw } from "lucide-react";
 
 interface ToolbarProps {
   canUndo: boolean;
@@ -9,6 +9,7 @@ interface ToolbarProps {
   onUndo: () => void;
   onRedo: () => void;
   onPreview: () => void;
+  onCodeEditor: () => void;
 }
 
 export default function Toolbar({
@@ -20,6 +21,7 @@ export default function Toolbar({
   onUndo,
   onRedo,
   onPreview,
+  onCodeEditor,
 }: ToolbarProps) {
   const minScale = 0.1;
   const maxScale = 5;
@@ -112,6 +114,17 @@ export default function Toolbar({
       >
         <Play size={14} />
         <span>Preview</span>
+      </button>
+
+      <button
+        onClick={onCodeEditor}
+        className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
+          hover:bg-indigo-50 hover:text-indigo-700
+          text-gray-600 transition-colors"
+        title="Live Code"
+      >
+        <Code2 size={14} />
+        <span>Code</span>
       </button>
 
       <div className="flex-1" />

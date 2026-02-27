@@ -30,6 +30,10 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
     ctx.setShadow(textShadow.color, textShadow.blur, textShadow.offsetX, textShadow.offsetY);
   }
 
+  ctx.beginPath();
+  ctx.rect(left, top, width, node.computedLayout.height);
+  ctx.clip();
+
   const lineH = fontSize * lineHeight;
   const halfLeading = (lineH - fontSize) / 2;
   let y = top + padTop + halfLeading;
@@ -39,9 +43,6 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   else if (textAlign === 'right') textX = left + width - padRight;
 
   if (whiteSpace === 'nowrap') {
-    ctx.beginPath();
-    ctx.rect(left, top, width, node.computedLayout.height);
-    ctx.clip();
     const singleLine = content.replace(/\n/g, ' ');
     ctx.fillText(singleLine, textX, y);
     ctx.restore();

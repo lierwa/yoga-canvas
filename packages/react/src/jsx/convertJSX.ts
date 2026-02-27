@@ -1,5 +1,6 @@
 import React from 'react';
 import type { NodeDescriptor } from '@yoga-canvas/core';
+import { tailwindToStyleProps } from './tailwindToStyle';
 
 interface YogaComponent {
   __yogaNodeType?: string;
@@ -59,13 +60,21 @@ function convertElementToDescriptor(
   }
 
   const props = element.props as Record<string, unknown>;
+  const className = props.className as string | undefined;
+  const tw = props.tw as string | undefined;
+  const twText = [className, tw].filter(Boolean).join(' ');
+  const twStyle = twText ? tailwindToStyleProps(twText).style : {};
+  const mergedStyle = {
+    ...twStyle,
+    ...(((props.style as NodeDescriptor['style']) ?? {}) as NodeDescriptor['style']),
+  };
 
   switch (nodeType) {
     case 'view':
       return {
         type: 'view',
         name: props.name as string | undefined,
-        style: (props.style as NodeDescriptor['style']) ?? {},
+        style: mergedStyle,
         children: props.children
           ? convertChildrenToDescriptors(props.children as React.ReactNode)
           : undefined,
@@ -80,7 +89,7 @@ function convertElementToDescriptor(
       return {
         type: 'text',
         name: props.name as string | undefined,
-        style: (props.style as NodeDescriptor['style']) ?? {},
+        style: mergedStyle,
         content,
       };
     }
@@ -89,7 +98,7 @@ function convertElementToDescriptor(
       return {
         type: 'image',
         name: props.name as string | undefined,
-        style: (props.style as NodeDescriptor['style']) ?? {},
+        style: mergedStyle,
         src: props.src as string,
         objectFit: props.objectFit as NodeDescriptor['objectFit'],
       };
@@ -98,7 +107,7 @@ function convertElementToDescriptor(
       return {
         type: 'scrollview',
         name: props.name as string | undefined,
-        style: (props.style as NodeDescriptor['style']) ?? {},
+        style: mergedStyle,
         scrollDirection: props.scrollDirection as NodeDescriptor['scrollDirection'],
         scrollBarVisibility: props.scrollBarVisibility as NodeDescriptor['scrollBarVisibility'],
         children: props.children

@@ -49,6 +49,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<'typescript' | 'json' | 'html'>('typescript');
+  const [jsxPropsMode, setJsxPropsMode] = useState<'style' | 'className'>('style');
 
   const loadTreeIntoEngine = useCallback(
     (inst: YogaCanvas) => {
@@ -117,8 +118,8 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const codeContent = useMemo(() => {
     if (activeTab === 'json') return exportToJSON(previewTree);
     if (activeTab === 'html') return formatHTMLString(exportToDOMString(previewTree));
-    return buildJSXFromTree(previewTree);
-  }, [activeTab, previewTree]);
+    return buildJSXFromTree(previewTree, jsxPropsMode);
+  }, [activeTab, previewTree, jsxPropsMode]);
 
   const handleCopy = useCallback(() => {
     void navigator.clipboard.writeText(codeContent);
@@ -245,6 +246,24 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
               >
                 HTML
               </button>
+              {activeTab === 'typescript' && (
+                <div className="flex items-center gap-1 ml-2">
+                  <button
+                    className={`px-2 py-1 rounded text-[11px] ${jsxPropsMode === 'style' ? 'bg-gray-700 text-gray-100' : 'hover:bg-gray-800'}`}
+                    onClick={() => setJsxPropsMode('style')}
+                    title="只输出 style"
+                  >
+                    style
+                  </button>
+                  <button
+                    className={`px-2 py-1 rounded text-[11px] ${jsxPropsMode === 'className' ? 'bg-gray-700 text-gray-100' : 'hover:bg-gray-800'}`}
+                    onClick={() => setJsxPropsMode('className')}
+                    title="只输出 className"
+                  >
+                    className
+                  </button>
+                </div>
+              )}
               <div className="flex-1" />
               <button
                 className="text-[11px] bg-indigo-500 text-white px-2.5 py-1 rounded hover:bg-indigo-600 cursor-pointer flex items-center gap-1"
@@ -337,10 +356,10 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   );
 }
 
-function buildJSXFromTree(tree: NodeTree): string {
+function buildJSXFromTree(tree: NodeTree, mode: 'style' | 'className'): string {
   const root = tree.nodes[tree.rootId];
   if (!root) return '';
-  return renderJSXNode(tree, root.id, 0);
+  return renderJSXNode(tree, root.id, 0, mode);
 }
 
 function formatHTMLString(input: string): string {
@@ -423,14 +442,14 @@ function formatDOMNode(node: Node, depth: number): string {
   return '';
 }
 
-function renderJSXNode(tree: NodeTree, nodeId: string, depth: number): string {
+function renderJSXNode(tree: NodeTree, nodeId: string, depth: number, mode: 'style' | 'className'): string {
   const node = tree.nodes[nodeId];
   if (!node) return '';
 
   const indent = '  '.repeat(depth);
   const tag = toJSXTag(node.type);
 
-  const props = buildJSXProps(node);
+  const props = buildJSXProps(node, mode);
   const propsString = props.length ? ` ${props.join(' ')}` : '';
 
   if (node.type === 'image') {
@@ -443,7 +462,7 @@ function renderJSXNode(tree: NodeTree, nodeId: string, depth: number): string {
   }
 
   const children = node.children
-    .map((childId) => renderJSXNode(tree, childId, depth + 1))
+    .map((childId) => renderJSXNode(tree, childId, depth + 1, mode))
     .filter(Boolean);
 
   if (children.length === 0) {
@@ -468,14 +487,17 @@ function toJSXTag(type: CanvasNode['type']): string {
   }
 }
 
-function buildJSXProps(node: CanvasNode): string[] {
+function buildJSXProps(node: CanvasNode, mode: 'style' | 'className'): string[] {
   const props: string[] = [];
 
   if (node.name) props.push(`name=${JSON.stringify(node.name)}`);
 
   const style = buildCombinedStyle(node);
-  if (Object.keys(style).length) {
-    props.push(`style={${JSON.stringify(style, null, 2)}}`);
+  const { className } = styleToTailwind(style);
+  if (mode === 'style') {
+    if (Object.keys(style).length) props.push(`style={${JSON.stringify(style, null, 2)}}`);
+  } else {
+    if (className) props.push(`className=${JSON.stringify(className)}`);
   }
 
   if (node.type === 'image') {
@@ -511,6 +533,210 @@ function buildCombinedStyle(node: CanvasNode): Record<string, unknown> {
     }
   }
   return style;
+}
+
+function styleToTailwind(style: Record<string, unknown>): { className: string; restStyle: Record<string, unknown> } {
+  const tokens: string[] = [];
+  const rest: Record<string, unknown> = { ...style };
+
+  const add = (token: string, keys?: string[]) => {
+    tokens.push(token);
+    if (keys) {
+      for (const k of keys) delete rest[k];
+    }
+  };
+
+  const toSize = (v: unknown) => {
+    if (typeof v === 'number') return `${v}px`;
+    if (typeof v === 'string' && v) return v;
+    return null;
+  };
+
+  const pxToScale = (px: unknown) => {
+    if (typeof px !== 'number') return null;
+    const map: Record<number, string> = {
+      0: '0',
+      2: '0.5',
+      4: '1',
+      6: '1.5',
+      8: '2',
+      10: '2.5',
+      12: '3',
+      14: '3.5',
+      16: '4',
+      20: '5',
+      24: '6',
+      28: '7',
+      32: '8',
+      36: '9',
+      40: '10',
+      44: '11',
+      48: '12',
+      56: '14',
+      64: '16',
+      80: '20',
+      96: '24',
+      112: '28',
+      128: '32',
+      144: '36',
+      160: '40',
+      176: '44',
+      192: '48',
+      208: '52',
+      224: '56',
+      240: '60',
+      256: '64',
+      288: '72',
+      320: '80',
+      384: '96',
+    };
+    return map[px] ?? null;
+  };
+
+  const spacingToken = (prefix: string, v: unknown) => {
+    const scale = pxToScale(v);
+    if (scale) return `${prefix}-${scale}`;
+    const size = toSize(v);
+    if (!size) return null;
+    return `${prefix}-[${size}]`;
+  };
+
+  const flexDirection = style.flexDirection;
+  if (flexDirection === 'row') add('flex-row', ['flexDirection']);
+  else if (flexDirection === 'column') add('flex-col', ['flexDirection']);
+  else if (flexDirection === 'row-reverse') add('flex-row-reverse', ['flexDirection']);
+  else if (flexDirection === 'column-reverse') add('flex-col-reverse', ['flexDirection']);
+
+  const flexWrap = style.flexWrap;
+  if (flexWrap === 'wrap') add('flex-wrap', ['flexWrap']);
+  else if (flexWrap === 'nowrap') add('flex-nowrap', ['flexWrap']);
+
+  const alignItems = style.alignItems;
+  if (alignItems === 'flex-start') add('items-start', ['alignItems']);
+  else if (alignItems === 'center') add('items-center', ['alignItems']);
+  else if (alignItems === 'flex-end') add('items-end', ['alignItems']);
+  else if (alignItems === 'stretch') add('items-stretch', ['alignItems']);
+
+  const justifyContent = style.justifyContent;
+  if (justifyContent === 'flex-start') add('justify-start', ['justifyContent']);
+  else if (justifyContent === 'center') add('justify-center', ['justifyContent']);
+  else if (justifyContent === 'flex-end') add('justify-end', ['justifyContent']);
+  else if (justifyContent === 'space-between') add('justify-between', ['justifyContent']);
+  else if (justifyContent === 'space-around') add('justify-around', ['justifyContent']);
+  else if (justifyContent === 'space-evenly') add('justify-evenly', ['justifyContent']);
+
+  const position = style.position;
+  if (position === 'absolute') add('absolute', ['position']);
+  else if (position === 'relative') add('relative', ['position']);
+
+  const width = toSize(style.width);
+  if (width) add(`w-[${width}]`, ['width']);
+  const height = toSize(style.height);
+  if (height) add(`h-[${height}]`, ['height']);
+  const minWidth = toSize(style.minWidth);
+  if (minWidth) add(`min-w-[${minWidth}]`, ['minWidth']);
+  const minHeight = toSize(style.minHeight);
+  if (minHeight) add(`min-h-[${minHeight}]`, ['minHeight']);
+  const maxWidth = toSize(style.maxWidth);
+  if (maxWidth) add(`max-w-[${maxWidth}]`, ['maxWidth']);
+  const maxHeight = toSize(style.maxHeight);
+  if (maxHeight) add(`max-h-[${maxHeight}]`, ['maxHeight']);
+
+  const insetSide = (key: string, prefix: string) => {
+    const token = spacingToken(prefix, (style as Record<string, unknown>)[key]);
+    if (!token) return;
+    add(token, [key]);
+  };
+  insetSide('top', 'top');
+  insetSide('right', 'right');
+  insetSide('bottom', 'bottom');
+  insetSide('left', 'left');
+
+  const pt = (style as Record<string, unknown>).paddingTop;
+  const pr = (style as Record<string, unknown>).paddingRight;
+  const pb = (style as Record<string, unknown>).paddingBottom;
+  const pl = (style as Record<string, unknown>).paddingLeft;
+  if ([pt, pr, pb, pl].every((v) => typeof v === 'number') && pt === pr && pr === pb && pb === pl) {
+    const token = spacingToken('p', pt);
+    if (token) add(token, ['paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft']);
+  } else {
+    const t = spacingToken('pt', pt);
+    if (t) add(t, ['paddingTop']);
+    const r = spacingToken('pr', pr);
+    if (r) add(r, ['paddingRight']);
+    const b = spacingToken('pb', pb);
+    if (b) add(b, ['paddingBottom']);
+    const l = spacingToken('pl', pl);
+    if (l) add(l, ['paddingLeft']);
+  }
+
+  const mt = (style as Record<string, unknown>).marginTop;
+  const mr = (style as Record<string, unknown>).marginRight;
+  const mb = (style as Record<string, unknown>).marginBottom;
+  const ml = (style as Record<string, unknown>).marginLeft;
+  if ([mt, mr, mb, ml].every((v) => typeof v === 'number') && mt === mr && mr === mb && mb === ml) {
+    const token = spacingToken('m', mt);
+    if (token) add(token, ['marginTop', 'marginRight', 'marginBottom', 'marginLeft']);
+  } else {
+    const t = spacingToken('mt', mt);
+    if (t) add(t, ['marginTop']);
+    const r = spacingToken('mr', mr);
+    if (r) add(r, ['marginRight']);
+    const b = spacingToken('mb', mb);
+    if (b) add(b, ['marginBottom']);
+    const l = spacingToken('ml', ml);
+    if (l) add(l, ['marginLeft']);
+  }
+
+  const spaceKey = (key: string, prefix: string) => {
+    const token = spacingToken(prefix, (style as Record<string, unknown>)[key]);
+    if (!token) return;
+    add(token, [key]);
+  };
+  spaceKey('padding', 'p');
+  spaceKey('margin', 'm');
+  spaceKey('gap', 'gap');
+
+  const backgroundColor = style.backgroundColor;
+  if (typeof backgroundColor === 'string' && backgroundColor) add(`bg-[${backgroundColor}]`, ['backgroundColor']);
+  const borderRadius = style.borderRadius;
+  if (typeof borderRadius === 'number') add(`rounded-[${borderRadius}px]`, ['borderRadius']);
+  const borderWidth = style.borderWidth;
+  if (typeof borderWidth === 'number' && borderWidth !== 0) add(`border-[${borderWidth}px]`, ['borderWidth']);
+  const borderColor = style.borderColor;
+  if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${borderColor}]`, ['borderColor']);
+
+  const opacity = style.opacity;
+  if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
+  const rotate = style.rotate;
+  if (typeof rotate === 'number' && rotate !== 0) add(`rotate-[${rotate}deg]`, ['rotate']);
+  const zIndex = style.zIndex;
+  if (typeof zIndex === 'number' && zIndex !== 0) add(`z-[${zIndex}]`, ['zIndex']);
+
+  const color = style.color;
+  if (typeof color === 'string' && color) add(`text-[${color}]`, ['color']);
+  const fontSize = style.fontSize;
+  if (typeof fontSize === 'number') add(`text-[${fontSize}px]`, ['fontSize']);
+  const fontStyle = style.fontStyle;
+  if (fontStyle === 'italic') add('italic', ['fontStyle']);
+  const fontWeight = style.fontWeight;
+  if (fontWeight === 'bold') add('font-bold', ['fontWeight']);
+  else if (fontWeight === 'normal') add('font-normal', ['fontWeight']);
+  else if (typeof fontWeight === 'number') add(`font-[${fontWeight}]`, ['fontWeight']);
+  const lineHeight = style.lineHeight;
+  if (typeof lineHeight === 'number') add(`leading-[${lineHeight}]`, ['lineHeight']);
+  const textAlign = style.textAlign;
+  if (textAlign === 'left') add('text-left', ['textAlign']);
+  else if (textAlign === 'center') add('text-center', ['textAlign']);
+  else if (textAlign === 'right') add('text-right', ['textAlign']);
+  const whiteSpace = style.whiteSpace;
+  if (whiteSpace === 'nowrap') add('whitespace-nowrap', ['whiteSpace']);
+  else if (whiteSpace === 'normal') add('whitespace-normal', ['whiteSpace']);
+
+  return {
+    className: tokens.join(' ').trim(),
+    restStyle: rest,
+  };
 }
 
 function ImagePreviewModal({ url, onClose }: { url: string; onClose: () => void }) {
