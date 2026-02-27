@@ -1,6 +1,11 @@
-import type { NodeDescriptor, StyleProps } from '@yoga-canvas/core';
-import { createElement, type ReactNode } from 'react';
-import { View as YogaView, Text as YogaText, Image as YogaImage, ScrollView as YogaScrollView } from '@yoga-canvas/react';
+import type { NodeDescriptor, StyleProps } from "@yoga-canvas/core";
+import { createElement, type ReactNode } from "react";
+import {
+  View as YogaView,
+  Text as YogaText,
+  Image as YogaImage,
+  ScrollView as YogaScrollView,
+} from "@yoga-canvas/react";
 
 type TemplateOptions = {
   width: number;
@@ -8,24 +13,24 @@ type TemplateOptions = {
 };
 
 const PALETTE = {
-  white: '#ffffff',
-  black: '#000000',
-  slate50: '#f8fafc',
-  slate200: '#e2e8f0',
-  slate400: '#94a3b8',
-  slate500: '#64748b',
-  slate900: '#0f172a',
-  indigo50: '#eef2ff',
-  indigo500: '#6366f1',
-  violet500: '#8b5cf6',
-  cyan500: '#06b6d4',
-  green500: '#10b981',
-  pink500: '#ec4899',
-  teal500: '#14b8a6',
-  amber500: '#f59e0b',
-  amber900: '#78350f',
-  yellow400: '#fde047',
-  red500: '#ef4444',
+  white: "#ffffff",
+  black: "#000000",
+  slate50: "#f8fafc",
+  slate200: "#e2e8f0",
+  slate400: "#94a3b8",
+  slate500: "#64748b",
+  slate900: "#0f172a",
+  indigo50: "#eef2ff",
+  indigo500: "#6366f1",
+  violet500: "#8b5cf6",
+  cyan500: "#06b6d4",
+  green500: "#10b981",
+  pink500: "#ec4899",
+  teal500: "#14b8a6",
+  amber500: "#f59e0b",
+  amber900: "#78350f",
+  yellow400: "#fde047",
+  red500: "#ef4444",
 };
 
 const SPACE = { xs: 4, sm: 6, md: 8, lg: 12, xl: 16 };
@@ -42,13 +47,13 @@ const TYPE = {
 type Rgb = { r: number; g: number; b: number };
 
 const hexToRgb = (hex: string): Rgb | null => {
-  const normalized = hex.replace('#', '');
+  const normalized = hex.replace("#", "");
   const full =
     normalized.length === 3
       ? normalized
-          .split('')
+          .split("")
           .map((ch) => `${ch}${ch}`)
-          .join('')
+          .join("")
       : normalized;
   if (full.length !== 6) return null;
   const r = parseInt(full.slice(0, 2), 16);
@@ -122,7 +127,7 @@ const TEXT_STYLES = {
     fontSize: TYPE.size.s12,
     color: PALETTE.slate500,
     lineHeight: 1.6,
-    fontStyle: 'italic' as const,
+    fontStyle: "italic" as const,
   },
   label: {
     fontSize: TYPE.size.s10,
@@ -132,8 +137,8 @@ const TEXT_STYLES = {
     fontSize: TYPE.size.s8,
     width: 22,
     height: 12,
-    textAlign: 'center' as const,
-    flexDirection: 'row' as const,
+    textAlign: "center" as const,
+    flexDirection: "row" as const,
     fontWeight: TYPE.weight.bold,
   },
   featureTitle: {
@@ -147,25 +152,28 @@ const TEXT_STYLES = {
   },
 };
 
-export function createNodeTemplateDescriptor({ width, height }: TemplateOptions): NodeDescriptor {
+export function createNodeTemplateDescriptor({
+  width,
+  height,
+}: TemplateOptions): NodeDescriptor {
   return {
-    type: 'view',
-    name: 'Root',
+    type: "view",
+    name: "Root",
     style: {
       width,
       height,
-      flexDirection: 'column',
+      flexDirection: "column",
       backgroundColor: PALETTE.white,
       padding: SPACE.xl,
       gap: SPACE.lg,
     },
     children: [
       {
-        type: 'view',
-        name: 'Header',
+        type: "view",
+        name: "Header",
         style: {
-          flexDirection: 'row',
-          alignItems: 'center',
+          flexDirection: "row",
+          alignItems: "center",
           backgroundColor: PALETTE.indigo500,
           linearGradient: {
             start: { x: 0, y: 0 },
@@ -182,10 +190,10 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
         },
         children: [
           {
-            type: 'image',
-            name: 'Avatar',
-            src: 'https://api.dicebear.com/7.x/avataaars/svg?seed=yoga',
-            objectFit: 'cover',
+            type: "image",
+            name: "Avatar",
+            src: "https://api.dicebear.com/7.x/avataaars/svg?seed=yoga",
+            objectFit: "cover",
             style: {
               width: SIZE.avatar,
               height: SIZE.avatar,
@@ -194,20 +202,20 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             },
           },
           {
-            type: 'view',
-            name: 'UserInfo',
-            style: { flex: 1, flexDirection: 'column', gap: SPACE.xs },
+            type: "view",
+            name: "UserInfo",
+            style: { flex: 1, flexDirection: "column", gap: SPACE.xs },
             children: [
               {
-                type: 'text',
-                name: 'Username',
-                content: 'Yoga Canvas',
+                type: "text",
+                name: "Username",
+                content: "Yoga Canvas",
                 style: TEXT_STYLES.header,
               },
               {
-                type: 'text',
-                name: 'Bio',
-                content: 'A powerful canvas layout engine',
+                type: "text",
+                name: "Bio",
+                content: "A powerful canvas layout engine",
                 style: TEXT_STYLES.headerSub,
               },
             ],
@@ -215,17 +223,17 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
         ],
       },
       {
-        type: 'view',
-        name: 'StatsRow',
-        style: { flexDirection: 'row', gap: SPACE.md, position: 'relative' },
+        type: "view",
+        name: "StatsRow",
+        style: { flexDirection: "row", gap: SPACE.md, position: "relative" },
         children: [
           {
-            type: 'view',
-            name: 'Stats1',
+            type: "view",
+            name: "Stats1",
             style: {
               flex: 1,
-              flexDirection: 'column',
-              alignItems: 'center',
+              flexDirection: "column",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
@@ -236,22 +244,26 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             },
             children: [
               {
-                type: 'text',
-                name: 'NodesValue',
-                content: '128',
-                style: { fontSize: 20, fontWeight: 'bold', color: PALETTE.violet500 },
+                type: "text",
+                name: "NodesValue",
+                content: "128",
+                style: {
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: PALETTE.violet500,
+                },
               },
               {
-                type: 'text',
-                name: 'NodesLabel',
-                content: 'Nodes',
+                type: "text",
+                name: "NodesLabel",
+                content: "Nodes",
                 style: TEXT_STYLES.label,
               },
               {
-                type: 'view',
-                name: 'BadgeBack',
+                type: "view",
+                name: "BadgeBack",
                 style: {
-                  position: 'absolute',
+                  position: "absolute",
                   top: -6,
                   right: -6,
                   backgroundColor: PALETTE.yellow400,
@@ -263,18 +275,21 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
                 },
                 children: [
                   {
-                    type: 'text',
-                    name: 'BadgeBackText',
-                    content: 'HOT',
-                    style: { ...TEXT_STYLES.badgeBase, color: PALETTE.amber900 },
+                    type: "text",
+                    name: "BadgeBackText",
+                    content: "HOT",
+                    style: {
+                      ...TEXT_STYLES.badgeBase,
+                      color: PALETTE.amber900,
+                    },
                   },
                 ],
               },
               {
-                type: 'view',
-                name: 'Badge',
+                type: "view",
+                name: "Badge",
                 style: {
-                  position: 'absolute',
+                  position: "absolute",
                   top: -4,
                   right: -4,
                   backgroundColor: PALETTE.red500,
@@ -286,9 +301,9 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
                 },
                 children: [
                   {
-                    type: 'text',
-                    name: 'BadgeText',
-                    content: 'NEW',
+                    type: "text",
+                    name: "BadgeText",
+                    content: "NEW",
                     style: { ...TEXT_STYLES.badgeBase, color: PALETTE.white },
                   },
                 ],
@@ -296,12 +311,12 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             ],
           },
           {
-            type: 'view',
-            name: 'Stats2',
+            type: "view",
+            name: "Stats2",
             style: {
               flex: 1,
-              flexDirection: 'column',
-              alignItems: 'center',
+              flexDirection: "column",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
@@ -312,27 +327,31 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             },
             children: [
               {
-                type: 'text',
-                name: 'RenderValue',
-                content: '16ms',
-                style: { fontSize: 20, fontWeight: 'bold', color: PALETTE.cyan500 },
+                type: "text",
+                name: "RenderValue",
+                content: "16ms",
+                style: {
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: PALETTE.cyan500,
+                },
               },
               {
-                type: 'text',
-                name: 'RenderLabel',
-                content: 'Render',
+                type: "text",
+                name: "RenderLabel",
+                content: "Render",
                 style: TEXT_STYLES.label,
               },
             ],
           },
           {
-            type: 'view',
-            name: 'Stats3',
+            type: "view",
+            name: "Stats3",
             style: {
               flex: 1,
-              flexDirection: 'row',
-              flexWrap: 'wrap',
-              alignItems: 'center',
+              flexDirection: "column",
+              flexWrap: "wrap",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
@@ -343,26 +362,30 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             },
             children: [
               {
-                type: 'text',
-                name: 'FPSValue',
-                content: '60',
-                style: { fontSize: 20, fontWeight: 'bold', color: PALETTE.green500 },
+                type: "text",
+                name: "FPSValue",
+                content: "60",
+                style: {
+                  fontSize: 20,
+                  fontWeight: "bold",
+                  color: PALETTE.green500,
+                },
               },
               {
-                type: 'text',
-                name: 'FPSLabel',
-                content: 'FPS',
-                style: { ...TEXT_STYLES.label, flex: 1 },
+                type: "text",
+                name: "FPSLabel",
+                content: "FPS",
+                style: { ...TEXT_STYLES.label },
               },
             ],
           },
         ],
       },
       {
-        type: 'view',
-        name: 'ContentCard',
+        type: "view",
+        name: "ContentCard",
         style: {
-          flexDirection: 'column',
+          flexDirection: "column",
           backgroundColor: PALETTE.white,
           borderRadius: RADII.lg,
           padding: SPACE.xl,
@@ -373,22 +396,23 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
         },
         children: [
           {
-            type: 'text',
-            name: 'Title',
-            content: 'Flexbox Layout Engine',
+            type: "text",
+            name: "Title",
+            content: "Flexbox Layout Engine",
             style: TEXT_STYLES.title,
           },
           {
-            type: 'text',
-            name: 'Description',
-            content: 'Build complex canvas layouts with familiar CSS flexbox. Powered by yoga-layout.',
+            type: "text",
+            name: "Description",
+            content:
+              "Build complex canvas layouts with familiar CSS flexbox. Powered by yoga-layout.",
             style: TEXT_STYLES.body,
           },
           {
-            type: 'view',
-            name: 'MediaRow',
+            type: "view",
+            name: "MediaRow",
             style: {
-              flexDirection: 'row',
+              flexDirection: "row",
               gap: SPACE.md,
               backgroundColor: PALETTE.slate50,
               borderRadius: RADII.md,
@@ -396,52 +420,77 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
             },
             children: [
               {
-                type: 'view',
-                name: 'CoverCard',
-                style: { flex: 1, gap: SPACE.sm },
+                type: "view",
+                name: "CoverCard",
+                style: { flexBasis: "50%", gap: SPACE.sm },
                 children: [
                   {
-                    type: 'image',
-                    name: 'CoverImage',
-                    src: 'https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=400&auto=format&fit=crop',
-                    objectFit: 'cover',
+                    type: "image",
+                    name: "CoverImage",
+                    src: "https://images.unsplash.com/photo-1519681393784-d120267933ba?q=80&w=400&auto=format&fit=crop",
+                    objectFit: "cover",
                     style: {
-                      width: '100%',
+                      width: "100%",
                       height: SIZE.mediaHeight,
                       borderRadius: RADII.sm,
                       backgroundColor: PALETTE.slate200,
                     },
                   },
                   {
-                    type: 'text',
-                    name: 'CoverLabel',
-                    content: 'Image fit: cover',
-                    style: { ...TEXT_STYLES.label, textAlign: 'center' },
+                    type: "text",
+                    name: "CoverLabel",
+                    content: "Image fit: cover",
+                    style: { ...TEXT_STYLES.label, textAlign: "center" },
                   },
                 ],
               },
               {
-                type: 'view',
-                name: 'ContainCard',
-                style: { flex: 1, gap: SPACE.sm },
+                type: "view",
+                name: "ContainCard",
+                style: { flexBasis: "25%", gap: SPACE.sm },
                 children: [
                   {
-                    type: 'image',
-                    name: 'ContainImage',
-                    src: 'https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=400&auto=format&fit=crop',
-                    objectFit: 'contain',
+                    type: "image",
+                    name: "ContainImage",
+                    src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=400&auto=format&fit=crop",
+                    objectFit: "contain",
                     style: {
-                      width: '100%',
+                      width: "100%",
                       height: SIZE.mediaHeight,
                       borderRadius: RADII.sm,
                       backgroundColor: PALETTE.slate200,
                     },
                   },
                   {
-                    type: 'text',
-                    name: 'ContainLabel',
-                    content: 'Image fit: contain',
-                    style: { ...TEXT_STYLES.label, textAlign: 'center' },
+                    type: "text",
+                    name: "ContainLabel",
+                    content: "Image fit: contain",
+                    style: { ...TEXT_STYLES.label, textAlign: "center" },
+                  },
+                ],
+              },
+              {
+                type: "view",
+                name: "ContainCard",
+                style: { flexBasis: "25%", gap: SPACE.sm },
+                children: [
+                  {
+                    type: "image",
+                    name: "ContainImage",
+                    src: "https://images.unsplash.com/photo-1500530855697-b586d89ba3ee?q=80&w=400&auto=format&fit=crop",
+                    objectFit: "fill",
+                    style: {
+                      width: "100%",
+                      height: SIZE.mediaHeight,
+                      borderRadius: RADII.sm,
+                      backgroundColor: PALETTE.slate200,
+                    },
+                  },
+                  {
+                    type: "text",
+                    name: "ContainLabel",
+                    content: "Image fit: contain",
+                    style: { ...TEXT_STYLES.label, textAlign: "center" },
                   },
                 ],
               },
@@ -450,12 +499,12 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
         ],
       },
       {
-        type: 'scrollview',
-        name: 'FeatureList',
-        scrollDirection: 'vertical',
+        type: "scrollview",
+        name: "FeatureList",
+        scrollDirection: "vertical",
         style: {
           flex: 1,
-          flexDirection: 'column',
+          flexDirection: "column",
           backgroundColor: PALETTE.white,
           borderRadius: RADII.lg,
           padding: SPACE.lg,
@@ -465,13 +514,48 @@ export function createNodeTemplateDescriptor({ width, height }: TemplateOptions)
           boxShadow: SHADOWS.sm,
         },
         children: [
-          featureRowDescriptor('View', 'Flex container with all CSS props', PALETTE.indigo500, withAlpha(PALETTE.indigo500, 0.04)),
-          featureRowDescriptor('Text', 'Auto word-wrapping text node', PALETTE.amber500, withAlpha(PALETTE.amber500, 0.04)),
-          featureRowDescriptor('Image', 'Cover / Contain / Fill modes', PALETTE.pink500, withAlpha(PALETTE.pink500, 0.04)),
-          featureRowDescriptor('ScrollView', 'Real scrolling with wheel events!', PALETTE.teal500, withAlpha(PALETTE.teal500, 0.04)),
-          featureRowDescriptor('Export', 'JSON / DataURL / DOM string', PALETTE.violet500, withAlpha(PALETTE.violet500, 0.04)),
-          featureRowDescriptor('Hit Test', 'Click to select nodes', PALETTE.red500, withAlpha(PALETTE.red500, 0.04)),
-          featureRowDescriptor('JSX API', 'Write layouts as React components', PALETTE.green500, withAlpha(PALETTE.green500, 0.04)),
+          featureRowDescriptor(
+            "View",
+            "Flex container with all CSS props",
+            PALETTE.indigo500,
+            withAlpha(PALETTE.indigo500, 0.04),
+          ),
+          featureRowDescriptor(
+            "Text",
+            "Auto word-wrapping text node",
+            PALETTE.amber500,
+            withAlpha(PALETTE.amber500, 0.04),
+          ),
+          featureRowDescriptor(
+            "Image",
+            "Cover / Contain / Fill modes",
+            PALETTE.pink500,
+            withAlpha(PALETTE.pink500, 0.04),
+          ),
+          featureRowDescriptor(
+            "ScrollView",
+            "Real scrolling with wheel events!",
+            PALETTE.teal500,
+            withAlpha(PALETTE.teal500, 0.04),
+          ),
+          featureRowDescriptor(
+            "Export",
+            "JSON / DataURL / DOM string",
+            PALETTE.violet500,
+            withAlpha(PALETTE.violet500, 0.04),
+          ),
+          featureRowDescriptor(
+            "Hit Test",
+            "Click to select nodes",
+            PALETTE.red500,
+            withAlpha(PALETTE.red500, 0.04),
+          ),
+          featureRowDescriptor(
+            "JSX API",
+            "Write layouts as React components",
+            PALETTE.green500,
+            withAlpha(PALETTE.green500, 0.04),
+          ),
         ],
       },
     ],
@@ -484,7 +568,9 @@ type NodeTemplateJSX = {
   children: ReactNode;
 };
 
-export function createNodeTemplateJSX(options: TemplateOptions): NodeTemplateJSX {
+export function createNodeTemplateJSX(
+  options: TemplateOptions,
+): NodeTemplateJSX {
   const root = createNodeTemplateDescriptor(options);
   return {
     rootName: root.name,
@@ -500,10 +586,10 @@ function featureRowDescriptor(
   bg: string,
 ): NodeDescriptor {
   return {
-    type: 'view',
+    type: "view",
     style: {
-      flexDirection: 'row',
-      alignItems: 'center',
+      flexDirection: "row",
+      alignItems: "center",
       gap: SPACE.md,
       backgroundColor: bg,
       borderRadius: RADII.sm,
@@ -511,7 +597,7 @@ function featureRowDescriptor(
     },
     children: [
       {
-        type: 'view',
+        type: "view",
         style: {
           width: 8,
           height: 8,
@@ -520,16 +606,16 @@ function featureRowDescriptor(
         },
       },
       {
-        type: 'view',
-        style: { flex: 1, flexDirection: 'column', gap: SPACE.xs },
+        type: "view",
+        style: { flex: 1, flexDirection: "column", gap: SPACE.xs },
         children: [
           {
-            type: 'text',
+            type: "text",
             content: title,
             style: TEXT_STYLES.featureTitle,
           },
           {
-            type: 'text',
+            type: "text",
             content: subtitle,
             style: TEXT_STYLES.featureSubtitle,
           },
@@ -540,7 +626,9 @@ function featureRowDescriptor(
 }
 
 function renderDescriptorChildren(children: NodeDescriptor[]): ReactNode {
-  return children.map((child, index) => renderDescriptorNode(child, `node-${index}`));
+  return children.map((child, index) =>
+    renderDescriptorNode(child, `node-${index}`),
+  );
 }
 
 function renderDescriptorNode(node: NodeDescriptor, key: string): ReactNode {
@@ -549,24 +637,24 @@ function renderDescriptorNode(node: NodeDescriptor, key: string): ReactNode {
     name: node.name,
     style: node.style,
   };
-  if (node.type === 'text') {
-    return createElement(YogaText, commonProps, node.content ?? '');
+  if (node.type === "text") {
+    return createElement(YogaText, commonProps, node.content ?? "");
   }
-  if (node.type === 'image') {
+  if (node.type === "image") {
     return createElement(YogaImage, {
       ...commonProps,
-      src: node.src ?? '',
-      objectFit: node.objectFit ?? 'cover',
+      src: node.src ?? "",
+      objectFit: node.objectFit ?? "cover",
     });
   }
-  if (node.type === 'scrollview') {
+  if (node.type === "scrollview") {
     const children = renderDescriptorChildren(node.children ?? []);
     return createElement(
       YogaScrollView,
       {
         ...commonProps,
-        scrollDirection: node.scrollDirection ?? 'vertical',
-        scrollBarVisibility: node.scrollBarVisibility ?? 'auto',
+        scrollDirection: node.scrollDirection ?? "vertical",
+        scrollBarVisibility: node.scrollBarVisibility ?? "auto",
       },
       children,
     );

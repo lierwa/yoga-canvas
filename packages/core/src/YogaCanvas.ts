@@ -79,10 +79,10 @@ export class YogaCanvas {
    */
   async init(): Promise<void> {
     await initYoga();
+    this.ctx = this.adapter.createCanvasContext(this.canvas);
     this.treeManager.buildFromDescriptor(this.layout);
     this.treeManager.computeLayout();
     computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
-    this.ctx = this.adapter.createCanvasContext(this.canvas);
 
     if (this.adapter instanceof H5Adapter || this.adapter instanceof WxAdapter) {
       this.adapter.setRenderCallback(() => {

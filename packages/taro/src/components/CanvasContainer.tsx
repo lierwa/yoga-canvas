@@ -25,6 +25,21 @@ export type CanvasContainerProps = {
   onError?: (error: Error) => void;
 };
 
+type TouchPointSource = 'detail' | 'touchLocal' | 'touchClient';
+type TouchCoordPreference = { source: TouchPointSource; scaled: boolean };
+type TouchPointDebug = {
+  pr: number;
+  logicalW?: number;
+  logicalH?: number;
+  canvasRect?: { left: number; top: number } | null;
+  candidates: Array<{ x: number; y: number; source: TouchPointSource }>;
+  expanded: Array<{ x: number; y: number; source: TouchPointSource; scaled: boolean }>;
+  requestedPref?: TouchCoordPreference | null;
+  chosen: { x: number; y: number; source: TouchPointSource; scaled: boolean };
+  chosenHitId?: string | null;
+  returnedBy: 'pref' | 'scan';
+};
+
 function createWrapperLayout(
   rootName: string | undefined,
   width: number | undefined,
@@ -81,7 +96,12 @@ export function CanvasContainer(props: CanvasContainerProps) {
   const canvasIdRef = useRef(props.id ?? `yogaCanvas_${Math.random().toString(36).slice(2)}`);
   const [readyInfo, setReadyInfo] = useState<ReadyInfo | null>(null);
   const [error, setError] = useState<Error | null>(null);
-  const touchStateRef = useRef<{ x: number; y: number; scrollViewId: string | null } | null>(null);
+  const touchStateRef = useRef<{
+    x: number;
+    y: number;
+    scrollViewId: string | null;
+    pref: TouchCoordPreference | null;
+  } | null>(null);
   const scrollBarTimersRef = useRef(new Map<string, ReturnType<typeof setTimeout>>());
   const tapStateRef = useRef<{ x: number; y: number; moved: boolean } | null>(null);
   const canvasRectRef = useRef<{ left: number; top: number } | null>(null);
@@ -104,6 +124,11 @@ export function CanvasContainer(props: CanvasContainerProps) {
     namePrefix: `__debugIndicator_${Math.random().toString(36).slice(2)}`,
   });
   const lastTapRef = useRef<{ time: number; nodeId: string | null } | null>(null);
+
+  const logIndicatorDebug = React.useCallback((payload: unknown) => {
+    if (!debugIndicator) return;
+    // console.log('[YogaCanvas][Indicator]', JSON.stringify(payload));
+  }, [debugIndicator]);
 
   const baseLayout = useMemo(
     () => normalizeLayout(layoutProp, rootName, width, height, rootStyle, children),
@@ -276,7 +301,9 @@ export function CanvasContainer(props: CanvasContainerProps) {
     if (!readyInfo || !debugIndicator) return;
     const ids = indicatorIdsRef.current;
     const tree = readyInfo.instance.getTreeManager().getTree();
-    const targetId = targetIdOverride ?? selectedNodeId ?? (targetPathOverride ?? selectedNodePath ? findNodeIdByPath(tree, (targetPathOverride ?? selectedNodePath) as number[]) : null);
+    const effectiveId = targetIdOverride !== undefined ? targetIdOverride : selectedNodeId;
+    const effectivePath = targetPathOverride !== undefined ? targetPathOverride : selectedNodePath;
+    const targetId = effectiveId ?? (effectivePath ? findNodeIdByPath(tree, effectivePath) : null);
     if (!targetId) {
       if (ids.rootId) setIndicatorVisible(false);
       return;
@@ -350,7 +377,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
     updateIndicatorPosition();
   }, [readyInfo, debugIndicator, selectedNodeId, selectedNodePath, updateIndicatorPosition, setIndicatorVisible]);
 
-  const getTouchPoint = React.useCallback((event: unknown): { x: number; y: number } | null => {
+  const getTouchPoint = React.useCallback((event: unknown, pref?: TouchCoordPreference | null): { x: number; y: number; pref: TouchCoordPreference; debug: TouchPointDebug } | null => {
     if (!readyInfo) return null;
     const e = event as {
       detail?: { x?: number; y?: number };
@@ -362,17 +389,29 @@ export function CanvasContainer(props: CanvasContainerProps) {
     const logicalW = initInfoRef.current?.width ?? (typeof displayWidth === 'number' ? displayWidth : undefined);
     const logicalH = initInfoRef.current?.height ?? (typeof displayHeight === 'number' ? displayHeight : undefined);
 
-    const candidates: Array<{ x: number; y: number; source: 'detail' | 'touchLocal' | 'touchClient' }> = [];
+    const candidates: Array<{ x: number; y: number; source: TouchPointSource }> = [];
     if (e.detail && typeof e.detail.x === 'number' && typeof e.detail.y === 'number') {
       candidates.push({ x: e.detail.x, y: e.detail.y, source: 'detail' });
     }
     const touch = e.touches?.[0] ?? e.changedTouches?.[0];
     if (touch) {
+      const rawX = typeof touch.clientX === 'number' ? touch.clientX : touch.pageX;
+      const rawY = typeof touch.clientY === 'number' ? touch.clientY : touch.pageY;
       if (typeof touch.x === 'number' && typeof touch.y === 'number') {
+        if (typeof rawX === 'number' && typeof rawY === 'number') {
+          canvasRectRef.current = { left: rawX - touch.x, top: rawY - touch.y };
+        }
         candidates.push({ x: touch.x, y: touch.y, source: 'touchLocal' });
       } else {
-        const rawX = typeof touch.clientX === 'number' ? touch.clientX : touch.pageX;
-        const rawY = typeof touch.clientY === 'number' ? touch.clientY : touch.pageY;
+        if (
+          typeof rawX === 'number'
+          && typeof rawY === 'number'
+          && e.detail
+          && typeof e.detail.x === 'number'
+          && typeof e.detail.y === 'number'
+        ) {
+          canvasRectRef.current = { left: rawX - e.detail.x, top: rawY - e.detail.y };
+        }
         if (typeof rawX === 'number' && typeof rawY === 'number') {
           const rect = canvasRectRef.current;
           candidates.push({
@@ -389,46 +428,96 @@ export function CanvasContainer(props: CanvasContainerProps) {
     const ids = indicatorIdsRef.current;
     const scrollManager = readyInfo.instance.getScrollManager();
 
-    const expanded: Array<{ x: number; y: number; source: 'detail' | 'touchLocal' | 'touchClient'; scaled: boolean }> = [];
-    for (const c of candidates) {
-      expanded.push({ x: c.x, y: c.y, source: c.source, scaled: false });
-      if (pr > 1) expanded.push({ x: c.x / pr, y: c.y / pr, source: c.source, scaled: true });
-    }
-
     const fitsCanvas = (p: { x: number; y: number }) => {
       if (typeof logicalW === 'number' && (p.x < -1 || p.x > logicalW + 1)) return false;
       if (typeof logicalH === 'number' && (p.y < -1 || p.y > logicalH + 1)) return false;
       return true;
     };
 
+    const expanded: Array<{ x: number; y: number; source: TouchPointSource; scaled: boolean }> = [];
+    for (const c of candidates) {
+      const unscaled = { x: c.x, y: c.y, source: c.source, scaled: false as const };
+      const scaled = { x: c.x / pr, y: c.y / pr, source: c.source, scaled: true as const };
+      if (fitsCanvas(unscaled)) {
+        expanded.push(unscaled);
+      } else if (pr > 1 && fitsCanvas(scaled)) {
+        expanded.push(scaled);
+      } else {
+        expanded.push(unscaled);
+        if (pr > 1) expanded.push(scaled);
+      }
+    }
+
+    if (pref) {
+      const p = expanded.find((it) => it.source === pref.source && it.scaled === pref.scaled);
+      if (p && fitsCanvas(p)) {
+        return {
+          x: p.x,
+          y: p.y,
+          pref: { source: p.source, scaled: p.scaled },
+          debug: {
+            pr,
+            logicalW,
+            logicalH,
+            canvasRect: canvasRectRef.current,
+            candidates,
+            expanded,
+            requestedPref: pref,
+            chosen: { x: p.x, y: p.y, source: p.source, scaled: p.scaled },
+            chosenHitId: null,
+            returnedBy: 'pref',
+          },
+        };
+      }
+    }
+
     let best = expanded[0];
     let bestDepth = -1;
     let bestSourceRank = 10;
+    let bestHitId: string | null = null;
     for (const p of expanded) {
       if (!fitsCanvas(p)) continue;
       const hitId = hitTestExcluding(tree, p.x, p.y, scrollManager, ids.namePrefix);
       if (!hitId) continue;
       const depth = getNodeDepth(tree, hitId);
-      const sourceRank = p.source === 'detail' ? 0 : p.source === 'touchLocal' ? 1 : 2;
+      const sourceRank = p.source === 'touchLocal' ? 0 : p.source === 'detail' ? 1 : 2;
       if (depth > bestDepth || (depth === bestDepth && sourceRank < bestSourceRank)) {
         bestDepth = depth;
         best = p;
         bestSourceRank = sourceRank;
+        bestHitId = hitId;
       }
     }
-    return { x: best.x, y: best.y };
+    return {
+      x: best.x,
+      y: best.y,
+      pref: { source: best.source, scaled: best.scaled },
+      debug: {
+        pr,
+        logicalW,
+        logicalH,
+        canvasRect: canvasRectRef.current,
+        candidates,
+        expanded,
+        requestedPref: pref ?? null,
+        chosen: { x: best.x, y: best.y, source: best.source, scaled: best.scaled },
+        chosenHitId: bestHitId,
+        returnedBy: 'scan',
+      },
+    };
   }, [readyInfo, pixelRatio, displayWidth, displayHeight]);
 
   const handleTouchStart = (event: unknown) => {
     if (!readyInfo) return;
     const point = getTouchPoint(event);
     if (!point) return;
+    logIndicatorDebug({ phase: 'touchStart', point: { x: point.x, y: point.y, pref: point.pref }, debug: point.debug });
     tapStateRef.current = { x: point.x, y: point.y, moved: false };
     const tree = readyInfo.instance.getTreeManager().getTree();
     const ids = indicatorIdsRef.current;
     const hitNodeId = hitTestExcluding(tree, point.x, point.y, readyInfo.instance.getScrollManager(), ids.namePrefix);
     const scrollViewId = hitNodeId ? findAncestorScrollView(tree, hitNodeId) : null;
-    touchStateRef.current = { x: point.x, y: point.y, scrollViewId };
+    touchStateRef.current = { x: point.x, y: point.y, scrollViewId, pref: point.pref };
   };
 
   const handleTouchMove = (event: unknown) => {
@@ -436,7 +525,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
     const state = touchStateRef.current;
     if (!state?.scrollViewId) return;
     const scrollViewId = state.scrollViewId;
-    const point = getTouchPoint(event);
+    const point = getTouchPoint(event, state.pref);
     if (!point) return;
     if (tapStateRef.current && Math.hypot(point.x - tapStateRef.current.x, point.y - tapStateRef.current.y) > 6) {
       tapStateRef.current.moved = true;
@@ -468,7 +557,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
     readyInfo.instance.render();
   };
 
-  const handleTouchEnd = () => {
+  const handleTouchEnd = (event?: unknown) => {
     touchStateRef.current = null;
     if (!readyInfo || !debugIndicator || !tapStateRef.current) {
       tapStateRef.current = null;
@@ -480,6 +569,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
     const tree = readyInfo.instance.getTreeManager().getTree();
     const ids = indicatorIdsRef.current;
     let selected = hitTestExcluding(tree, x, y, readyInfo.instance.getScrollManager(), ids.namePrefix);
+    const pointFromEndEvent = event ? getTouchPoint(event) : null;
     if (selected) {
       const now = Date.now();
       const last = lastTapRef.current;
@@ -495,6 +585,39 @@ export function CanvasContainer(props: CanvasContainerProps) {
     } else {
       lastTapRef.current = null;
     }
+    if (selected === tree.rootId) {
+      selected = null;
+      lastTapRef.current = null;
+    }
+    const describeNode = (id: string | null) => {
+      if (!id) return null;
+      const node = tree.nodes[id];
+      if (!node) return { id, missing: true };
+      return {
+        id,
+        name: node.name ?? null,
+        type: node.type ?? null,
+        parentId: node.parentId ?? null,
+        zIndex: node.visualStyle?.zIndex ?? 0,
+        computedLayout: node.computedLayout,
+      };
+    };
+    const selectedScrollOffset = selected
+      ? getAncestorScrollOffset(tree, selected, readyInfo.instance.getScrollManager())
+      : null;
+    logIndicatorDebug({
+      phase: 'touchEnd',
+      tapPoint: { x, y },
+      endEventPoint: pointFromEndEvent
+        ? { x: pointFromEndEvent.x, y: pointFromEndEvent.y, pref: pointFromEndEvent.pref }
+        : null,
+      endEventDebug: pointFromEndEvent?.debug ?? null,
+      hitId: selected,
+      hitNode: describeNode(selected),
+      hitNodePath: selected ? getNodePath(tree, selected) : null,
+      hitNodeAncestorScrollOffset: selectedScrollOffset,
+      rootId: tree.rootId,
+    });
     setSelectedNodeId(selected);
     const nextPath = selected ? getNodePath(tree, selected) : null;
     setSelectedNodePath(nextPath);

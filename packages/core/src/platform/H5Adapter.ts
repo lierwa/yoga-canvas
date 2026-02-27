@@ -115,6 +115,7 @@ export class H5Adapter implements PlatformAdapter {
 
   measureText(options: TextMeasureOptions): { width: number; height: number } {
     const div = getMeasureDiv();
+    div.style.display = 'inline-block';
     div.style.fontSize = `${options.fontSize}px`;
     div.style.fontWeight = typeof options.fontWeight === 'number' ? `${options.fontWeight}` : options.fontWeight;
     div.style.fontStyle = options.fontStyle;
@@ -127,15 +128,16 @@ export class H5Adapter implements PlatformAdapter {
       div.style.wordBreak = 'normal';
       div.style.width = 'auto';
       div.style.maxWidth = 'none';
-      return { width: div.scrollWidth, height: div.offsetHeight };
+      const rect = div.getBoundingClientRect();
+      return { width: rect.width, height: rect.height };
     }
 
     div.style.whiteSpace = 'pre-wrap';
     div.style.wordBreak = 'break-word';
-    div.style.width = `${options.availableWidth}px`;
-    div.style.maxWidth = 'none';
-    const width = Math.min(div.scrollWidth, options.availableWidth);
-    return { width, height: div.offsetHeight };
+    div.style.width = 'auto';
+    div.style.maxWidth = `${options.availableWidth}px`;
+    const rect = div.getBoundingClientRect();
+    return { width: Math.min(rect.width, options.availableWidth), height: rect.height };
   }
 
   loadImage(src: string): Promise<CanvasImageLike> {

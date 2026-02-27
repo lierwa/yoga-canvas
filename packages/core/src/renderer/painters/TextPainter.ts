@@ -17,6 +17,7 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   const padTop = flexValueToPx(node.flexStyle.paddingTop);
   const maxWidth = width - pad - padRight;
   if (maxWidth <= 0) return;
+  const EPS = 0.01;
 
   ctx.save();
   ctx.setFillStyle(color);
@@ -55,17 +56,17 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
     for (const word of words) {
       const testLine = currentLine ? `${currentLine} ${word}` : word;
       const tw = ctx.measureText(testLine).width;
-      if (tw > maxWidth && currentLine) {
+      if (tw > maxWidth + EPS && currentLine) {
         ctx.fillText(currentLine, textX, y);
         currentLine = '';
         y += lineH;
       }
 
-      if (ctx.measureText(word).width > maxWidth) {
+      if (ctx.measureText(word).width > maxWidth + EPS) {
         let chunk = '';
         for (const char of word) {
           const nextChunk = chunk + char;
-          if (ctx.measureText(nextChunk).width > maxWidth && chunk) {
+          if (ctx.measureText(nextChunk).width > maxWidth + EPS && chunk) {
             ctx.fillText(chunk, textX, y);
             y += lineH;
             chunk = char;

@@ -13,15 +13,35 @@ import type {
  */
 class WxCanvasContext implements CanvasContextLike {
   private ctx: CanvasRenderingContext2D;
+  private scaleX = 1;
+  private scaleY = 1;
+  private scaleStack: Array<{ x: number; y: number }> = [];
 
   constructor(ctx: CanvasRenderingContext2D) {
     this.ctx = ctx;
   }
 
-  save(): void { this.ctx.save(); }
-  restore(): void { this.ctx.restore(); }
+  save(): void {
+    this.ctx.save();
+    this.scaleStack.push({ x: this.scaleX, y: this.scaleY });
+  }
+  restore(): void {
+    this.ctx.restore();
+    const prev = this.scaleStack.pop();
+    if (prev) {
+      this.scaleX = prev.x;
+      this.scaleY = prev.y;
+    } else {
+      this.scaleX = 1;
+      this.scaleY = 1;
+    }
+  }
   translate(x: number, y: number): void { this.ctx.translate(x, y); }
-  scale(sx: number, sy: number): void { this.ctx.scale(sx, sy); }
+  scale(sx: number, sy: number): void {
+    this.scaleX *= sx;
+    this.scaleY *= sy;
+    this.ctx.scale(sx, sy);
+  }
   rotate(angle: number): void { this.ctx.rotate(angle); }
   clip(): void { this.ctx.clip(); }
 
@@ -76,7 +96,15 @@ class WxCanvasContext implements CanvasContextLike {
     }
   }
   measureText(text: string): { width: number } {
-    return this.ctx.measureText(text);
+    if (Math.abs(this.scaleX - 1) <= 1e-6 && Math.abs(this.scaleY - 1) <= 1e-6) {
+      return { width: this.ctx.measureText(text).width };
+    }
+
+    this.ctx.save();
+    this.ctx.scale(1 / (this.scaleX || 1), 1 / (this.scaleY || 1));
+    const width = this.ctx.measureText(text).width;
+    this.ctx.restore();
+    return { width };
   }
 
   drawImage(image: CanvasImageLike, dx: number, dy: number, dw: number, dh: number): void {

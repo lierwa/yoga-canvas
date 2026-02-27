@@ -17,6 +17,7 @@ import {
   computeScrollContentSizes,
 } from "@yoga-canvas/core";
 import type { NodeDescriptor } from "@yoga-canvas/core";
+import { createNodeTemplateDescriptor } from "../../packages/taro-demo/src/templates/nodeTemplates";
 
 const COLORS = [
   "#ef4444",
@@ -176,6 +177,8 @@ const TEXT_STYLES = {
 };
 
 function createDefaultDescriptor(): NodeDescriptor {
+  const shared = createNodeTemplateDescriptor({ width: 375, height: 667 });
+  if (shared) return shared;
   return {
     type: "view",
     name: "Root",
@@ -253,7 +256,7 @@ function createDefaultDescriptor(): NodeDescriptor {
             style: {
               flex: 1,
               flexDirection: "column",
-              alignItems: "center",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
@@ -329,7 +332,7 @@ function createDefaultDescriptor(): NodeDescriptor {
             style: {
               flex: 1,
               flexDirection: "column",
-              alignItems: "center",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
@@ -358,9 +361,9 @@ function createDefaultDescriptor(): NodeDescriptor {
             name: "Stats3",
             style: {
               flex: 1,
-              flexDirection: "row",
+              flexDirection: "column",
               flexWrap: "wrap",
-              alignItems: "center",
+              alignItems: "flex-start",
               backgroundColor: PALETTE.white,
               borderRadius: RADII.md,
               padding: SPACE.lg,
