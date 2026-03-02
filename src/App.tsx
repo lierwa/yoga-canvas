@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { EditorCanvas, ResizablePanels, useCanvasInteraction } from '@yoga-canvas/react';
 import { Crosshair } from 'lucide-react';
 import Toolbar from './components/Toolbar';
@@ -39,6 +39,7 @@ function App() {
     selectNode,
     focusNode,
     setScaleAt,
+    resetView,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,
@@ -49,15 +50,51 @@ function App() {
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
   const [showCodeEditor, setShowCodeEditor] = useState(false);
+  const initialViewRef = useRef<{ scale: number; offset: { x: number; y: number } } | null>(null);
+  const didInitViewRef = useRef(false);
+  const [viewInitialized, setViewInitialized] = useState(false);
 
   const selectedNode = selection.selectedNodeId ? tree.nodes[selection.selectedNodeId] ?? null : null;
+
+  const blurActiveFormElement = useCallback(() => {
+    const el = document.activeElement;
+    if (!el) return;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') {
+      (el as HTMLElement).blur();
+    }
+  }, []);
+
+  const handleCanvasMouseDown = useCallback(
+    (e: Parameters<typeof handleMouseDown>[0]) => {
+      blurActiveFormElement();
+      handleMouseDown(e);
+    },
+    [blurActiveFormElement, handleMouseDown],
+  );
+
+  const handleCanvasDoubleClick = useCallback(
+    (e: Parameters<typeof handleDoubleClick>[0]) => {
+      blurActiveFormElement();
+      handleDoubleClick(e);
+    },
+    [blurActiveFormElement, handleDoubleClick],
+  );
+
+  const handleCanvasWheel = useCallback(
+    (e: Parameters<typeof handleWheel>[0]) => {
+      blurActiveFormElement();
+      handleWheel(e);
+    },
+    [blurActiveFormElement, handleWheel],
+  );
 
   const handleFocusNode = useCallback(() => {
     if (!selection.selectedNodeId) return;
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    focusNode(selection.selectedNodeId, rect.width, rect.height);
+    focusNode(selection.selectedNodeId, rect.width, rect.height, { animate: true, durationMs: 320 });
   }, [selection.selectedNodeId, focusNode]);
 
   const handleDeleteNode = useCallback(
@@ -78,6 +115,36 @@ function App() {
     },
     [setScaleAt],
   );
+
+  const handleResetView = useCallback(() => {
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const next = resetView(rect.width, rect.height, { scale: 1, targetId: tree.rootId, animate: true, durationMs: 260 });
+    initialViewRef.current = next;
+  }, [resetView, tree.rootId]);
+
+  const canResetView = useMemo(() => {
+    const initial = initialViewRef.current;
+    if (!initial) return Math.abs(scale - 1) > 0.0005 || Math.abs(offset.x) > 0.5 || Math.abs(offset.y) > 0.5;
+    return (
+      Math.abs(scale - initial.scale) > 0.0005 ||
+      Math.abs(offset.x - initial.offset.x) > 0.5 ||
+      Math.abs(offset.y - initial.offset.y) > 0.5
+    );
+  }, [offset.x, offset.y, scale]);
+
+  useEffect(() => {
+    if (didInitViewRef.current) return;
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const next = resetView(rect.width, rect.height, { scale: 1, targetId: tree.rootId });
+    initialViewRef.current = next;
+    didInitViewRef.current = true;
+    setViewInitialized(true);
+  }, [resetView, tree.rootId, ready]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -130,10 +197,12 @@ function App() {
         scale={scale}
         initialScale={1}
         onScaleChange={handleScaleChange}
+        canResetView={canResetView}
+        onResetView={handleResetView}
         onUndo={undo}
         onRedo={redo}
         onPreview={() => setShowPreview(true)}
-        onCodeEditor={() => setShowCodeEditor(true)}
+        onCodeEditor={() => setShowCodeEditor((v) => !v)}
       />
       <ResizablePanels
         left={
@@ -149,58 +218,63 @@ function App() {
         }
         center={
           <div ref={canvasContainerRef} className="flex-1 overflow-hidden">
-            <EditorCanvas
-              tree={tree}
-              selection={selection}
-              scale={scale}
-              offset={offset}
-              scrollManager={scrollManager}
-              renderTick={scrollTick}
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onWheel={handleWheel}
-              onDoubleClick={handleDoubleClick}
-              onFocusNode={handleFocusNode}
-              renderFocusAction={(onFocus) => (
-                <button
-                  onClick={onFocus}
-                  className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5
-                    bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-sm
-                    text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300
-                    transition-colors"
-                  title="Focus selected node"
-                >
-                  <Crosshair size={14} />
-                  <span>Locate</span>
-                </button>
-              )}
-            />
+            <div style={{ opacity: viewInitialized ? 1 : 0, transition: 'opacity 120ms' }} className="w-full h-full">
+              <EditorCanvas
+                tree={tree}
+                selection={selection}
+                scale={scale}
+                offset={offset}
+                scrollManager={scrollManager}
+                renderTick={scrollTick}
+                onMouseDown={handleCanvasMouseDown}
+                onMouseMove={handleMouseMove}
+                onMouseUp={handleMouseUp}
+                onWheel={handleCanvasWheel}
+                onDoubleClick={handleCanvasDoubleClick}
+                onFocusNode={handleFocusNode}
+                renderFocusAction={(onFocus) => (
+                  <button
+                    onClick={onFocus}
+                    className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5
+                      bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-sm
+                      text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300
+                      transition-colors"
+                    title="Focus selected node"
+                  >
+                    <Crosshair size={14} />
+                    <span>Locate</span>
+                  </button>
+                )}
+              />
+            </div>
           </div>
         }
-        right={
+        rightPanels={[
           <PropertiesPanel
             node={selectedNode}
             onUpdateFlexStyle={updateNodeFlexStyle}
             onUpdateVisualStyle={updateNodeVisualStyle}
             onUpdateTextProps={updateTextProps}
             onUpdateImageProps={updateImageProps}
-          />
-        }
+          />,
+          ...(showCodeEditor
+            ? [
+                <LiveCodeEditorPanel
+                  tree={tree}
+                  embedded
+                  onClose={() => setShowCodeEditor(false)}
+                  onDescriptorChange={(descriptor) => {
+                    replaceDescriptor(descriptor);
+                    selectNode(null);
+                  }}
+                />,
+              ]
+            : []),
+        ]}
         defaultLeftWidth={240}
-        defaultRightWidth={320}
+        defaultRightWidths={[320, 560]}
         minWidth={200}
       />
-      {showCodeEditor && (
-        <LiveCodeEditorPanel
-          tree={tree}
-          onClose={() => setShowCodeEditor(false)}
-          onDescriptorChange={(descriptor) => {
-            replaceDescriptor(descriptor);
-            selectNode(null);
-          }}
-        />
-      )}
     </div>
   );
 }

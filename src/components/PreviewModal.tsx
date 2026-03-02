@@ -697,14 +697,19 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   spaceKey('margin', 'm');
   spaceKey('gap', 'gap');
 
+  const escapeArbitrary = (v: string) => v.trim().replace(/\s+/g, '_');
+
   const backgroundColor = style.backgroundColor;
-  if (typeof backgroundColor === 'string' && backgroundColor) add(`bg-[${backgroundColor}]`, ['backgroundColor']);
+  if (typeof backgroundColor === 'string' && backgroundColor) add(`bg-[${escapeArbitrary(backgroundColor)}]`, ['backgroundColor']);
   const borderRadius = style.borderRadius;
-  if (typeof borderRadius === 'number') add(`rounded-[${borderRadius}px]`, ['borderRadius']);
+  if (typeof borderRadius === 'number') {
+    if (borderRadius === 0) add('rounded-none', ['borderRadius']);
+    else add(`rounded-[${borderRadius}px]`, ['borderRadius']);
+  }
   const borderWidth = style.borderWidth;
   if (typeof borderWidth === 'number' && borderWidth !== 0) add(`border-[${borderWidth}px]`, ['borderWidth']);
   const borderColor = style.borderColor;
-  if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${borderColor}]`, ['borderColor']);
+  if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${escapeArbitrary(borderColor)}]`, ['borderColor']);
 
   const opacity = style.opacity;
   if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
@@ -714,7 +719,7 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   if (typeof zIndex === 'number' && zIndex !== 0) add(`z-[${zIndex}]`, ['zIndex']);
 
   const color = style.color;
-  if (typeof color === 'string' && color) add(`text-[${color}]`, ['color']);
+  if (typeof color === 'string' && color) add(`text-[${escapeArbitrary(color)}]`, ['color']);
   const fontSize = style.fontSize;
   if (typeof fontSize === 'number') add(`text-[${fontSize}px]`, ['fontSize']);
   const fontStyle = style.fontStyle;

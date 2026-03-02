@@ -77,6 +77,15 @@ export default function PropertiesPanel({
   onUpdateTextProps,
   onUpdateImageProps,
 }: PropertiesPanelProps) {
+  const [textContent, setTextContent] = useState(node?.textProps?.content ?? "");
+  const [textContentFocused, setTextContentFocused] = useState(false);
+
+  useEffect(() => {
+    if (!textContentFocused) {
+      setTextContent(node?.textProps?.content ?? "");
+    }
+  }, [node?.id, node?.textProps?.content, textContentFocused]);
+
   if (!node) {
     return (
       <div className="w-72 border-l border-gray-200 bg-white p-4 overflow-y-auto shrink-0">
@@ -182,8 +191,13 @@ export default function PropertiesPanel({
                 Content
               </label>
               <textarea
-                value={node.textProps.content}
-                onChange={(e) => updateText({ content: e.target.value })}
+                value={textContent}
+                onFocus={() => setTextContentFocused(true)}
+                onBlur={() => {
+                  setTextContentFocused(false);
+                  updateText({ content: textContent });
+                }}
+                onChange={(e) => setTextContent(e.target.value)}
                 rows={3}
                 className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
                   focus:outline-none focus:ring-1 focus:ring-blue-400 focus:border-blue-400 resize-none"

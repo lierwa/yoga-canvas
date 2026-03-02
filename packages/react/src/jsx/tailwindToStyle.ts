@@ -1,172 +1,91 @@
 import type { StyleProps, FlexValue } from '@yoga-canvas/core';
+import { twj } from 'tw-to-css';
 
 type ParseResult = {
   style: Partial<StyleProps>;
   unsupported: string[];
 };
 
-const SPACE_SCALE_PX: Record<string, number> = {
-  px: 1,
-  0: 0,
+const TOKEN_STYLE_CACHE = new Map<string, Record<string, unknown> | null>();
+const TEXT_SCALE_TO_PX: Record<string, number> = {
+  '0': 0,
   '0.5': 2,
-  1: 4,
+  '1': 4,
   '1.5': 6,
-  2: 8,
+  '2': 8,
   '2.5': 10,
-  3: 12,
+  '3': 12,
   '3.5': 14,
-  4: 16,
-  5: 20,
-  6: 24,
-  7: 28,
-  8: 32,
-  9: 36,
-  10: 40,
-  11: 44,
-  12: 48,
-  14: 56,
-  16: 64,
-  20: 80,
-  24: 96,
-  28: 112,
-  32: 128,
-  36: 144,
-  40: 160,
-  44: 176,
-  48: 192,
-  52: 208,
-  56: 224,
-  60: 240,
-  64: 256,
-  72: 288,
-  80: 320,
-  96: 384,
+  '4': 16,
+  '5': 20,
+  '6': 24,
+  '7': 28,
+  '8': 32,
+  '9': 36,
+  '10': 40,
+  '11': 44,
+  '12': 48,
+  '14': 56,
+  '16': 64,
+  '20': 80,
+  '24': 96,
+  '28': 112,
+  '32': 128,
+  '36': 144,
+  '40': 160,
+  '44': 176,
+  '48': 192,
+  '52': 208,
+  '56': 224,
+  '60': 240,
+  '64': 256,
+  '72': 288,
+  '80': 320,
+  '96': 384,
 };
 
-const FONT_SIZE_PX: Record<string, number> = {
-  xs: 12,
-  sm: 14,
-  base: 16,
-  lg: 18,
-  xl: 20,
-  '2xl': 24,
-  '3xl': 30,
-  '4xl': 36,
-  '5xl': 48,
-  '6xl': 60,
-  '7xl': 72,
-  '8xl': 96,
-  '9xl': 128,
-};
+function splitTokens(input: string): string[] {
+  const tokens: string[] = [];
+  let current = '';
+  let bracketDepth = 0;
 
-const FONT_WEIGHT: Record<string, number> = {
-  thin: 100,
-  extralight: 200,
-  light: 300,
-  normal: 400,
-  medium: 500,
-  semibold: 600,
-  bold: 700,
-  extrabold: 800,
-  black: 900,
-};
+  const push = () => {
+    const raw = current.trim();
+    current = '';
+    if (!raw) return;
+    const normalized = raw.replace(/\[([^\]]+)\]/g, (_, inner: string) => `[${inner.replace(/\s+/g, '_')}]`);
+    tokens.push(normalized);
+  };
 
-const LINE_HEIGHT: Record<string, number> = {
-  none: 1,
-  tight: 1.25,
-  snug: 1.375,
-  normal: 1.5,
-  relaxed: 1.625,
-  loose: 2,
-};
+  for (let i = 0; i < input.length; i++) {
+    const ch = input[i]!;
+    if (ch === '[') bracketDepth++;
+    if (ch === ']' && bracketDepth > 0) bracketDepth--;
 
-const RADIUS_PX: Record<string, number> = {
-  none: 0,
-  sm: 2,
-  DEFAULT: 4,
-  md: 6,
-  lg: 8,
-  xl: 12,
-  '2xl': 16,
-  '3xl': 24,
-  full: 9999,
-};
+    if (/\s/.test(ch) && bracketDepth === 0) {
+      push();
+      continue;
+    }
 
-const SHADOW_PRESETS: Record<string, NonNullable<StyleProps['boxShadow']>> = {
-  sm: { offsetX: 0, offsetY: 1, blur: 2, spread: 0, color: 'rgba(0,0,0,0.05)' },
-  DEFAULT: { offsetX: 0, offsetY: 1, blur: 3, spread: 0, color: 'rgba(0,0,0,0.1)' },
-  md: { offsetX: 0, offsetY: 4, blur: 6, spread: -1, color: 'rgba(0,0,0,0.1)' },
-  lg: { offsetX: 0, offsetY: 10, blur: 15, spread: -3, color: 'rgba(0,0,0,0.1)' },
-  xl: { offsetX: 0, offsetY: 20, blur: 25, spread: -5, color: 'rgba(0,0,0,0.1)' },
-  '2xl': { offsetX: 0, offsetY: 25, blur: 50, spread: -12, color: 'rgba(0,0,0,0.25)' },
-};
+    current += ch;
+  }
+
+  push();
+  return tokens;
+}
+
+function normalizeToken(token: string): string {
+  const m = token.match(/^text-(\d+(?:\.\d+)?)$/);
+  if (m) {
+    const px = TEXT_SCALE_TO_PX[m[1]!];
+    if (typeof px === 'number') return `text-[${px}px]`;
+  }
+  return token;
+}
 
 function parseBracketValue(token: string): string | null {
   const m = token.match(/^\[(.*)\]$/);
   return m ? m[1] : null;
-}
-
-function parseFlexValue(raw: string): FlexValue | undefined {
-  if (raw === 'auto') return 'auto';
-  if (raw === 'full') return '100%';
-  if (raw === 'screen') return '100%';
-
-  const frac = raw.match(/^(\d+)\/(\d+)$/);
-  if (frac) {
-    const a = Number(frac[1]);
-    const b = Number(frac[2]);
-    if (!Number.isFinite(a) || !Number.isFinite(b) || b === 0) return undefined;
-    const pct = (a / b) * 100;
-    return `${pct}%`;
-  }
-
-  const bracket = parseBracketValue(raw);
-  if (bracket) {
-    const v = bracket.trim();
-    const px = v.match(/^(-?\d+(\.\d+)?)px$/);
-    if (px) return Number(px[1]);
-    const pct = v.match(/^(-?\d+(\.\d+)?)%$/);
-    if (pct) return `${Number(pct[1])}%`;
-    const num = v.match(/^-?\d+(\.\d+)?$/);
-    if (num) return Number(v);
-    return undefined;
-  }
-
-  const asNum = Number(raw);
-  if (Number.isFinite(asNum) && raw !== '') return asNum;
-  return undefined;
-}
-
-function parseSpacingPx(raw: string): number | null {
-  if (raw in SPACE_SCALE_PX) return SPACE_SCALE_PX[raw]!;
-  const bracket = parseBracketValue(raw);
-  if (bracket) {
-    const v = bracket.trim();
-    const px = v.match(/^(-?\d+(\.\d+)?)px$/);
-    if (px) return Number(px[1]);
-    const num = v.match(/^-?\d+(\.\d+)?$/);
-    if (num) return Number(v);
-    return null;
-  }
-  return null;
-}
-
-function parseColorValue(raw: string): string | null {
-  if (raw === 'transparent') return 'transparent';
-  if (raw === 'black') return '#000000';
-  if (raw === 'white') return '#ffffff';
-  const bracket = parseBracketValue(raw);
-  if (!bracket) return null;
-  const v = bracket.trim();
-  if (!v) return null;
-  return v;
-}
-
-function splitTokens(input: string): string[] {
-  return input
-    .split(/\s+/g)
-    .map((t) => t.trim())
-    .filter(Boolean);
 }
 
 function decodeBase64UrlToUtf8(input: string): string {
@@ -193,20 +112,221 @@ function tryParseYcStyleToken(token: string): Partial<StyleProps> | null {
   const raw = token.slice('yc-style-'.length);
   const bracket = parseBracketValue(raw);
   if (!bracket) return null;
-  const decoded = decodeBase64UrlToUtf8(bracket.trim());
-  const parsed = JSON.parse(decoded) as unknown;
-  if (!parsed || typeof parsed !== 'object') return null;
-  return parsed as Partial<StyleProps>;
+  try {
+    const decoded = decodeBase64UrlToUtf8(bracket.trim());
+    const parsed = JSON.parse(decoded) as unknown;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return parsed as Partial<StyleProps>;
+  } catch {
+    return null;
+  }
 }
 
-function applyInset(style: Partial<StyleProps>, axis: 'all' | 'x' | 'y', value: FlexValue) {
-  if (axis === 'all' || axis === 'x') {
-    style.left = value;
-    style.right = value;
+function cssToYogaColor(input: unknown, vars: Record<string, string>): string | null {
+  if (typeof input !== 'string') return null;
+  let s = input.trim();
+  if (!s) return null;
+
+  s = s.replace(/var\((--[^)]+)\)/g, (_, name: string) => (vars[name] ?? `var(${name})`));
+
+  const rgb = s.match(/^rgb\(\s*(\d+)\s+(\d+)\s+(\d+)\s*\/\s*([0-9.]+)\s*\)$/i);
+  if (rgb) {
+    const r = Number(rgb[1]);
+    const g = Number(rgb[2]);
+    const b = Number(rgb[3]);
+    const a = Number(rgb[4]);
+    if ([r, g, b, a].every((n) => Number.isFinite(n))) {
+      return `rgba(${r}, ${g}, ${b}, ${a})`;
+    }
   }
-  if (axis === 'all' || axis === 'y') {
-    style.top = value;
-    style.bottom = value;
+
+  const rgbComma = s.match(/^rgb\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)\s*\)$/i);
+  if (rgbComma) {
+    const r = Number(rgbComma[1]);
+    const g = Number(rgbComma[2]);
+    const b = Number(rgbComma[3]);
+    if ([r, g, b].every((n) => Number.isFinite(n))) {
+      return `rgba(${r}, ${g}, ${b}, 1)`;
+    }
+  }
+
+  return s;
+}
+
+function parseCssLengthToPx(input: unknown): number | null {
+  if (typeof input === 'number') return Number.isFinite(input) ? input : null;
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+  if (!s) return null;
+  if (s === '0') return 0;
+
+  const px = s.match(/^(-?\d+(?:\.\d+)?)px$/);
+  if (px) return Number(px[1]);
+
+  const rem = s.match(/^(-?\d+(?:\.\d+)?)rem$/);
+  if (rem) return Number(rem[1]) * 16;
+
+  const num = s.match(/^-?\d+(?:\.\d+)?$/);
+  if (num) return Number(s);
+
+  return null;
+}
+
+function parseCssFlexValue(input: unknown): FlexValue | undefined {
+  if (typeof input === 'number') return Number.isFinite(input) ? input : undefined;
+  if (typeof input !== 'string') return undefined;
+  const s = input.trim();
+  if (!s) return undefined;
+  if (s === 'auto') return 'auto';
+  if (s === '0') return 0;
+
+  const pct = s.match(/^(-?\d+(?:\.\d+)?)%$/);
+  if (pct) return `${Number(pct[1])}%`;
+
+  const px = s.match(/^(-?\d+(?:\.\d+)?)px$/);
+  if (px) return Number(px[1]);
+
+  const rem = s.match(/^(-?\d+(?:\.\d+)?)rem$/);
+  if (rem) return Number(rem[1]) * 16;
+
+  const num = s.match(/^-?\d+(?:\.\d+)?$/);
+  if (num) return Number(s);
+
+  return undefined;
+}
+
+function parseBoxShadow(input: unknown, vars: Record<string, string>): NonNullable<StyleProps['boxShadow']> | null {
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+  if (!s || s === 'none') return null;
+  const first = s.split(',')[0]?.trim();
+  if (!first) return null;
+
+  const parts = first.split(/\s+/g).filter(Boolean);
+  if (parts.length < 5) return null;
+
+  const offsetX = parseCssLengthToPx(parts[0]);
+  const offsetY = parseCssLengthToPx(parts[1]);
+  const blur = parseCssLengthToPx(parts[2]);
+  const spread = parseCssLengthToPx(parts[3]);
+  if (offsetX === null || offsetY === null || blur === null || spread === null) return null;
+
+  const colorRaw = parts.slice(4).join(' ');
+  const color = cssToYogaColor(colorRaw, vars);
+  if (!color) return null;
+
+  return { offsetX, offsetY, blur, spread, color };
+}
+
+function cssObjectToYogaStyle(css: Record<string, unknown>): Partial<StyleProps> {
+  const vars: Record<string, string> = {};
+  for (const [k, v] of Object.entries(css)) {
+    if (k.startsWith('--') && typeof v === 'string') vars[k] = v;
+  }
+
+  const style: Partial<StyleProps> = {};
+
+  const setFlex = (key: keyof StyleProps, v: unknown) => {
+    const fv = parseCssFlexValue(v);
+    if (fv !== undefined) (style as Record<string, unknown>)[key as string] = fv;
+  };
+  const setNum = (key: keyof StyleProps, v: unknown) => {
+    const n = parseCssLengthToPx(v);
+    if (n !== null) (style as Record<string, unknown>)[key as string] = n;
+  };
+  const setN = (key: keyof StyleProps, v: unknown) => {
+    const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+    if (Number.isFinite(n)) (style as Record<string, unknown>)[key as string] = n;
+  };
+
+  for (const [k, v] of Object.entries(css)) {
+    if (k.startsWith('--')) continue;
+
+    if (k === 'width') setFlex('width', v);
+    else if (k === 'height') setFlex('height', v);
+    else if (k === 'minWidth') setFlex('minWidth', v);
+    else if (k === 'minHeight') setFlex('minHeight', v);
+    else if (k === 'maxWidth') setFlex('maxWidth', v);
+    else if (k === 'maxHeight') setFlex('maxHeight', v);
+    else if (k === 'top') setFlex('top', v);
+    else if (k === 'right') setFlex('right', v);
+    else if (k === 'bottom') setFlex('bottom', v);
+    else if (k === 'left') setFlex('left', v);
+    else if (k === 'padding') setFlex('padding', v);
+    else if (k === 'paddingTop') setFlex('paddingTop', v);
+    else if (k === 'paddingRight') setFlex('paddingRight', v);
+    else if (k === 'paddingBottom') setFlex('paddingBottom', v);
+    else if (k === 'paddingLeft') setFlex('paddingLeft', v);
+    else if (k === 'margin') setFlex('margin', v);
+    else if (k === 'marginTop') setFlex('marginTop', v);
+    else if (k === 'marginRight') setFlex('marginRight', v);
+    else if (k === 'marginBottom') setFlex('marginBottom', v);
+    else if (k === 'marginLeft') setFlex('marginLeft', v);
+    else if (k === 'gap') setFlex('gap', v);
+    else if (k === 'rowGap') setFlex('rowGap', v);
+    else if (k === 'columnGap') setFlex('columnGap', v);
+    else if (k === 'backgroundColor') {
+      const c = cssToYogaColor(v, vars);
+      if (c) style.backgroundColor = c;
+    } else if (k === 'borderColor') {
+      const c = cssToYogaColor(v, vars);
+      if (c) style.borderColor = c;
+    } else if (k === 'color') {
+      const c = cssToYogaColor(v, vars);
+      if (c) style.color = c;
+    } else if (k === 'borderWidth') setNum('borderWidth', v);
+    else if (k === 'borderRadius') setNum('borderRadius', v);
+    else if (k === 'fontSize') setNum('fontSize', v);
+    else if (k === 'lineHeight') setNum('lineHeight', v);
+    else if (k === 'opacity') {
+      const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+      if (Number.isFinite(n)) style.opacity = Math.max(0, Math.min(1, n));
+    } else if (k === 'zIndex') setN('zIndex', v);
+    else if (k === 'boxShadow') {
+      const parsed = parseBoxShadow(v, vars);
+      if (parsed) style.boxShadow = parsed;
+    } else if (k === 'fontWeight') {
+      if (typeof v === 'number') style.fontWeight = v;
+      else if (typeof v === 'string') {
+        const n = Number(v);
+        style.fontWeight = Number.isFinite(n) ? n : (v as StyleProps['fontWeight']);
+      }
+    } else if (k === 'fontStyle' && typeof v === 'string') style.fontStyle = v as StyleProps['fontStyle'];
+    else if (k === 'fontFamily' && typeof v === 'string') style.fontFamily = v;
+    else if (k === 'textAlign' && typeof v === 'string') style.textAlign = v as StyleProps['textAlign'];
+    else if (k === 'whiteSpace' && typeof v === 'string') style.whiteSpace = v as StyleProps['whiteSpace'];
+    else if (k === 'flexDirection' && typeof v === 'string') style.flexDirection = v as StyleProps['flexDirection'];
+    else if (k === 'justifyContent' && typeof v === 'string') style.justifyContent = v as StyleProps['justifyContent'];
+    else if (k === 'alignItems' && typeof v === 'string') style.alignItems = v as StyleProps['alignItems'];
+    else if (k === 'alignSelf' && typeof v === 'string') style.alignSelf = v as StyleProps['alignSelf'];
+    else if (k === 'flexWrap' && typeof v === 'string') style.flexWrap = v as StyleProps['flexWrap'];
+    else if (k === 'overflow' && typeof v === 'string') style.overflow = v as StyleProps['overflow'];
+    else if (k === 'position' && typeof v === 'string') style.position = v as StyleProps['position'];
+    else if (k === 'flex') setN('flex', v);
+    else if (k === 'flexGrow') setN('flexGrow', v);
+    else if (k === 'flexShrink') setN('flexShrink', v);
+    else if (k === 'flexBasis') setFlex('flexBasis', v);
+  }
+
+  return style;
+}
+
+function tryConvertTokenStyle(token: string): Record<string, unknown> | null {
+  if (TOKEN_STYLE_CACHE.has(token)) return TOKEN_STYLE_CACHE.get(token) ?? null;
+  try {
+    const css = twj(token) as unknown;
+    if (!css || typeof css !== 'object') {
+      TOKEN_STYLE_CACHE.set(token, null);
+      return null;
+    }
+    const record = css as Record<string, unknown>;
+    const meaningfulKeys = Object.keys(record).filter((k) => !k.startsWith('--'));
+    const ok = meaningfulKeys.length > 0;
+    TOKEN_STYLE_CACHE.set(token, ok ? record : null);
+    return ok ? record : null;
+  } catch {
+    TOKEN_STYLE_CACHE.set(token, null);
+    return null;
   }
 }
 
@@ -215,6 +335,7 @@ export function tailwindToStyleProps(className: string | undefined | null): Pars
   const unsupported: string[] = [];
   const tokens = splitTokens(className ?? '');
 
+  const twTokens: string[] = [];
   for (const token of tokens) {
     const ycStyle = tryParseYcStyleToken(token);
     if (ycStyle) {
@@ -227,686 +348,20 @@ export function tailwindToStyleProps(className: string | undefined | null): Pars
       continue;
     }
 
-    if (token === 'flex-row') {
-      style.flexDirection = 'row';
-      continue;
-    }
-    if (token === 'flex-col') {
-      style.flexDirection = 'column';
-      continue;
-    }
-    if (token === 'flex-row-reverse') {
-      style.flexDirection = 'row-reverse';
-      continue;
-    }
-    if (token === 'flex-col-reverse') {
-      style.flexDirection = 'column-reverse';
-      continue;
-    }
+    const normalized = normalizeToken(token);
+    twTokens.push(normalized);
+    if (!tryConvertTokenStyle(normalized)) unsupported.push(token);
+  }
 
-    if (token === 'flex-wrap') {
-      style.flexWrap = 'wrap';
-      continue;
-    }
-    if (token === 'flex-nowrap') {
-      style.flexWrap = 'nowrap';
-      continue;
-    }
-
-    if (token === 'flex-1') {
-      style.flex = 1;
-      continue;
-    }
-    if (token === 'flex-none') {
-      style.flexGrow = 0;
-      style.flexShrink = 0;
-      style.flexBasis = 'auto';
-      style.flex = undefined;
-      continue;
-    }
-    if (token === 'flex-auto') {
-      style.flexGrow = 1;
-      style.flexShrink = 1;
-      style.flexBasis = 'auto';
-      style.flex = undefined;
-      continue;
-    }
-
-    if (token === 'grow') {
-      style.flexGrow = 1;
-      continue;
-    }
-    if (token === 'grow-0') {
-      style.flexGrow = 0;
-      continue;
-    }
-    if (token === 'shrink') {
-      style.flexShrink = 1;
-      continue;
-    }
-    if (token === 'shrink-0') {
-      style.flexShrink = 0;
-      continue;
-    }
-
-    if (token === 'justify-start') {
-      style.justifyContent = 'flex-start';
-      continue;
-    }
-    if (token === 'justify-center') {
-      style.justifyContent = 'center';
-      continue;
-    }
-    if (token === 'justify-end') {
-      style.justifyContent = 'flex-end';
-      continue;
-    }
-    if (token === 'justify-between') {
-      style.justifyContent = 'space-between';
-      continue;
-    }
-    if (token === 'justify-around') {
-      style.justifyContent = 'space-around';
-      continue;
-    }
-    if (token === 'justify-evenly') {
-      style.justifyContent = 'space-evenly';
-      continue;
-    }
-
-    if (token === 'items-start') {
-      style.alignItems = 'flex-start';
-      continue;
-    }
-    if (token === 'items-center') {
-      style.alignItems = 'center';
-      continue;
-    }
-    if (token === 'items-end') {
-      style.alignItems = 'flex-end';
-      continue;
-    }
-    if (token === 'items-stretch') {
-      style.alignItems = 'stretch';
-      continue;
-    }
-
-    if (token === 'self-auto') {
-      style.alignSelf = 'auto';
-      continue;
-    }
-    if (token === 'self-start') {
-      style.alignSelf = 'flex-start';
-      continue;
-    }
-    if (token === 'self-center') {
-      style.alignSelf = 'center';
-      continue;
-    }
-    if (token === 'self-end') {
-      style.alignSelf = 'flex-end';
-      continue;
-    }
-    if (token === 'self-stretch') {
-      style.alignSelf = 'stretch';
-      continue;
-    }
-
-    if (token === 'absolute') {
-      style.position = 'absolute';
-      continue;
-    }
-    if (token === 'relative') {
-      style.position = 'relative';
-      continue;
-    }
-
-    if (token === 'overflow-hidden') {
-      style.overflow = 'hidden';
-      continue;
-    }
-    if (token === 'overflow-visible') {
-      style.overflow = 'visible';
-      continue;
-    }
-    if (token === 'overflow-scroll') {
-      style.overflow = 'scroll';
-      continue;
-    }
-
-    if (token === 'text-left') {
-      style.textAlign = 'left';
-      continue;
-    }
-    if (token === 'text-center') {
-      style.textAlign = 'center';
-      continue;
-    }
-    if (token === 'text-right') {
-      style.textAlign = 'right';
-      continue;
-    }
-
-    if (token === 'whitespace-nowrap') {
-      style.whiteSpace = 'nowrap';
-      continue;
-    }
-    if (token === 'whitespace-normal') {
-      style.whiteSpace = 'normal';
-      continue;
-    }
-
-    if (token === 'italic') {
-      style.fontStyle = 'italic';
-      continue;
-    }
-    if (token === 'not-italic') {
-      style.fontStyle = 'normal';
-      continue;
-    }
-
-    if (token.startsWith('text-')) {
-      const raw = token.slice('text-'.length);
-      if (raw in FONT_SIZE_PX) {
-        style.fontSize = FONT_SIZE_PX[raw]!;
-        continue;
+  if (twTokens.length) {
+    try {
+      const css = twj(twTokens.join(' ')) as unknown;
+      if (css && typeof css === 'object') {
+        Object.assign(style, cssObjectToYogaStyle(css as Record<string, unknown>));
       }
-      const color = parseColorValue(raw);
-      if (color) {
-        style.color = color;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
+    } catch {
+      unsupported.push(...twTokens);
     }
-
-    if (token.startsWith('font-')) {
-      const raw = token.slice('font-'.length).replace(/-/g, '');
-      const w = FONT_WEIGHT[raw];
-      if (w !== undefined) {
-        style.fontWeight = w;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('leading-')) {
-      const raw = token.slice('leading-'.length);
-      if (raw in LINE_HEIGHT) {
-        style.lineHeight = LINE_HEIGHT[raw]!;
-        continue;
-      }
-      const bracket = parseBracketValue(raw);
-      if (bracket) {
-        const v = Number(bracket.trim());
-        if (Number.isFinite(v)) {
-          style.lineHeight = v;
-          continue;
-        }
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('w-')) {
-      const raw = token.slice(2);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.width = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('h-')) {
-      const raw = token.slice(2);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.height = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('min-w-')) {
-      const raw = token.slice('min-w-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.minWidth = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('min-h-')) {
-      const raw = token.slice('min-h-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.minHeight = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('max-w-')) {
-      const raw = token.slice('max-w-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.maxWidth = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('max-h-')) {
-      const raw = token.slice('max-h-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.maxHeight = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('p-')) {
-      const raw = token.slice(2);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.padding = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('px-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingLeft = px;
-        style.paddingRight = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('py-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingTop = px;
-        style.paddingBottom = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('pt-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingTop = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('pr-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingRight = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('pb-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingBottom = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('pl-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.paddingLeft = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('m-')) {
-      const raw = token.slice(2);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.margin = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('mx-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginLeft = px;
-        style.marginRight = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('my-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginTop = px;
-        style.marginBottom = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('mt-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginTop = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('mr-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginRight = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('mb-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginBottom = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('ml-')) {
-      const raw = token.slice(3);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.marginLeft = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('gap-')) {
-      const raw = token.slice(4);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.gap = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('gap-x-')) {
-      const raw = token.slice('gap-x-'.length);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.columnGap = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('gap-y-')) {
-      const raw = token.slice('gap-y-'.length);
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.rowGap = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('inset-')) {
-      const raw = token.slice('inset-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        applyInset(style, 'all', v);
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        applyInset(style, 'all', px);
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('inset-x-')) {
-      const raw = token.slice('inset-x-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        applyInset(style, 'x', v);
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        applyInset(style, 'x', px);
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('inset-y-')) {
-      const raw = token.slice('inset-y-'.length);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        applyInset(style, 'y', v);
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        applyInset(style, 'y', px);
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('top-')) {
-      const raw = token.slice(4);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.top = v;
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.top = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('right-')) {
-      const raw = token.slice(6);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.right = v;
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.right = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('bottom-')) {
-      const raw = token.slice(7);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.bottom = v;
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.bottom = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-    if (token.startsWith('left-')) {
-      const raw = token.slice(5);
-      const v = parseFlexValue(raw);
-      if (v !== undefined) {
-        style.left = v;
-        continue;
-      }
-      const px = parseSpacingPx(raw);
-      if (px !== null) {
-        style.left = px;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('bg-')) {
-      const raw = token.slice(3);
-      const color = parseColorValue(raw);
-      if (color) {
-        style.backgroundColor = color;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token === 'border') {
-      style.borderWidth = 1;
-      continue;
-    }
-    if (token.startsWith('border-')) {
-      const raw = token.slice('border-'.length);
-      const color = parseColorValue(raw);
-      if (color) {
-        style.borderColor = color;
-        continue;
-      }
-      const bw = Number(raw);
-      if (Number.isFinite(bw)) {
-        style.borderWidth = bw;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token === 'rounded') {
-      style.borderRadius = RADIUS_PX.DEFAULT;
-      continue;
-    }
-    if (token.startsWith('rounded-')) {
-      const raw = token.slice('rounded-'.length);
-      const bracket = parseBracketValue(raw);
-      if (bracket) {
-        const v = bracket.trim();
-        const px = v.match(/^(-?\d+(\.\d+)?)px$/);
-        if (px) {
-          style.borderRadius = Number(px[1]);
-          continue;
-        }
-        const num = Number(v);
-        if (Number.isFinite(num)) {
-          style.borderRadius = num;
-          continue;
-        }
-      }
-      const r = RADIUS_PX[raw];
-      if (r !== undefined) {
-        style.borderRadius = r;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('opacity-')) {
-      const raw = token.slice('opacity-'.length);
-      const v = Number(raw);
-      if (Number.isFinite(v)) {
-        style.opacity = Math.max(0, Math.min(1, v / 100));
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('rotate-')) {
-      const raw = token.slice('rotate-'.length);
-      const v = Number(raw);
-      if (Number.isFinite(v)) {
-        style.rotate = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token.startsWith('z-')) {
-      const raw = token.slice(2);
-      const bracket = parseBracketValue(raw);
-      const v = Number((bracket ?? raw).trim());
-      if (Number.isFinite(v)) {
-        style.zIndex = v;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    if (token === 'shadow') {
-      style.boxShadow = SHADOW_PRESETS.DEFAULT;
-      continue;
-    }
-    if (token === 'shadow-none') {
-      style.boxShadow = null;
-      continue;
-    }
-    if (token.startsWith('shadow-')) {
-      const raw = token.slice('shadow-'.length);
-      const preset = SHADOW_PRESETS[raw];
-      if (preset) {
-        style.boxShadow = preset;
-        continue;
-      }
-      unsupported.push(token);
-      continue;
-    }
-
-    unsupported.push(token);
   }
 
   return { style, unsupported };

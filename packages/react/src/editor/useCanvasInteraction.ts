@@ -229,8 +229,9 @@ export function useCanvasInteraction(
     dropIndicator: null,
   });
   const [scale, setScale] = useState(1);
-  const [offset, setOffset] = useState({ x: 100, y: 100 });
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [scrollTick, setScrollTick] = useState(0);
+  const animationRef = useRef<{ raf: number | null } | null>(null);
   const dragRef = useRef<DragState>({
     type: 'none',
     startX: 0,
@@ -242,19 +243,67 @@ export function useCanvasInteraction(
     nodeCenterX: 0,
     nodeCenterY: 0,
   });
-  const lastOffsetRef = useRef({ x: 100, y: 100 });
+  const lastOffsetRef = useRef({ x: 0, y: 0 });
   const scrollFadeTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
+
+  const cancelViewAnimation = useCallback(() => {
+    const anim = animationRef.current;
+    if (anim?.raf != null) cancelAnimationFrame(anim.raf);
+    animationRef.current = null;
+  }, []);
+
+  const animateViewTo = useCallback(
+    (target: { scale: number; offset: { x: number; y: number } }, options?: { durationMs?: number }) => {
+      cancelViewAnimation();
+
+      const durationMs = options?.durationMs ?? 260;
+      const fromScale = scale;
+      const fromOffset = { ...offset };
+      const toScale = target.scale;
+      const toOffset = target.offset;
+      const start = performance.now();
+
+      const easeInOut = (t: number) => (t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+
+      const tick = (now: number) => {
+        const elapsed = now - start;
+        const t = Math.min(1, elapsed / durationMs);
+        const k = easeInOut(t);
+
+        const nextScale = fromScale + (toScale - fromScale) * k;
+        const nextOffset = {
+          x: fromOffset.x + (toOffset.x - fromOffset.x) * k,
+          y: fromOffset.y + (toOffset.y - fromOffset.y) * k,
+        };
+        setScale(nextScale);
+        setOffset(nextOffset);
+
+        if (t < 1) {
+          const raf = requestAnimationFrame(tick);
+          animationRef.current = { raf };
+        } else {
+          animationRef.current = null;
+        }
+      };
+
+      const raf = requestAnimationFrame(tick);
+      animationRef.current = { raf };
+    },
+    [cancelViewAnimation, offset, scale]
+  );
 
   useEffect(() => {
     const timeouts = scrollFadeTimeoutsRef.current;
     return () => {
       for (const timeout of timeouts.values()) clearTimeout(timeout);
       timeouts.clear();
+      cancelViewAnimation();
     };
-  }, []);
+  }, [cancelViewAnimation]);
 
   const handleMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      cancelViewAnimation();
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -333,7 +382,7 @@ export function useCanvasInteraction(
         lastOffsetRef.current = { ...offset };
       }
     },
-    [tree, scale, offset, selection.selectedNodeId, scrollManager]
+    [cancelViewAnimation, tree, scale, offset, selection.selectedNodeId, scrollManager]
   );
 
   const handleMouseMove = useCallback(
@@ -487,6 +536,7 @@ export function useCanvasInteraction(
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
+      cancelViewAnimation();
       const target = e.target as HTMLCanvasElement;
       const rect = target.getBoundingClientRect();
       const mouseX = e.clientX - rect.left;
@@ -546,7 +596,7 @@ export function useCanvasInteraction(
       setScale(newScale);
       setOffset({ x: newOffsetX, y: newOffsetY });
     },
-    [scale, offset, tree, scrollManager]
+    [cancelViewAnimation, scale, offset, tree, scrollManager]
   );
 
   const selectNode = useCallback((nodeId: string | null) => {
@@ -566,8 +616,33 @@ export function useCanvasInteraction(
     [offset, scale]
   );
 
+  const resetView = useCallback(
+    (
+      viewportWidth: number,
+      viewportHeight: number,
+      options?: { scale?: number; targetId?: string; animate?: boolean; durationMs?: number }
+    ): { scale: number; offset: { x: number; y: number } } => {
+      const nextScale = options?.scale ?? 1;
+      const targetId = options?.targetId ?? tree.rootId;
+      const node = tree.nodes[targetId];
+      const centerX = node ? node.computedLayout.left + node.computedLayout.width / 2 : 0;
+      const centerY = node ? node.computedLayout.top + node.computedLayout.height / 2 : 0;
+      const nextOffset = {
+        x: viewportWidth / 2 - centerX * nextScale,
+        y: viewportHeight / 2 - centerY * nextScale,
+      };
+      if (options?.animate) animateViewTo({ scale: nextScale, offset: nextOffset }, { durationMs: options.durationMs });
+      else {
+        setScale(nextScale);
+        setOffset(nextOffset);
+      }
+      return { scale: nextScale, offset: nextOffset };
+    },
+    [animateViewTo, tree]
+  );
+
   const focusNode = useCallback(
-    (nodeId: string, canvasWidth: number, canvasHeight: number) => {
+    (nodeId: string, canvasWidth: number, canvasHeight: number, options?: { animate?: boolean; durationMs?: number }) => {
       const node = tree.nodes[nodeId];
       if (!node) return;
       const { left, top, width, height } = node.computedLayout;
@@ -582,10 +657,13 @@ export function useCanvasInteraction(
       const newOffsetX = canvasWidth / 2 - centerX * newScale;
       const newOffsetY = canvasHeight / 2 - centerY * newScale;
 
-      setScale(newScale);
-      setOffset({ x: newOffsetX, y: newOffsetY });
+      if (options?.animate) animateViewTo({ scale: newScale, offset: { x: newOffsetX, y: newOffsetY } }, { durationMs: options.durationMs });
+      else {
+        setScale(newScale);
+        setOffset({ x: newOffsetX, y: newOffsetY });
+      }
     },
-    [tree.nodes]
+    [animateViewTo, tree.nodes]
   );
 
   const handleDoubleClick = useCallback(
@@ -618,6 +696,7 @@ export function useCanvasInteraction(
     selectNode,
     focusNode,
     setScaleAt,
+    resetView,
     handleMouseDown,
     handleMouseMove,
     handleMouseUp,

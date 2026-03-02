@@ -22,7 +22,8 @@
     "dev": "tsup --watch"
   },
   "dependencies": {
-    "@yoga-canvas/core": "workspace:*"
+    "@yoga-canvas/core": "workspace:*",
+    "tw-to-css": "^0.0.12"
   },
   "peerDependencies": {
     "react": ">=17.0.0",

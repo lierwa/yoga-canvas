@@ -245,9 +245,9 @@ export default function App() {
       <ResizablePanels
         left={leftPanel}
         center={centerPanel}
-        right={rightPanel}
+        rightPanels={[rightPanel]}
         defaultLeftWidth={420}
-        defaultRightWidth={280}
+        defaultRightWidths={[280]}
         minWidth={200}
       />
 

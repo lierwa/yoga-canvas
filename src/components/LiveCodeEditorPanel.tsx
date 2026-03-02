@@ -10,20 +10,29 @@ import type { CanvasNode, NodeTree } from '../types';
 type Tab = 'jsx' | 'json';
 type JSXPropsMode = 'style' | 'className';
 
+type MonacoEditorLike = {
+  getValue: () => string;
+  onDidBlurEditorText: (cb: () => void) => { dispose: () => void };
+};
+
 export default function LiveCodeEditorPanel({
   tree,
   onClose,
   onDescriptorChange,
+  embedded = false,
 }: {
   tree: NodeTree;
   onClose: () => void;
   onDescriptorChange: (descriptor: NodeDescriptor) => void;
+  embedded?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('jsx');
   const [jsxPropsMode, setJsxPropsMode] = useState<JSXPropsMode>('className');
   const [error, setError] = useState<string | null>(null);
   const timerRef = useRef<ReturnType<typeof setTimeout>>();
   const lastValidDescriptorRef = useRef<NodeDescriptor | null>(null);
+  const editorRef = useRef<MonacoEditorLike | null>(null);
+  const blurSubscriptionRef = useRef<{ dispose: () => void } | null>(null);
 
   const snapshotDescriptor = useMemo(() => buildDescriptorFromTree(tree, tree.rootId), [tree]);
   const initialJSX = useMemo(() => renderJSXFromDescriptor(snapshotDescriptor, 0, jsxPropsMode), [snapshotDescriptor, jsxPropsMode]);
@@ -43,17 +52,21 @@ export default function LiveCodeEditorPanel({
     setCode((prev) => ({ ...prev, jsx: next }));
   }, [activeTab, code.jsx, jsxPropsMode, tree]);
 
-  const applyDescriptor = useCallback(
+  const rememberDescriptor = useCallback((descriptor: NodeDescriptor) => {
+    lastValidDescriptorRef.current = descriptor;
+    setError(null);
+  }, []);
+
+  const commitDescriptor = useCallback(
     (descriptor: NodeDescriptor) => {
-      lastValidDescriptorRef.current = descriptor;
-      setError(null);
+      rememberDescriptor(descriptor);
       onDescriptorChange(descriptor);
     },
-    [onDescriptorChange],
+    [onDescriptorChange, rememberDescriptor],
   );
 
-  const transpileAndEval = useCallback(
-    (jsx: string) => {
+  const parseJSXToDescriptor = useCallback(
+    (jsx: string): NodeDescriptor => {
       const wrapped = `return (${jsx.trim()})`;
       const result = transform(wrapped, {
         transforms: ['jsx'],
@@ -71,37 +84,33 @@ export default function LiveCodeEditorPanel({
       }
       const root = descriptors[0];
       const base = lastValidDescriptorRef.current ?? snapshotDescriptor;
-      const patched = jsxPropsMode === 'className' ? mergeRestStylesByStructure(base, root) : root;
-      applyDescriptor(patched);
+      return jsxPropsMode === 'className' ? mergeRestStylesByStructure(base, root) : root;
     },
-    [applyDescriptor, jsxPropsMode, snapshotDescriptor],
+    [jsxPropsMode, snapshotDescriptor],
   );
 
-  const parseJSON = useCallback(
-    (json: string) => {
+  const parseJSONToDescriptor = useCallback((json: string): NodeDescriptor => {
       const parsed = JSON.parse(json) as unknown;
       if (!isNodeDescriptor(parsed)) {
         throw new Error('JSON 需要是 NodeDescriptor（包含 type/style/children 等字段）');
       }
-      applyDescriptor(parsed);
-    },
-    [applyDescriptor],
-  );
+      return parsed;
+  }, []);
 
   const schedule = useCallback(
     (value: string) => {
       clearTimeout(timerRef.current);
       timerRef.current = setTimeout(() => {
         try {
-          if (activeTab === 'jsx') transpileAndEval(value);
-          else parseJSON(value);
+          const descriptor = activeTab === 'jsx' ? parseJSXToDescriptor(value) : parseJSONToDescriptor(value);
+          rememberDescriptor(descriptor);
         } catch (e: unknown) {
           const msg = e instanceof Error ? e.message : String(e);
           setError(msg);
         }
       }, 350);
     },
-    [activeTab, parseJSON, transpileAndEval],
+    [activeTab, parseJSONToDescriptor, parseJSXToDescriptor, rememberDescriptor],
   );
 
   const handleChange = useCallback(
@@ -113,12 +122,25 @@ export default function LiveCodeEditorPanel({
     [activeTab, schedule],
   );
 
+  const commitFromEditor = useCallback(() => {
+    clearTimeout(timerRef.current);
+    try {
+      const currentCode = editorRef.current?.getValue() ?? (activeTab === 'jsx' ? code.jsx : code.json);
+      const descriptor = activeTab === 'jsx' ? parseJSXToDescriptor(currentCode) : parseJSONToDescriptor(currentCode);
+      commitDescriptor(descriptor);
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
+    }
+  }, [activeTab, code.json, code.jsx, commitDescriptor, parseJSONToDescriptor, parseJSXToDescriptor]);
+
   const handleCopy = useCallback(() => {
     void navigator.clipboard.writeText(activeTab === 'jsx' ? code.jsx : code.json);
   }, [activeTab, code]);
 
   const handleResetFromCanvas = useCallback(() => {
     const desc = buildDescriptorFromTree(tree, tree.rootId);
+    lastValidDescriptorRef.current = desc;
     const nextJSX = renderJSXFromDescriptor(desc, 0, jsxPropsMode);
     lastGeneratedJSXRef.current = nextJSX;
     setCode({
@@ -128,29 +150,42 @@ export default function LiveCodeEditorPanel({
     setError(null);
   }, [tree, jsxPropsMode]);
 
+  useEffect(() => {
+    return () => {
+      blurSubscriptionRef.current?.dispose();
+      blurSubscriptionRef.current = null;
+    };
+  }, []);
+
+  const rootClassName = embedded
+    ? 'bg-white border-l border-gray-200 flex flex-col h-full'
+    : 'fixed top-0 right-0 h-screen z-50 bg-white border-l border-gray-200 shadow-2xl flex flex-col';
+
   return (
     <div
-      className="fixed top-0 right-0 h-screen z-50 bg-white border-l border-gray-200 shadow-2xl flex flex-col"
-      style={{ width: panelWidth }}
+      className={rootClassName}
+      style={embedded ? undefined : { width: panelWidth }}
     >
-      <div
-        className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-indigo-500/20 active:bg-indigo-500/30"
-        onPointerDown={(e) => {
-          dragRef.current = { startX: e.clientX, startWidth: panelWidth };
-          (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
-        }}
-        onPointerMove={(e) => {
-          if (!dragRef.current) return;
-          const delta = dragRef.current.startX - e.clientX;
-          const min = 320;
-          const max = Math.max(min, window.innerWidth - 240);
-          const next = Math.max(min, Math.min(max, dragRef.current.startWidth + delta));
-          setPanelWidth(next);
-        }}
-        onPointerUp={() => {
-          dragRef.current = null;
-        }}
-      />
+      {!embedded && (
+        <div
+          className="absolute left-0 top-0 h-full w-1 cursor-ew-resize hover:bg-indigo-500/20 active:bg-indigo-500/30"
+          onPointerDown={(e) => {
+            dragRef.current = { startX: e.clientX, startWidth: panelWidth };
+            (e.currentTarget as HTMLDivElement).setPointerCapture(e.pointerId);
+          }}
+          onPointerMove={(e) => {
+            if (!dragRef.current) return;
+            const delta = dragRef.current.startX - e.clientX;
+            const min = 320;
+            const max = Math.max(min, window.innerWidth - 240);
+            const next = Math.max(min, Math.min(max, dragRef.current.startWidth + delta));
+            setPanelWidth(next);
+          }}
+          onPointerUp={() => {
+            dragRef.current = null;
+          }}
+        />
+      )}
       <div className="h-12 px-3 flex items-center gap-2 border-b border-gray-200">
         <div className="text-sm font-semibold text-gray-800">Live Editor</div>
         <div className="flex items-center gap-1 ml-2">
@@ -194,7 +229,7 @@ export default function LiveCodeEditorPanel({
           type="button"
           onClick={handleResetFromCanvas}
           className="px-2 py-1 rounded text-xs text-gray-600 hover:bg-gray-100"
-          title="从当前画布重新生成代码"
+          title="从当前画布同步到编辑器（覆盖当前编辑器内容）"
         >
           Sync
         </button>
@@ -232,6 +267,13 @@ export default function LiveCodeEditorPanel({
             });
           }}
           onChange={handleChange}
+          onMount={(editor) => {
+            editorRef.current = editor as unknown as MonacoEditorLike;
+            blurSubscriptionRef.current?.dispose();
+            blurSubscriptionRef.current = editorRef.current.onDidBlurEditorText(() => {
+              commitFromEditor();
+            });
+          }}
           options={{
             minimap: { enabled: false },
             fontSize: 12,
@@ -394,6 +436,8 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     return null;
   };
 
+  const escapeArbitrary = (v: string) => v.trim().replace(/\s+/g, '_');
+
   const pxToScale = (px: unknown) => {
     if (typeof px !== 'number') return null;
     const map: Record<number, string> = {
@@ -540,13 +584,16 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   spaceKey('gap', 'gap');
 
   const backgroundColor = style.backgroundColor;
-  if (typeof backgroundColor === 'string' && backgroundColor) add(`bg-[${backgroundColor}]`, ['backgroundColor']);
+  if (typeof backgroundColor === 'string' && backgroundColor) add(`bg-[${escapeArbitrary(backgroundColor)}]`, ['backgroundColor']);
   const borderRadius = style.borderRadius;
-  if (typeof borderRadius === 'number') add(`rounded-[${borderRadius}px]`, ['borderRadius']);
+  if (typeof borderRadius === 'number') {
+    if (borderRadius === 0) add('rounded-none', ['borderRadius']);
+    else add(`rounded-[${borderRadius}px]`, ['borderRadius']);
+  }
   const borderWidth = style.borderWidth;
   if (typeof borderWidth === 'number' && borderWidth !== 0) add(`border-[${borderWidth}px]`, ['borderWidth']);
   const borderColor = style.borderColor;
-  if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${borderColor}]`, ['borderColor']);
+  if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${escapeArbitrary(borderColor)}]`, ['borderColor']);
 
   const opacity = style.opacity;
   if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
@@ -556,7 +603,7 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   if (typeof zIndex === 'number' && zIndex !== 0) add(`z-[${zIndex}]`, ['zIndex']);
 
   const color = style.color;
-  if (typeof color === 'string' && color) add(`text-[${color}]`, ['color']);
+  if (typeof color === 'string' && color) add(`text-[${escapeArbitrary(color)}]`, ['color']);
   const fontSize = style.fontSize;
   if (typeof fontSize === 'number') add(`text-[${fontSize}px]`, ['fontSize']);
   const fontStyle = style.fontStyle;

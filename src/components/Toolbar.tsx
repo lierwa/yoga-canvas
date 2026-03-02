@@ -6,6 +6,8 @@ interface ToolbarProps {
   scale: number;
   initialScale?: number;
   onScaleChange: (nextScale: number) => void;
+  canResetView?: boolean;
+  onResetView?: () => void;
   onUndo: () => void;
   onRedo: () => void;
   onPreview: () => void;
@@ -18,6 +20,8 @@ export default function Toolbar({
   scale,
   initialScale = 1,
   onScaleChange,
+  canResetView,
+  onResetView,
   onUndo,
   onRedo,
   onPreview,
@@ -29,7 +33,8 @@ export default function Toolbar({
   const clampedInitial = Math.min(Math.max(initialScale, minScale), maxScale);
   const progressPct = ((clampedScale - minScale) / (maxScale - minScale)) * 100;
   const zoomLabel = `${Math.round(clampedScale * 100)}%`;
-  const canReset = Math.abs(clampedScale - clampedInitial) > 0.0005;
+  const canResetZoom = Math.abs(clampedScale - clampedInitial) > 0.0005;
+  const canReset = canResetView ?? canResetZoom;
 
   return (
     <div className="relative flex items-center gap-1 px-3 py-2 bg-white border-b border-gray-200">
@@ -67,9 +72,12 @@ export default function Toolbar({
         <button
           type="button"
           className="cursor-pointer p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
-          onClick={() => onScaleChange(clampedInitial)}
+          onClick={() => {
+            if (onResetView) onResetView();
+            else onScaleChange(clampedInitial);
+          }}
           disabled={!canReset}
-          title="Reset zoom"
+          title="Reset view"
         >
           <RotateCcw size={14} />
         </button>
