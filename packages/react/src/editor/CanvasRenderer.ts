@@ -83,7 +83,9 @@ export function renderCanvas(
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
-  renderNode(ctx, tree, tree.rootId, selection, options?.scrollManager ?? null);
+  const scrollManager = options?.scrollManager ?? null;
+  renderNode(ctx, tree, tree.rootId, selection, scrollManager);
+  drawOverlays(ctx, tree, selection, scrollManager);
   ctx.restore();
 }
 
@@ -228,77 +230,144 @@ function renderNode(
     }
   } else {
     const orderedChildren = getOrderedChildren(tree, node);
-    for (const childId of orderedChildren) {
-      renderNode(ctx, tree, childId, selection, scrollManager);
+    if (node.type === 'view' && node.flexStyle.overflow === 'hidden') {
+      ctx.save();
+      ctx.beginPath();
+      if (borderRadius > 0) {
+        drawRoundedRect(ctx, left, top, width, height, borderRadius);
+      } else {
+        ctx.rect(left, top, width, height);
+      }
+      ctx.clip();
+      for (const childId of orderedChildren) {
+        renderNode(ctx, tree, childId, selection, scrollManager);
+      }
+      ctx.restore();
+    } else {
+      for (const childId of orderedChildren) {
+        renderNode(ctx, tree, childId, selection, scrollManager);
+      }
     }
   }
+}
 
-  if (selection.dropIndicator && selection.dropIndicator.parentId === nodeId) {
+function getAncestorScrollOffset(tree: NodeTree, nodeId: string, scrollManager: ScrollManager): { x: number; y: number } {
+  let x = 0;
+  let y = 0;
+  let current = tree.nodes[nodeId];
+  while (current?.parentId) {
+    const parent = tree.nodes[current.parentId];
+    if (!parent) break;
+    if (parent.type === 'scrollview') {
+      const off = scrollManager.getOffset(parent.id);
+      x += off.x;
+      y += off.y;
+    }
+    current = parent;
+  }
+  return { x, y };
+}
+
+function drawOverlays(
+  ctx: CanvasRenderingContext2D,
+  tree: NodeTree,
+  selection: SelectionState,
+  scrollManager: ScrollManager | null
+): void {
+  const getOffset = (nodeId: string) => {
+    if (!scrollManager) return { x: 0, y: 0 };
+    return getAncestorScrollOffset(tree, nodeId, scrollManager);
+  };
+
+  if (selection.dropIndicator) {
     const ind = selection.dropIndicator;
+    const off = getOffset(ind.parentId);
+    const dx = -off.x;
+    const dy = -off.y;
+    const x = ind.x + dx;
+    const y = ind.y + dy;
     ctx.save();
     ctx.strokeStyle = '#22c55e';
     ctx.lineWidth = 3;
     ctx.beginPath();
     if (ind.isHorizontal) {
-      ctx.moveTo(ind.x, ind.y);
-      ctx.lineTo(ind.x + ind.length, ind.y);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + ind.length, y);
     } else {
-      ctx.moveTo(ind.x, ind.y);
-      ctx.lineTo(ind.x, ind.y + ind.length);
+      ctx.moveTo(x, y);
+      ctx.lineTo(x, y + ind.length);
     }
     ctx.stroke();
     ctx.fillStyle = '#22c55e';
     if (ind.isHorizontal) {
       ctx.beginPath();
-      ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(ind.x + ind.length, ind.y, 3, 0, Math.PI * 2);
+      ctx.arc(x + ind.length, y, 3, 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.beginPath();
-      ctx.arc(ind.x, ind.y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 3, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(ind.x, ind.y + ind.length, 3, 0, Math.PI * 2);
+      ctx.arc(x, y + ind.length, 3, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
   }
 
-  if (selection.dropTargetId === nodeId) {
-    ctx.save();
-    ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 2.5;
-    ctx.setLineDash([6, 4]);
-    ctx.strokeRect(left, top, width, height);
-    ctx.setLineDash([]);
-    ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
-    ctx.fillRect(left, top, width, height);
-    ctx.restore();
+  if (selection.dropTargetId) {
+    const node = tree.nodes[selection.dropTargetId];
+    if (node) {
+      const off = getOffset(selection.dropTargetId);
+      const dx = -off.x;
+      const dy = -off.y;
+      const { left, top, width, height } = node.computedLayout;
+      ctx.save();
+      ctx.strokeStyle = '#22c55e';
+      ctx.lineWidth = 2.5;
+      ctx.setLineDash([6, 4]);
+      ctx.strokeRect(left + dx, top + dy, width, height);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
+      ctx.fillRect(left + dx, top + dy, width, height);
+      ctx.restore();
+    }
   }
 
-  if (selection.hoveredNodeId === nodeId && selection.selectedNodeId !== nodeId) {
-    ctx.save();
-    ctx.strokeStyle = '#60a5fa';
-    ctx.lineWidth = 1.5;
-    ctx.setLineDash([4, 4]);
-    ctx.strokeRect(left, top, width, height);
-    ctx.setLineDash([]);
-    ctx.restore();
+  if (selection.hoveredNodeId && selection.hoveredNodeId !== selection.selectedNodeId) {
+    const node = tree.nodes[selection.hoveredNodeId];
+    if (node) {
+      const off = getOffset(selection.hoveredNodeId);
+      const dx = -off.x;
+      const dy = -off.y;
+      const { left, top, width, height } = node.computedLayout;
+      ctx.save();
+      ctx.strokeStyle = '#60a5fa';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.strokeRect(left + dx, top + dy, width, height);
+      ctx.setLineDash([]);
+      ctx.restore();
+    }
   }
 
-  if (selection.selectedNodeId === nodeId) {
-    drawSelection(ctx, node);
+  if (selection.selectedNodeId) {
+    const node = tree.nodes[selection.selectedNodeId];
+    if (node) {
+      const off = getOffset(selection.selectedNodeId);
+      drawSelection(ctx, node, -off.x, -off.y);
+    }
   }
 }
 
-function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
+function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode, dx = 0, dy = 0): void {
   const { left, top, width, height } = node.computedLayout;
   ctx.save();
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 2;
-  ctx.strokeRect(left, top, width, height);
+  ctx.strokeRect(left + dx, top + dy, width, height);
   const handles = getResizeHandlePositions(node);
   ctx.fillStyle = '#ffffff';
   ctx.strokeStyle = '#3b82f6';
@@ -308,18 +377,18 @@ function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
     const size = isMid ? HANDLE_SIZE - 2 : HANDLE_SIZE;
     ctx.beginPath();
     if (isMid) {
-      ctx.arc(handle.x, handle.y, size / 2, 0, Math.PI * 2);
+      ctx.arc(handle.x + dx, handle.y + dy, size / 2, 0, Math.PI * 2);
     } else {
-      ctx.rect(handle.x - size / 2, handle.y - size / 2, size, size);
+      ctx.rect(handle.x + dx - size / 2, handle.y + dy - size / 2, size, size);
     }
     ctx.fill();
     ctx.stroke();
   }
 
-  const rotHandleY = top - ROTATION_HANDLE_OFFSET;
-  const rotHandleX = left + width / 2;
+  const rotHandleY = top + dy - ROTATION_HANDLE_OFFSET;
+  const rotHandleX = left + dx + width / 2;
   ctx.beginPath();
-  ctx.moveTo(rotHandleX, top);
+  ctx.moveTo(rotHandleX, top + dy);
   ctx.lineTo(rotHandleX, rotHandleY);
   ctx.strokeStyle = '#3b82f6';
   ctx.lineWidth = 1;
@@ -344,7 +413,7 @@ function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   ctx.font = 'bold 10px Inter, sans-serif';
   ctx.textBaseline = 'bottom';
   ctx.textAlign = 'center';
-  ctx.fillText(dimLabel, left + width / 2, top - ROTATION_HANDLE_OFFSET - ROTATION_HANDLE_RADIUS - 4);
+  ctx.fillText(dimLabel, left + dx + width / 2, top + dy - ROTATION_HANDLE_OFFSET - ROTATION_HANDLE_RADIUS - 4);
 
   ctx.restore();
 }

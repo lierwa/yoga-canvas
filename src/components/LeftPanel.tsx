@@ -4,7 +4,6 @@ import {
   Type,
   ImageIcon,
   ScrollText,
-  Smartphone,
   ChevronRight,
   ChevronDown,
   Trash2,
@@ -17,6 +16,8 @@ import type {
   CanvasContainerConfig,
 } from "../types";
 import { DEVICE_PRESETS } from "../types";
+import { CanvasContainerSection } from "./left-panel/CanvasContainerSection";
+import { ComponentsSection } from "./left-panel/ComponentsSection";
 
 interface LeftPanelProps {
   tree: NodeTree;
@@ -132,6 +133,10 @@ export default function LeftPanel({
   };
 
   const targetId = selectedNodeId ?? tree.rootId;
+  const addToLabel = selectedNodeId
+    ? `Add to: ${tree.nodes[selectedNodeId]?.name}`
+    : "Add to: Root";
+  const presetOptions = DEVICE_PRESETS.filter((p) => p.name !== "Custom");
 
   const registerRowElement = useCallback(
     (nodeId: string, el: HTMLDivElement | null) => {
@@ -212,89 +217,21 @@ export default function LeftPanel({
   return (
     <div className="h-full w-full border-r border-gray-200 bg-white flex flex-col overflow-hidden">
       <div className="shrink-0">
-        <Section title="Canvas Container">
-          <div className="flex items-center gap-1.5 mb-2">
-            <Smartphone size={14} className="text-gray-400 shrink-0" />
-            <select
-              value={selectedPreset}
-              onChange={(e) => handlePresetChange(e.target.value)}
-              className="flex-1 text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
-                focus:outline-none focus:ring-1 focus:ring-blue-400"
-            >
-              <option value="Auto Height">
-                Auto Height ({containerWidth}×auto)
-              </option>
-              {DEVICE_PRESETS.filter((p) => p.name !== "Custom").map((p) => (
-                <option key={p.name} value={p.name}>
-                  {p.name} ({p.width}×{p.height})
-                </option>
-              ))}
-              <option value="Custom">
-                Custom ({containerWidth}×{containerHeight === "auto" ? "auto" : containerHeight})
-              </option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-1.5">
-            <div>
-              <label className="text-[10px] text-gray-400 block">Width</label>
-              <input
-                type="number"
-                value={containerWidth}
-                onChange={(e) =>
-                  handleCustomSize(Number(e.target.value), containerHeight)
-                }
-                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
-                  focus:outline-none focus:ring-1 focus:ring-blue-400
-                  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400 block">Height</label>
-              <input
-                value={containerHeight === "auto" ? "auto" : String(containerHeight)}
-                onChange={(e) => {
-                  const raw = e.target.value.trim();
-                  if (!raw || raw.toLowerCase() === "auto") {
-                    handleCustomSize(containerWidth, "auto");
-                    return;
-                  }
-                  const next = Number(raw);
-                  if (!Number.isFinite(next)) return;
-                  handleCustomSize(containerWidth, next);
-                }}
-                className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
-                  focus:outline-none focus:ring-1 focus:ring-blue-400
-                  [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-              />
-            </div>
-          </div>
-        </Section>
+        <CanvasContainerSection
+          selectedPreset={selectedPreset}
+          containerWidth={containerWidth}
+          containerHeight={containerHeight}
+          presets={presetOptions}
+          onPresetChange={handlePresetChange}
+          onCustomSize={handleCustomSize}
+        />
 
-        <Section title="Components">
-          <p className="text-[10px] text-gray-400 mb-2">
-            {selectedNodeId
-              ? `Add to: ${tree.nodes[selectedNodeId]?.name}`
-              : "Add to: Root"}
-          </p>
-          <div className="grid grid-cols-2 gap-1.5">
-            {COMPONENT_ITEMS.map((item) => (
-              <button
-                key={item.type}
-                onClick={() => onAddNode(targetId, item.type)}
-                className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-md border border-gray-200
-                  hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600
-                  text-gray-600 transition-colors group"
-                title={item.desc}
-              >
-                <item.icon
-                  size={18}
-                  className="group-hover:scale-110 transition-transform"
-                />
-                <span className="text-[10px] font-medium">{item.label}</span>
-              </button>
-            ))}
-          </div>
-        </Section>
+        <ComponentsSection
+          addToLabel={addToLabel}
+          targetId={targetId}
+          items={COMPONENT_ITEMS}
+          onAddNode={onAddNode}
+        />
       </div>
 
       <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
@@ -555,23 +492,6 @@ function NodeTreeItem({
           })}
         </div>
       )}
-    </div>
-  );
-}
-
-function Section({
-  title,
-  children,
-}: {
-  title: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="px-3 py-3 border-b border-gray-100">
-      <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">
-        {title}
-      </h4>
-      {children}
     </div>
   );
 }

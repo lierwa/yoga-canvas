@@ -55,11 +55,12 @@ DEV_LOG_META:
 > - `dev-logs/dev-log.md` 顶部的 `DEV_LOG_META`（拿到 LastAnchorCommit）
 >
 > 如果你能访问终端，请在仓库根目录执行并读取结果（必要时裁剪，但必须足以写出结构化日志）：
-> - git rev-parse --short HEAD
-> - git log --oneline --decorate ${LastAnchorCommit}..HEAD
-> - git diff --name-status ${LastAnchorCommit}..HEAD
-> - git diff --stat ${LastAnchorCommit}..HEAD
-> - （可选）git diff ${LastAnchorCommit}..HEAD -- packages/core packages/react src packages/demo packages/taro
+> - git --no-pager rev-parse --short HEAD
+> - git --no-pager log --oneline --decorate ${LastAnchorCommit}..HEAD
+> - git --no-pager diff --name-status ${LastAnchorCommit}..HEAD
+> - git --no-pager diff --stat ${LastAnchorCommit}..HEAD
+> - （可选）git --no-pager diff ${LastAnchorCommit}..HEAD -- packages/core packages/react src packages/demo packages/taro
+>   - 说明：某些环境（尤其 Windows）git 默认会走 pager（less），导致命令看起来“卡住等你退出”。统一加 `--no-pager` 可避免交互阻塞。
 >
 > 如果你不能访问终端，请向用户索取以上命令输出（至少要有：log + name-status + stat）。
 >

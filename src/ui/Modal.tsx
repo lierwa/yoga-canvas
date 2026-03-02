@@ -1,5 +1,5 @@
 import { X } from 'lucide-react';
-import type { ReactNode } from 'react';
+import type { CSSProperties, ReactNode } from 'react';
 import { useEffect } from 'react';
 import { useSpringValue } from './useSpringValue';
 
@@ -9,9 +9,12 @@ type ModalProps = {
   children: ReactNode;
   onClose: () => void;
   footer?: ReactNode;
+  width?: number;
+  className?: string;
+  style?: CSSProperties;
 };
 
-export function Modal({ open, title, children, onClose, footer }: ModalProps) {
+export function Modal({ open, title, children, onClose, footer, width, className, style }: ModalProps) {
   const p = useSpringValue(open ? 1 : 0);
   const show = open || p > 0.001;
 
@@ -36,10 +39,15 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
         onMouseDown={onClose}
       />
       <div
-        className="relative w-[560px] max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,6,23,0.18)]"
+        className={[
+          'relative max-w-[calc(100vw-32px)] rounded-2xl border border-slate-200 bg-white shadow-[0_24px_80px_rgba(2,6,23,0.18)]',
+          className ?? '',
+        ].join(' ')}
         style={{
           opacity: p,
           transform: `translateY(${(1 - p) * 10}px) scale(${0.98 + p * 0.02})`,
+          width: width ? `${width}px` : '560px',
+          ...style,
         }}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -51,7 +59,7 @@ export function Modal({ open, title, children, onClose, footer }: ModalProps) {
           </div>
           <button
             type="button"
-            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors"
+            className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
             onClick={onClose}
             aria-label="Close"
           >

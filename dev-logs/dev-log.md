@@ -1,7 +1,7 @@
 ```yaml
 DEV_LOG_META:
-  LastLogId: BOOTSTRAP-2026-03-02/01
-  LastAnchorCommit: ed32fc7
+  LastLogId: 2026-03-02/02
+  LastAnchorCommit: ccdaa56
   LastAnchorDate: 2026-03-02
 ```
 
@@ -62,5 +62,58 @@ DEV_LOG_META:
 - 明确并补齐根目录与各包的开发/构建/发布工作流（pnpm 口径）
 - 将仓库规则与关键入口同步到根 README（或迁移到 project.md 并在 README 引用）
 - 梳理 H5/WX adapter 的差异清单并补充回归样例（文本测量、图片导出、触摸坐标）
+
+---
+
+## Log Entry: 2026-03-02/02
+- Date: 2026-03-02
+- Range: ed32fc7.. ccdaa56
+- Focus: 支持画布自动高度与项目工作空间（工作台/持久化项目）
+
+### Summary
+- Core：根节点 height='auto' / minHeight 场景允许 height=null 约束，layout 后同步逻辑高度并发出 resize 事件
+- React：YogaCanvasComponent 订阅 resize，自动更新 canvas 的 CSS 尺寸以匹配 auto-height
+- Taro：initYogaCanvasTaro 在 init 后根据 root computedLayout.height 回写 canvasNode.height，兼容小程序 canvas 固定高度限制
+- Layout：ScrollView contentSize 计算改为从子节点绝对布局转换为相对 viewport，避免滚动范围偏移
+- H5Adapter：文本测量改为基于 canvas + 手动换行算法，支持 nowrap/normal，提高布局高度计算稳定性
+- Editor：新增工作台 WorkspacePage + hash 路由；项目创建/复制/重命名/删除与 localStorage 持久化；编辑页按 projectId 打开并自动保存 treeJSON
+- DevLogs：新增 run-log.md 记录手册；日志采集的 git 命令统一加 --no-pager 避免 pager 卡住
+
+### Changes By Area
+- Core (@yoga-canvas/core):
+  - YogaCanvas 支持 setSize(height:null) 与 auto-fit-height；新增 resize 事件（packages/core/src/YogaCanvas.ts）
+  - NodeTreeManager 支持 height 约束为 null 表示不限制，并按 root height/minHeight 推断 auto-height（packages/core/src/tree/NodeTreeManager.ts）
+  - ScrollView 内容尺寸计算修正为相对父节点坐标（packages/core/src/layout/LayoutEngine.ts）
+  - H5 文本测量/图片缓存加载逻辑调整（packages/core/src/platform/H5Adapter.ts）
+  - 布局/渲染入口整理（packages/core/src/layout/index.ts、packages/core/src/renderer/Renderer.ts、packages/core/src/layout/YogaManager.ts）
+- React (@yoga-canvas/react):
+  - YogaCanvasComponent 监听 core resize 自动更新 canvasSize（packages/react/src/YogaCanvasComponent.tsx）
+- Editor (root src/):
+  - 新增工作台与 hashRouter（src/pages/WorkspacePage.tsx、src/utils/hashRouter.ts）
+  - 新增项目存储与 seed 模板，编辑页自动持久化 treeJSON（src/workspace/projectStore.ts、src/templates/seedDescriptors.ts、src/pages/EditorPage.tsx）
+  - UI 组件与属性面板支持 Auto Height preset（src/components/LeftPanel.tsx、src/components/PropertiesPanel.tsx 等）
+- Demo / Taro:
+  - taro 初始化根据计算后高度回写 canvas 尺寸（packages/taro/src/runtime/initYogaCanvasTaro.ts）
+  - Demo 与 taro-demo 适配示例调整（packages/demo/src/App.tsx、packages/taro-demo/src/pages/*）
+
+### Notable API / Data Model Changes
+- @yoga-canvas/core：YogaCanvas `setSize({ height: null })` 用于取消显式高度、启用 auto-fit-height（packages/core/src/YogaCanvas.ts）
+- @yoga-canvas/core：新增 `resize` 事件（参数 `{ width, height }`），用于外层同步画布尺寸（packages/core/src/YogaCanvas.ts）
+- 行为变化：当 root `flexStyle.height === 'auto'` 或 `height` 未设但存在 `minHeight` 且未传 `options.height` 时，布局高度可随内容增长（auto-fit）
+
+### Notes & Gotchas
+- git diff/log 在某些环境会走 pager（less）并等待手动退出；记录日志时统一使用 `git --no-pager ...`（dev-logs/run-log.md）
+- auto-fit-height 仅在未提供显式 height 且 root 满足 auto-height 判定条件时启用；需确保 root 宽度可推断（options.width 或 root.style.width）
+- React 侧通过 CSS style 控制 canvas 展示尺寸；canvas 实际像素尺寸仍由 core 按 pixelRatio 写入 width/height 属性
+
+### Open Issues
+- Workspace 的项目数据目前仅 localStorage，尚未支持导入/导出与跨设备同步
+- auto-height + ScrollView 的组合需要更多回归（滚动条、命中测试、内容尺寸）
+
+### Next
+- 为 YogaCanvas auto-height 添加单元测试/示例（root height='auto' / minHeight 分支）
+- 补充 Workspace 项目导入/导出 JSON 工作流
+- 在 demo/taro-demo 加入 auto-height 模板示例与回归用例
+- 在 run-log.md 中补齐 Windows/CI 下 git/pager 的诊断命令（如 `git var GIT_PAGER`）
 
 ---

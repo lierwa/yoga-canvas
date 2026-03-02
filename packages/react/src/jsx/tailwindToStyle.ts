@@ -300,7 +300,9 @@ function cssObjectToYogaStyle(css: Record<string, unknown>): Partial<StyleProps>
     else if (k === 'alignItems' && typeof v === 'string') style.alignItems = v as StyleProps['alignItems'];
     else if (k === 'alignSelf' && typeof v === 'string') style.alignSelf = v as StyleProps['alignSelf'];
     else if (k === 'flexWrap' && typeof v === 'string') style.flexWrap = v as StyleProps['flexWrap'];
-    else if (k === 'overflow' && typeof v === 'string') style.overflow = v as StyleProps['overflow'];
+    else if (k === 'overflow' && typeof v === 'string') {
+      if (v === 'visible' || v === 'hidden') style.overflow = v;
+    }
     else if (k === 'position' && typeof v === 'string') style.position = v as StyleProps['position'];
     else if (k === 'flex') setN('flex', v);
     else if (k === 'flexGrow') setN('flexGrow', v);

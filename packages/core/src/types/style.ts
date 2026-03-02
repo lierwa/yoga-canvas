@@ -63,7 +63,7 @@ export interface FlexStyle {
   marginLeft?: FlexValue;
   margin?: FlexValue;
 
-  overflow?: 'visible' | 'hidden' | 'scroll';
+  overflow?: 'visible' | 'hidden';
 
   position?: 'static' | 'relative' | 'absolute';
   top?: FlexValue;

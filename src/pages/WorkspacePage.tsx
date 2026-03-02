@@ -1,12 +1,12 @@
-import { Copy, Pencil, Plus, Trash2 } from 'lucide-react';
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
-import type { RefObject } from 'react';
-import { useYogaCanvas } from '@yoga-canvas/react';
-import type { NodeDescriptor } from '@yoga-canvas/core';
-import { seedTemplates } from '../templates/seedDescriptors';
-import { DEVICE_PRESETS } from '../types';
-import { Modal } from '../ui/Modal';
-import { useSpringValue } from '../ui/useSpringValue';
+import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
+import { useYogaCanvas } from "@yoga-canvas/react";
+import type { NodeDescriptor } from "@yoga-canvas/core";
+import { seedTemplates } from "../templates/seedDescriptors";
+import { DEVICE_PRESETS } from "../types";
+import { Modal } from "../ui/Modal";
+import { useSpringValue } from "../ui/useSpringValue";
 import {
   createProject,
   deleteProject,
@@ -14,7 +14,7 @@ import {
   listProjects,
   type ProjectRecord,
   renameProject,
-} from '../workspace/projectStore';
+} from "../workspace/projectStore";
 
 type WorkspacePageProps = {
   onOpenProject: (projectId: string) => void;
@@ -31,15 +31,16 @@ function useElementSize<T extends HTMLElement>(): {
     const el = ref.current as unknown as T | null;
     if (!el) return;
 
-    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight });
+    const update = () =>
+      setSize({ width: el.clientWidth, height: el.clientHeight });
     update();
 
     const ro = new ResizeObserver(() => update());
     ro.observe(el);
 
-    window.addEventListener('resize', update);
+    window.addEventListener("resize", update);
     return () => {
-      window.removeEventListener('resize', update);
+      window.removeEventListener("resize", update);
       ro.disconnect();
     };
   }, []);
@@ -50,26 +51,30 @@ function useElementSize<T extends HTMLElement>(): {
 function formatTime(ts: number): string {
   const d = new Date(ts);
   const yy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mi = String(d.getMinutes()).padStart(2, '0');
-  return `${yy}-${mm}-${dd} ${hh}:${mi}`;
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mi = String(d.getMinutes()).padStart(2, "0");
+  const ss = String(d.getSeconds()).padStart(2, "0");
+  return `${yy}-${mm}-${dd} ${hh}:${mi}:${ss}`;
 }
 
 const previewPlaceholderLayout: NodeDescriptor = {
-  type: 'view',
-  name: 'PreviewRoot',
+  type: "view",
+  name: "PreviewRoot",
   style: { width: 375, height: 667 },
 };
 
 function PreviewFrame({ project }: { project: ProjectRecord }) {
   const { ref: frameRef, size: frameSize } = useElementSize<HTMLDivElement>();
-  const { canvasRef, instance, ready } = useYogaCanvas(previewPlaceholderLayout, {
-    platform: 'h5',
-    autoRender: false,
-    pixelRatio: typeof window !== 'undefined' ? window.devicePixelRatio : 1,
-  });
+  const { canvasRef, instance, ready } = useYogaCanvas(
+    previewPlaceholderLayout,
+    {
+      platform: "h5",
+      autoRender: false,
+      pixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : 1,
+    },
+  );
   const [contentSize, setContentSize] = useState({ width: 375, height: 667 });
 
   useEffect(() => {
@@ -77,43 +82,63 @@ function PreviewFrame({ project }: { project: ProjectRecord }) {
 
     const handleResize = (next: unknown) => {
       const s = next as { width?: unknown; height?: unknown };
-      const w = typeof s.width === 'number' && Number.isFinite(s.width) && s.width > 0 ? s.width : undefined;
-      const h = typeof s.height === 'number' && Number.isFinite(s.height) && s.height > 0 ? s.height : undefined;
+      const w =
+        typeof s.width === "number" && Number.isFinite(s.width) && s.width > 0
+          ? s.width
+          : undefined;
+      const h =
+        typeof s.height === "number" &&
+        Number.isFinite(s.height) &&
+        s.height > 0
+          ? s.height
+          : undefined;
       if (!w || !h) return;
       setContentSize({ width: w, height: h });
     };
 
-    instance.on('resize', handleResize);
+    instance.on("resize", handleResize);
     try {
-      if (project.payload.kind === 'tree') {
+      if (project.payload.kind === "tree") {
         instance.loadJSON(project.payload.treeJSON);
       } else {
         void instance.update(project.payload.descriptor);
       }
       const root = instance.getRootNode();
       const rootWidth =
-        typeof root?.computedLayout.width === 'number' && Number.isFinite(root.computedLayout.width) && root.computedLayout.width > 0
+        typeof root?.computedLayout.width === "number" &&
+        Number.isFinite(root.computedLayout.width) &&
+        root.computedLayout.width > 0
           ? root.computedLayout.width
           : undefined;
       const rootHeight =
-        typeof root?.computedLayout.height === 'number' && Number.isFinite(root.computedLayout.height) && root.computedLayout.height > 0
+        typeof root?.computedLayout.height === "number" &&
+        Number.isFinite(root.computedLayout.height) &&
+        root.computedLayout.height > 0
           ? root.computedLayout.height
           : undefined;
-      if (rootWidth && rootHeight) setContentSize({ width: rootWidth, height: rootHeight });
+      if (rootWidth && rootHeight)
+        setContentSize({ width: rootWidth, height: rootHeight });
     } catch {
       // ignore
     }
 
     return () => {
-      instance.off('resize', handleResize);
+      instance.off("resize", handleResize);
     };
   }, [ready, instance, project]);
 
   const availableW = Math.max(0, frameSize.width - 16);
   const availableH = Math.max(0, frameSize.height - 16);
   const rawScale =
-    contentSize.width > 0 && contentSize.height > 0 ? Math.min(availableW / contentSize.width, availableH / contentSize.height) : 1;
-  const scale = Number.isFinite(rawScale) ? Math.max(0.01, Math.min(1, rawScale)) : 1;
+    contentSize.width > 0 && contentSize.height > 0
+      ? Math.min(
+          availableW / contentSize.width,
+          availableH / contentSize.height,
+        )
+      : 1;
+  const scale = Number.isFinite(rawScale)
+    ? Math.max(0.01, Math.min(1, rawScale))
+    : 1;
 
   return (
     <div
@@ -130,54 +155,178 @@ function PreviewFrame({ project }: { project: ProjectRecord }) {
           width: `${contentSize.width}px`,
           height: `${contentSize.height}px`,
           transform: `translate(-50%, -50%) scale(${scale})`,
-          transformOrigin: 'center',
-          display: 'block',
+          transformOrigin: "center",
+          display: "block",
         }}
       />
     </div>
   );
 }
 
-function getTemplateDefaultContainer(templateId: string): { width: number; height: number | 'auto' } {
-  const tpl = seedTemplates.find((t) => t.id === templateId) ?? seedTemplates[0];
-  const style = (tpl?.descriptor as unknown as { style?: { width?: unknown; height?: unknown } })?.style;
-  const width = typeof style?.width === 'number' && Number.isFinite(style.width) && style.width > 0 ? style.width : 375;
+function TemplatePreviewFrame({ descriptor }: { descriptor: NodeDescriptor }) {
+  const { ref: frameRef, size: frameSize } = useElementSize<HTMLDivElement>();
+  const { canvasRef, instance, ready } = useYogaCanvas(
+    previewPlaceholderLayout,
+    {
+      platform: "h5",
+      autoRender: false,
+      pixelRatio: typeof window !== "undefined" ? window.devicePixelRatio : 1,
+    },
+  );
+  const [contentSize, setContentSize] = useState({ width: 375, height: 667 });
+
+  useEffect(() => {
+    if (!ready || !instance) return;
+
+    const handleResize = (next: unknown) => {
+      const s = next as { width?: unknown; height?: unknown };
+      const w =
+        typeof s.width === "number" && Number.isFinite(s.width) && s.width > 0
+          ? s.width
+          : undefined;
+      const h =
+        typeof s.height === "number" &&
+        Number.isFinite(s.height) &&
+        s.height > 0
+          ? s.height
+          : undefined;
+      if (!w || !h) return;
+      setContentSize({ width: w, height: h });
+    };
+
+    instance.on("resize", handleResize);
+    try {
+      void instance.update(descriptor);
+      const root = instance.getRootNode();
+      const rootWidth =
+        typeof root?.computedLayout.width === "number" &&
+        Number.isFinite(root.computedLayout.width) &&
+        root.computedLayout.width > 0
+          ? root.computedLayout.width
+          : undefined;
+      const rootHeight =
+        typeof root?.computedLayout.height === "number" &&
+        Number.isFinite(root.computedLayout.height) &&
+        root.computedLayout.height > 0
+          ? root.computedLayout.height
+          : undefined;
+      if (rootWidth && rootHeight)
+        setContentSize({ width: rootWidth, height: rootHeight });
+    } catch {
+      // ignore
+    }
+
+    return () => {
+      instance.off("resize", handleResize);
+    };
+  }, [ready, instance, descriptor]);
+
+  const availableW = Math.max(0, frameSize.width - 16);
+  const availableH = Math.max(0, frameSize.height - 16);
+  const rawScale =
+    contentSize.width > 0 && contentSize.height > 0
+      ? Math.min(
+          availableW / contentSize.width,
+          availableH / contentSize.height,
+        )
+      : 1;
+  const scale = Number.isFinite(rawScale)
+    ? Math.max(0.01, Math.min(1, rawScale))
+    : 1;
+
+  return (
+    <div
+      ref={frameRef as unknown as RefObject<HTMLDivElement>}
+      className="relative h-28 rounded-xl border border-slate-200/70 bg-white overflow-hidden"
+    >
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_20%,rgba(99,102,241,0.10),transparent_55%),radial-gradient(circle_at_70%_60%,rgba(236,72,153,0.08),transparent_50%)] pointer-events-none" />
+      <div className="absolute inset-0 opacity-70 bg-[linear-gradient(to_right,rgba(15,23,42,0.08)_1px,transparent_1px),linear-gradient(to_bottom,rgba(15,23,42,0.08)_1px,transparent_1px)] bg-[size:18px_18px] pointer-events-none" />
+      <div className="absolute inset-0 pointer-events-none shadow-[inset_0_0_0_1px_rgba(15,23,42,0.04)]" />
+      <canvas
+        ref={canvasRef as unknown as RefObject<HTMLCanvasElement>}
+        className="absolute left-1/2 top-1/2 pointer-events-none"
+        style={{
+          width: `${contentSize.width}px`,
+          height: `${contentSize.height}px`,
+          transform: `translate(-50%, -50%) scale(${scale})`,
+          transformOrigin: "center",
+          display: "block",
+        }}
+      />
+    </div>
+  );
+}
+
+function getTemplateDefaultContainer(templateId: string): {
+  width: number;
+  height: number | "auto";
+} {
+  const tpl =
+    seedTemplates.find((t) => t.id === templateId) ?? seedTemplates[0];
+  const style = (
+    tpl?.descriptor as unknown as {
+      style?: { width?: unknown; height?: unknown };
+    }
+  )?.style;
+  const width =
+    typeof style?.width === "number" &&
+    Number.isFinite(style.width) &&
+    style.width > 0
+      ? style.width
+      : 375;
   const height =
-    style?.height === 'auto'
-      ? 'auto'
-      : typeof style?.height === 'number' && Number.isFinite(style.height) && style.height > 0
-        ? style.height
-        : 667;
+    style?.height === "auto"
+      ? "auto"
+      : typeof style?.height === "number" &&
+        Number.isFinite(style.height) &&
+        style.height > 0
+      ? style.height
+      : 667;
   return { width, height };
 }
 
-function resolvePresetName(size: { width: number; height: number | 'auto' }): string {
-  if (size.height === 'auto') return 'Custom';
-  const matched = DEVICE_PRESETS.find((p) => p.name !== 'Custom' && p.width === size.width && p.height === size.height);
-  return matched?.name ?? 'Custom';
+function resolvePresetName(size: {
+  width: number;
+  height: number | "auto";
+}): string {
+  if (size.height === "auto") return "Custom";
+  const matched = DEVICE_PRESETS.find(
+    (p) =>
+      p.name !== "Custom" && p.width === size.width && p.height === size.height,
+  );
+  return matched?.name ?? "Custom";
 }
 
 export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const [tick, setTick] = useState(0);
   const projects = useMemo(() => {
     void tick;
-    return listProjects();
+    return listProjects().filter((p) => !p.id.startsWith("seed_"));
   }, [tick]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [renameOpen, setRenameOpen] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const [newName, setNewName] = useState('我的项目');
+  const [newName, setNewName] = useState("我的项目");
   const defaultCreateTemplateId =
-    seedTemplates.find((t) => t.id === 'seed_share_poster')?.id ?? seedTemplates[0]?.id ?? 'seed_share_poster';
+    seedTemplates.find((t) => t.id === "seed_blank")?.id ??
+    seedTemplates[0]?.id ??
+    "seed_blank";
   const [newTemplateId, setNewTemplateId] = useState(defaultCreateTemplateId);
   const initialContainer = getTemplateDefaultContainer(defaultCreateTemplateId);
-  const [containerWidth, setContainerWidth] = useState<number>(initialContainer.width);
-  const [containerHeight, setContainerHeight] = useState<number | 'auto'>(initialContainer.height);
-  const [selectedPreset, setSelectedPreset] = useState<string>(resolvePresetName(initialContainer));
+  const [containerWidth, setContainerWidth] = useState<number>(
+    initialContainer.width,
+  );
+  const [containerHeight, setContainerHeight] = useState<number | "auto">(
+    initialContainer.height,
+  );
+  const [selectedPreset, setSelectedPreset] = useState<string>(
+    resolvePresetName(initialContainer),
+  );
+  const isBlankTemplate = newTemplateId === "seed_blank";
 
-  const [renameName, setRenameName] = useState('');
+  const [renameName, setRenameName] = useState("");
   const [createHover, setCreateHover] = useState(false);
   const createScale = useSpringValue(createHover ? 1.02 : 1);
 
@@ -202,9 +351,11 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 type="button"
                 className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.28)] hover:bg-indigo-500 active:bg-indigo-700 transition-colors"
                 onClick={() => {
-                  const container = getTemplateDefaultContainer(defaultCreateTemplateId);
+                  const container = getTemplateDefaultContainer(
+                    defaultCreateTemplateId,
+                  );
                   setCreateOpen(true);
-                  setNewName('我的项目');
+                  setNewName("我的项目");
                   setNewTemplateId(defaultCreateTemplateId);
                   setContainerWidth(container.width);
                   setContainerHeight(container.height);
@@ -228,9 +379,11 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 type="button"
                 className="w-full h-full p-4 text-left cursor-pointer"
                 onClick={() => {
-                  const container = getTemplateDefaultContainer(defaultCreateTemplateId);
+                  const container = getTemplateDefaultContainer(
+                    defaultCreateTemplateId,
+                  );
                   setCreateOpen(true);
-                  setNewName('我的项目');
+                  setNewName("我的项目");
                   setNewTemplateId(defaultCreateTemplateId);
                   setContainerWidth(container.width);
                   setContainerHeight(container.height);
@@ -245,9 +398,11 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                     </div>
                   </div>
                 </div>
-                <div className="mt-3 text-sm font-semibold text-slate-900">新增项目</div>
+                <div className="mt-3 text-sm font-semibold text-slate-900">
+                  新增项目
+                </div>
                 <div className="mt-1 text-[11px] text-slate-500">
-                  从 Demo 模板创建你的新画布
+                  从空白模板创建你的新画布
                 </div>
               </button>
             </div>
@@ -321,6 +476,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
         open={createOpen}
         title="新建项目"
         onClose={() => setCreateOpen(false)}
+        width={920}
         footer={
           <>
             <button
@@ -336,11 +492,19 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               onClick={() => {
                 const nextWidth = Number(containerWidth);
                 const nextHeight = containerHeight;
-                const container =
-                  Number.isFinite(nextWidth) && nextWidth > 0 && (nextHeight === 'auto' || (Number.isFinite(nextHeight) && nextHeight > 0))
+                const container = isBlankTemplate
+                  ? Number.isFinite(nextWidth) &&
+                    nextWidth > 0 &&
+                    (nextHeight === "auto" ||
+                      (Number.isFinite(nextHeight) && nextHeight > 0))
                     ? { width: nextWidth, height: nextHeight }
-                    : undefined;
-                const created = createProject({ name: newName, templateId: newTemplateId, container });
+                    : undefined
+                  : undefined;
+                const created = createProject({
+                  name: newName,
+                  templateId: newTemplateId,
+                  container,
+                });
                 setTick((v) => v + 1);
                 setCreateOpen(false);
                 onOpenProject(created.id);
@@ -351,9 +515,11 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
           </>
         }
       >
-        <div className="space-y-4">
-          <div>
-            <div className="text-xs font-medium text-slate-600 mb-2">项目名称</div>
+        <div className="space-y-6">
+          <div className="w-full max-w-[520px]">
+            <div className="text-xs font-medium text-slate-600 mb-2">
+              项目名称
+            </div>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
@@ -361,19 +527,100 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               placeholder="例如：我的海报"
             />
           </div>
+
+          <div className="w-full max-w-[520px]">
+            <div className="text-xs font-medium text-slate-600 mb-2">
+              画布尺寸
+            </div>
+            <div className="flex items-center gap-2">
+              <select
+                value={selectedPreset}
+                onChange={(e) => {
+                  if (!isBlankTemplate) return;
+                  const name = e.target.value;
+                  setSelectedPreset(name);
+                  if (name === "Custom") return;
+                  const preset = DEVICE_PRESETS.find((p) => p.name === name);
+                  if (!preset) return;
+                  setContainerWidth(preset.width);
+                  setContainerHeight(preset.height);
+                }}
+                disabled={!isBlankTemplate}
+                className="max-w-[520px] w-full text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+              >
+                {DEVICE_PRESETS.filter((p) => p.name !== "Custom").map((p) => (
+                  <option key={p.name} value={p.name}>
+                    {p.name} ({p.width}×{p.height})
+                  </option>
+                ))}
+                <option value="Custom">
+                  自定义 ({containerWidth}×
+                  {containerHeight === "auto" ? "auto" : containerHeight})
+                </option>
+              </select>
+            </div>
+            {!isBlankTemplate ? (
+              <div className="mt-2 text-[11px] text-slate-500">
+                当前模板的画布尺寸由模板决定，创建时不可修改
+              </div>
+            ) : null}
+            <div className="mt-2 grid grid-cols-2 gap-2 max-w-[520px]">
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                <div className="text-[11px] text-slate-500">宽度</div>
+                <input
+                  type="number"
+                  value={containerWidth}
+                  onChange={(e) => {
+                    if (!isBlankTemplate) return;
+                    setSelectedPreset("Custom");
+                    setContainerWidth(Number(e.target.value));
+                  }}
+                  disabled={!isBlankTemplate}
+                  className="mt-1 p-1 w-full text-sm font-semibold text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                />
+              </div>
+              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
+                <div className="text-[11px] text-slate-500">高度</div>
+                <input
+                  value={
+                    containerHeight === "auto"
+                      ? "auto"
+                      : String(containerHeight)
+                  }
+                  onChange={(e) => {
+                    if (!isBlankTemplate) return;
+                    const raw = e.target.value.trim();
+                    setSelectedPreset("Custom");
+                    if (!raw || raw.toLowerCase() === "auto") {
+                      setContainerHeight("auto");
+                      return;
+                    }
+                    const next = Number(raw);
+                    if (!Number.isFinite(next)) return;
+                    setContainerHeight(next);
+                  }}
+                  disabled={!isBlankTemplate}
+                  className="mt-1 p-1 w-full text-sm font-semibold text-slate-900 outline-none disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+                />
+              </div>
+            </div>
+          </div>
+
           <div>
-            <div className="text-xs font-medium text-slate-600 mb-2">选择模板</div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="text-xs font-medium text-slate-600 mb-3">
+              选择模板
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {seedTemplates.map((t) => (
                 <button
                   key={t.id}
                   type="button"
                   className={[
-                    'rounded-xl border px-3 py-2 text-left transition-colors',
+                    "rounded-2xl border p-3 text-left transition-colors w-full mx-auto min-w-[240px] max-w-[360px]",
                     newTemplateId === t.id
-                      ? 'border-indigo-300 bg-indigo-50'
-                      : 'border-slate-200 bg-white hover:bg-slate-50',
-                  ].join(' ')}
+                      ? "border-indigo-300 bg-indigo-50"
+                      : "border-slate-200 bg-white hover:bg-slate-50",
+                  ].join(" ")}
                   onClick={() => {
                     const container = getTemplateDefaultContainer(t.id);
                     setNewTemplateId(t.id);
@@ -382,71 +629,15 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                     setSelectedPreset(resolvePresetName(container));
                   }}
                 >
-                  <div className="text-sm font-semibold text-slate-900 truncate">{t.name}</div>
-                  <div className="text-[11px] text-slate-500 mt-0.5">
-                    {t.id === 'seed_legacy_demo' ? '原 src 展示模板' : '分享海报模板'}
+                  <TemplatePreviewFrame descriptor={t.descriptor} />
+                  <div className="mt-2 text-sm font-semibold text-slate-900 truncate">
+                    {t.name}
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5 leading-snug max-h-8 overflow-hidden">
+                    {t.description ?? ""}
                   </div>
                 </button>
               ))}
-            </div>
-          </div>
-          <div>
-            <div className="text-xs font-medium text-slate-600 mb-2">Canvas Container</div>
-            <div className="flex items-center gap-2">
-              <select
-                value={selectedPreset}
-                onChange={(e) => {
-                  const name = e.target.value;
-                  setSelectedPreset(name);
-                  if (name === 'Custom') return;
-                  const preset = DEVICE_PRESETS.find((p) => p.name === name);
-                  if (!preset) return;
-                  setContainerWidth(preset.width);
-                  setContainerHeight(preset.height);
-                }}
-                className="flex-1 text-sm border border-slate-200 rounded-xl px-3 py-2 bg-white outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300"
-              >
-                {DEVICE_PRESETS.filter((p) => p.name !== 'Custom').map((p) => (
-                  <option key={p.name} value={p.name}>
-                    {p.name} ({p.width}×{p.height})
-                  </option>
-                ))}
-                <option value="Custom">
-                  Custom ({containerWidth}×{containerHeight === 'auto' ? 'auto' : containerHeight})
-                </option>
-              </select>
-            </div>
-            <div className="mt-2 grid grid-cols-2 gap-2">
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">Width</div>
-                <input
-                  type="number"
-                  value={containerWidth}
-                  onChange={(e) => {
-                    setSelectedPreset('Custom');
-                    setContainerWidth(Number(e.target.value));
-                  }}
-                  className="mt-1 w-full text-sm font-semibold text-slate-900 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
-                />
-              </div>
-              <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">Height</div>
-                <input
-                  value={containerHeight === 'auto' ? 'auto' : String(containerHeight)}
-                  onChange={(e) => {
-                    const raw = e.target.value.trim();
-                    setSelectedPreset('Custom');
-                    if (!raw || raw.toLowerCase() === 'auto') {
-                      setContainerHeight('auto');
-                      return;
-                    }
-                    const next = Number(raw);
-                    if (!Number.isFinite(next)) return;
-                    setContainerHeight(next);
-                  }}
-                  className="mt-1 w-full text-sm font-semibold text-slate-900 outline-none"
-                />
-              </div>
             </div>
           </div>
         </div>

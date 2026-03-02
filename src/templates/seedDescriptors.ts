@@ -4,6 +4,7 @@ import { getLegacyDemoDescriptor } from '../hooks/useNodeTree';
 export type SeedTemplate = {
   id: string;
   name: string;
+  description?: string;
   descriptor: NodeDescriptor;
 };
 
@@ -46,13 +47,31 @@ const SHARE_POSTER_QR_SRC =
 
 export const seedTemplates: SeedTemplate[] = [
   {
+    id: 'seed_blank',
+    name: '空白模板',
+    description: '从零开始搭建布局',
+    descriptor: {
+      type: 'view',
+      name: 'Root',
+      style: {
+        width: 375,
+        height: 667,
+        flexDirection: 'column',
+        backgroundColor: '#ffffff',
+      },
+      children: [],
+    },
+  },
+  {
     id: 'seed_legacy_demo',
     name: '展示 Demo（原 src 模板）',
+    description: '包含常用节点与样式示例',
     descriptor: getLegacyDemoDescriptor(),
   },
   {
     id: 'seed_share_poster',
     name: '分享海报模板',
+    description: '带海报卡片与二维码示例',
     descriptor: {
       type: 'view',
       name: 'Root',
