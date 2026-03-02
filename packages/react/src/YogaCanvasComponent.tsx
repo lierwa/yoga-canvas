@@ -54,13 +54,18 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
       platform = 'h5',
       pixelRatio,
       width = 375,
-      height = 667,
+      height,
       className,
       style,
       onReady,
       onRender,
       children,
     } = props;
+
+    const [canvasSize, setCanvasSize] = useState<{ width: number; height: number }>({
+      width,
+      height: typeof height === 'number' && Number.isFinite(height) && height > 0 ? height : 667,
+    });
 
     // Resolve layout: explicit descriptor prop takes priority, otherwise convert JSX children
     const layout = useMemo<NodeDescriptor>(() => {
@@ -71,12 +76,12 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
         // Wrap multiple children in a root View
         return createView({
           name: 'Root',
-          style: { width, height, flexDirection: 'column' },
+          style: { width, ...(height !== undefined ? { height } : {}), flexDirection: 'column' },
           children: descriptors,
         });
       }
       // Fallback empty root
-      return createView({ style: { width, height } });
+      return createView({ style: { width, ...(height !== undefined ? { height } : {}) } });
     }, [layoutProp, children, width, height]);
 
     const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -110,6 +115,14 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
       });
 
       instanceRef.current = yoga;
+      const handleResize = (next: unknown) => {
+        const s = next as { width?: unknown; height?: unknown };
+        const nextW = typeof s.width === 'number' && Number.isFinite(s.width) && s.width > 0 ? s.width : undefined;
+        const nextH = typeof s.height === 'number' && Number.isFinite(s.height) && s.height > 0 ? s.height : undefined;
+        if (!nextW || !nextH) return;
+        setCanvasSize({ width: nextW, height: nextH });
+      };
+      yoga.on('resize', handleResize);
 
       yoga.init().then(() => {
         yoga.render();
@@ -118,6 +131,7 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
       });
 
       return () => {
+        yoga.off('resize', handleResize);
         yoga.destroy();
         instanceRef.current = null;
         setReady(false);
@@ -139,8 +153,8 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
         <canvas
           ref={canvasRef}
           style={{
-            width: `${width}px`,
-            height: `${height}px`,
+            width: `${canvasSize.width}px`,
+            height: `${canvasSize.height}px`,
             display: 'block',
           }}
         />

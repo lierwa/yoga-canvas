@@ -5,7 +5,6 @@ import { CanvasContainer } from '@yoga-canvas/taro';
 import { createNodeTemplateJSX } from '../../templates/nodeTemplates';
 
 const CANVAS_WIDTH = 360;
-const CANVAS_HEIGHT = 640;
 
 export default function JSXPage() {
   const [ready, setReady] = useState(false);
@@ -14,7 +13,7 @@ export default function JSXPage() {
 
   const instanceRef = useRef<YogaCanvas | null>(null);
   const template = useMemo(
-    () => createNodeTemplateJSX({ width: CANVAS_WIDTH, height: CANVAS_HEIGHT }),
+    () => createNodeTemplateJSX({ width: CANVAS_WIDTH }),
     [],
   );
   const canExport = ready && instanceRef.current;
@@ -28,10 +27,9 @@ export default function JSXPage() {
       <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' }}>
         <CanvasContainer
           width={CANVAS_WIDTH}
-          height={CANVAS_HEIGHT}
           rootName={template.rootName}
           rootStyle={template.rootStyle}
-          containerStyle={{ width: `${CANVAS_WIDTH}px`, height: `${CANVAS_HEIGHT}px` }}
+          containerStyle={{ width: `${CANVAS_WIDTH}px` }}
           canvasStyle={{ background: '#ffffff' }}
           debugIndicator
           onReady={(info) => {

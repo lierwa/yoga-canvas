@@ -1,6 +1,10 @@
 import { Undo2, Redo2, BoxSelect, Code2, Play, RotateCcw } from "lucide-react";
+import type { ReactNode } from "react";
 
 interface ToolbarProps {
+  title?: string;
+  leftContent?: ReactNode;
+  rightContent?: ReactNode;
   canUndo: boolean;
   canRedo: boolean;
   scale: number;
@@ -15,6 +19,9 @@ interface ToolbarProps {
 }
 
 export default function Toolbar({
+  title = "Yoga Canvas",
+  leftContent,
+  rightContent,
   canUndo,
   canRedo,
   scale,
@@ -38,8 +45,9 @@ export default function Toolbar({
 
   return (
     <div className="relative flex items-center gap-1 px-3 py-2 bg-white border-b border-gray-200">
-      <div className="flex items-center gap-1 mr-4">
-        <span className="text-sm font-semibold text-gray-700">Yoga Canvas</span>
+      <div className="flex items-center gap-2 mr-4 min-w-0">
+        {leftContent ? <div className="shrink-0">{leftContent}</div> : null}
+        <span className="text-sm font-semibold text-gray-700 truncate">{title}</span>
       </div>
 
       <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-2 w-[250px]">
@@ -137,12 +145,11 @@ export default function Toolbar({
 
       <div className="flex-1" />
 
+      {rightContent ? <div className="mr-3">{rightContent}</div> : null}
+
       <div className="flex items-center gap-1.5 text-xs text-gray-400">
         <BoxSelect size={12} />
-        <span>
-          Click to select &middot; Scroll to zoom &middot; Drag empty area to
-          pan
-        </span>
+        <span>Click to select &middot; Scroll to zoom &middot; Drag empty area to pan</span>
       </div>
     </div>
   );

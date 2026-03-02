@@ -23,6 +23,16 @@ export function resetIdCounter(): void {
   idCounter = 0;
 }
 
+function syncIdCounterFromTree(tree: NodeTree): void {
+  let max = idCounter;
+  for (const id of Object.keys(tree.nodes)) {
+    if (!id.startsWith('yoga_')) continue;
+    const n = Number(id.slice('yoga_'.length));
+    if (Number.isFinite(n) && n > max) max = n;
+  }
+  idCounter = max;
+}
+
 const DEFAULT_VISUAL_STYLE: Required<VisualStyle> = {
   backgroundColor: 'transparent',
   linearGradient: null,
@@ -58,6 +68,7 @@ export class NodeTreeManager {
   private history: History;
   private adapter: PlatformAdapter | undefined;
   private liveUpdateBase: NodeTree | null = null;
+  private layoutConstraints: { width?: number; height?: number | null } | undefined;
 
   constructor(adapter?: PlatformAdapter) {
     this.adapter = adapter;
@@ -68,6 +79,14 @@ export class NodeTreeManager {
   /** Get the current node tree. */
   getTree(): NodeTree {
     return this.tree;
+  }
+
+  loadFromTree(tree: NodeTree): void {
+    this.history.clear();
+    this.liveUpdateBase = null;
+    this.tree = tree;
+    syncIdCounterFromTree(tree);
+    this.computeLayout();
   }
 
   /** Get a node by id. */
@@ -150,16 +169,29 @@ export class NodeTreeManager {
     return this.tree;
   }
 
+  setLayoutConstraints(constraints?: { width?: number; height?: number | null }): void {
+    this.layoutConstraints = constraints;
+  }
+
   /** Recompute layout for the current tree. */
-  computeLayout(): NodeTree {
+  computeLayout(constraints?: { width?: number; height?: number | null }): NodeTree {
+    const effectiveConstraints = constraints ?? this.layoutConstraints;
     freeYogaTree(this.yogaNodes);
     this.yogaNodes = buildYogaTree(this.tree, this.adapter);
     const rootNode = this.tree.nodes[this.tree.rootId];
+    const rootHeight = rootNode?.flexStyle.height;
+    const wantsAutoHeight =
+      rootHeight === 'auto' ||
+      (rootHeight === undefined && rootNode?.flexStyle.minHeight !== undefined);
+    const hasHeightConstraint = effectiveConstraints ? Object.prototype.hasOwnProperty.call(effectiveConstraints, 'height') : false;
+    const heightConstraint = hasHeightConstraint ? effectiveConstraints?.height : undefined;
     this.tree = calculateLayout(
       this.tree,
       this.yogaNodes,
-      flexValueToNum(rootNode?.flexStyle.width, 800),
-      flexValueToNum(rootNode?.flexStyle.height, 600),
+      effectiveConstraints?.width ?? flexValueToNum(rootNode?.flexStyle.width, 800),
+      heightConstraint === null
+        ? undefined
+        : (heightConstraint ?? (wantsAutoHeight ? undefined : flexValueToNum(rootHeight, 600))),
     );
     return this.tree;
   }

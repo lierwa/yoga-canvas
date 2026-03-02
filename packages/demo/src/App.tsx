@@ -148,7 +148,7 @@ export default function App() {
     <div className="flex-1 flex items-center justify-center p-6 bg-gray-100">
       <div
         className="relative rounded-xl shadow-2xl overflow-hidden border border-gray-300"
-        style={{ width: 375, height: 667 }}
+        style={{ width: 375 }}
         onClick={handleCanvasClick}
       >
         {layout && (
@@ -156,7 +156,6 @@ export default function App() {
             ref={canvasRef}
             layout={layout}
             width={375}
-            height={667}
             onReady={handleReady}
             onRender={handleRender}
           />
@@ -433,7 +432,7 @@ function ImagePreviewModal({ url, onClose }: { url: string; onClose: () => void 
 // ============ Default Editor Code ============
 
 const DEFAULT_EDITOR_CODE = `<View name="Root" style={{
-  width: 375, height: 667,
+  width: 375, height: 'auto', minHeight: 400,
   flexDirection: 'column',
   backgroundColor: '#f8fafc',
   padding: 16, gap: 12,

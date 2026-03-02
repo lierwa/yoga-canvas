@@ -48,6 +48,9 @@ export class YogaCanvas {
   private pixelRatio: number;
   private logicalWidth: number;
   private logicalHeight: number;
+  private explicitWidth: number | undefined;
+  private explicitHeight: number | undefined;
+  private lastEmittedSize: { width: number; height: number } | null = null;
   private initialized = false;
   private wheelHandler: ((e: WheelEvent) => void) | null = null;
   private scrollBarTimers = new Map<string, ReturnType<typeof setTimeout>>();
@@ -56,6 +59,8 @@ export class YogaCanvas {
     this.canvas = canvas;
     this.layout = layout;
     this.pixelRatio = options.pixelRatio ?? 1;
+    this.explicitWidth = options.width;
+    this.explicitHeight = options.height;
     this.logicalWidth = options.width ?? 375;
     this.logicalHeight = options.height ?? 667;
     this.emitter = new EventEmitter();
@@ -81,7 +86,9 @@ export class YogaCanvas {
     await initYoga();
     this.ctx = this.adapter.createCanvasContext(this.canvas);
     this.treeManager.buildFromDescriptor(this.layout);
+    this.applyLayoutConstraints();
     this.treeManager.computeLayout();
+    this.syncCanvasSizeFromLayout();
     computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
 
     if (this.adapter instanceof H5Adapter || this.adapter instanceof WxAdapter) {
@@ -98,6 +105,27 @@ export class YogaCanvas {
 
     this.initialized = true;
     this.emitter.emit('ready');
+  }
+
+  setSize(size: { width?: number; height?: number | null }): void {
+    if (typeof size.width === 'number' && Number.isFinite(size.width) && size.width > 0) {
+      this.explicitWidth = size.width;
+      this.logicalWidth = size.width;
+    }
+    if (size.height === null) {
+      this.explicitHeight = undefined;
+    } else if (typeof size.height === 'number' && Number.isFinite(size.height) && size.height > 0) {
+      this.explicitHeight = size.height;
+      this.logicalHeight = size.height;
+    }
+
+    if (!this.initialized) return;
+    this.applyLayoutConstraints();
+    this.treeManager.computeLayout();
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
+    this.render();
+    this.emitter.emit('update');
   }
 
   /**
@@ -135,7 +163,9 @@ export class YogaCanvas {
   async update(layout: NodeDescriptor): Promise<void> {
     this.layout = layout;
     this.treeManager.buildFromDescriptor(layout);
+    this.applyLayoutConstraints();
     this.treeManager.computeLayout();
+    this.syncCanvasSizeFromLayout();
     computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
     this.emitter.emit('update');
@@ -159,36 +189,50 @@ export class YogaCanvas {
 
   updateFlexStyle(nodeId: string, updates: Partial<FlexStyle>): void {
     this.treeManager.updateFlexStyle(nodeId, updates);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   updateVisualStyle(nodeId: string, updates: Partial<VisualStyle>): void {
     this.treeManager.updateVisualStyle(nodeId, updates);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   updateTextProps(nodeId: string, updates: Partial<TextProps>): void {
     this.treeManager.updateTextProps(nodeId, updates);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   updateImageProps(nodeId: string, updates: Partial<ImageProps>): void {
     this.treeManager.updateImageProps(nodeId, updates);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   addChild(parentId: string, descriptor: NodeDescriptor): void {
     this.treeManager.addChild(parentId, descriptor);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   deleteNode(nodeId: string): void {
     this.treeManager.deleteNode(nodeId);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
   moveNode(nodeId: string, newParentId: string, insertIndex?: number): void {
     this.treeManager.moveNode(nodeId, newParentId, insertIndex);
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
@@ -198,6 +242,8 @@ export class YogaCanvas {
     const result = this.treeManager.undo();
     if (result) {
       this.treeManager.computeLayout();
+      this.syncCanvasSizeFromLayout();
+      computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
       this.render();
       return true;
     }
@@ -208,6 +254,8 @@ export class YogaCanvas {
     const result = this.treeManager.redo();
     if (result) {
       this.treeManager.computeLayout();
+      this.syncCanvasSizeFromLayout();
+      computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
       this.render();
       return true;
     }
@@ -230,9 +278,10 @@ export class YogaCanvas {
 
   loadJSON(json: string): void {
     const tree = importFromJSON(json);
-    // Directly set the tree on the manager and recompute
-    Object.assign(this.treeManager, { tree });
-    this.treeManager.computeLayout();
+    this.treeManager.loadFromTree(tree);
+    this.applyLayoutConstraints();
+    this.syncCanvasSizeFromLayout();
+    computeScrollContentSizes(this.treeManager.getTree(), this.scrollManager);
     this.render();
   }
 
@@ -380,6 +429,60 @@ export class YogaCanvas {
         : null;
     }
     return () => null;
+  }
+
+  private applyLayoutConstraints(): void {
+    const root = this.treeManager.getRootNode();
+    const rootWidth = root?.flexStyle.width;
+    const rootHeight = root?.flexStyle.height;
+
+    const width = this.explicitWidth
+      ?? (typeof rootWidth === 'number' && Number.isFinite(rootWidth) && rootWidth > 0 ? rootWidth : undefined)
+      ?? this.logicalWidth;
+
+    const autoHeight = this.shouldAutoFitHeight(root);
+    const height = autoHeight
+      ? null
+      : (this.explicitHeight
+        ?? (typeof rootHeight === 'number' && Number.isFinite(rootHeight) && rootHeight > 0 ? rootHeight : undefined)
+        ?? this.logicalHeight);
+
+    this.logicalWidth = width;
+    if (typeof height === 'number') {
+      this.logicalHeight = height;
+    }
+
+    this.treeManager.setLayoutConstraints({ width, height });
+  }
+
+  private shouldAutoFitHeight(root: CanvasNode | null): boolean {
+    if (typeof this.explicitHeight === 'number' && Number.isFinite(this.explicitHeight) && this.explicitHeight > 0) {
+      return false;
+    }
+    const h = root?.flexStyle.height;
+    if (h === 'auto') return true;
+    const minH = root?.flexStyle.minHeight;
+    if (h === undefined && minH !== undefined) return true;
+    return false;
+  }
+
+  private syncCanvasSizeFromLayout(): void {
+    const root = this.treeManager.getRootNode();
+    if (!root) return;
+
+    if (this.shouldAutoFitHeight(root)) {
+      const nextHeight = root.computedLayout.height;
+      if (typeof nextHeight === 'number' && Number.isFinite(nextHeight) && nextHeight > 0) {
+        this.logicalHeight = nextHeight;
+      }
+    }
+
+    const next = { width: this.logicalWidth, height: this.logicalHeight };
+    const prev = this.lastEmittedSize;
+    if (!prev || prev.width !== next.width || prev.height !== next.height) {
+      this.lastEmittedSize = next;
+      this.emitter.emit('resize', next);
+    }
   }
 }
 

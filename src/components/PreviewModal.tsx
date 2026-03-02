@@ -629,17 +629,23 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   if (position === 'absolute') add('absolute', ['position']);
   else if (position === 'relative') add('relative', ['position']);
 
-  const width = toSize(style.width);
-  if (width) add(`w-[${width}]`, ['width']);
-  const height = toSize(style.height);
-  if (height) add(`h-[${height}]`, ['height']);
-  const minWidth = toSize(style.minWidth);
+  if (style.width === 'auto') add('w-auto', ['width']);
+  else {
+    const width = toSize(style.width);
+    if (width) add(`w-[${width}]`, ['width']);
+  }
+  if (style.height === 'auto') add('h-auto', ['height']);
+  else {
+    const height = toSize(style.height);
+    if (height) add(`h-[${height}]`, ['height']);
+  }
+  const minWidth = style.minWidth === 'auto' ? null : toSize(style.minWidth);
   if (minWidth) add(`min-w-[${minWidth}]`, ['minWidth']);
-  const minHeight = toSize(style.minHeight);
+  const minHeight = style.minHeight === 'auto' ? null : toSize(style.minHeight);
   if (minHeight) add(`min-h-[${minHeight}]`, ['minHeight']);
-  const maxWidth = toSize(style.maxWidth);
+  const maxWidth = style.maxWidth === 'auto' ? null : toSize(style.maxWidth);
   if (maxWidth) add(`max-w-[${maxWidth}]`, ['maxWidth']);
-  const maxHeight = toSize(style.maxHeight);
+  const maxHeight = style.maxHeight === 'auto' ? null : toSize(style.maxHeight);
   if (maxHeight) add(`max-h-[${maxHeight}]`, ['maxHeight']);
 
   const insetSide = (key: string, prefix: string) => {

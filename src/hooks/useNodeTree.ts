@@ -15,9 +15,9 @@ import {
   NodeTreeManager,
   ScrollManager,
   computeScrollContentSizes,
+  importFromJSON,
 } from "@yoga-canvas/core";
 import type { NodeDescriptor } from "@yoga-canvas/core";
-import { createNodeTemplateDescriptor } from "../../packages/taro-demo/src/templates/nodeTemplates";
 
 const COLORS = [
   "#ef4444",
@@ -177,8 +177,6 @@ const TEXT_STYLES = {
 };
 
 function createDefaultDescriptor(): NodeDescriptor {
-  const shared = createNodeTemplateDescriptor({ width: 375, height: 667 });
-  if (shared) return shared;
   return {
     type: "view",
     name: "Root",
@@ -684,7 +682,16 @@ function createContainerDescriptor(index: number): NodeDescriptor {
   };
 }
 
-export function useNodeTree() {
+export function getLegacyDemoDescriptor(): NodeDescriptor {
+  return createDefaultDescriptor();
+}
+
+type UseNodeTreeOptions = {
+  initialDescriptor?: NodeDescriptor;
+  initialTreeJSON?: string;
+};
+
+export function useNodeTree(options?: UseNodeTreeOptions) {
   const [tree, setTree] = useState<NodeTree>({ rootId: "", nodes: {} });
   const [ready, setReady] = useState(false);
   const [canUndo, setCanUndo] = useState(false);
@@ -693,6 +700,7 @@ export function useNodeTree() {
   const adapterRef = useRef<H5Adapter | null>(null);
   const managerRef = useRef<NodeTreeManager | null>(null);
   const scrollManagerRef = useRef<ScrollManager>(new ScrollManager());
+  const initialOptionsRef = useRef<UseNodeTreeOptions | undefined>(options);
 
   const refresh = useCallback(() => {
     const manager = managerRef.current;
@@ -730,8 +738,14 @@ export function useNodeTree() {
     managerRef.current = manager;
 
     initYoga().then(() => {
-      manager.buildFromDescriptor(createDefaultDescriptor());
-      manager.computeLayout();
+      const initOptions = initialOptionsRef.current;
+      if (initOptions?.initialTreeJSON) {
+        const imported = importFromJSON(initOptions.initialTreeJSON);
+        manager.loadFromTree(imported);
+      } else {
+        manager.buildFromDescriptor(initOptions?.initialDescriptor ?? createDefaultDescriptor());
+        manager.computeLayout();
+      }
       refresh();
       setReady(true);
     });

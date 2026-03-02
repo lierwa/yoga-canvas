@@ -693,20 +693,44 @@ export default function PropertiesPanel({
       </Section>
 
       <Section title="Size">
-        <FieldGrid cols={2}>
-          <DimensionField
-            label="Width"
-            value={s.width}
-            supportAuto
-            onChange={(v) => update({ width: v })}
-          />
-          <DimensionField
-            label="Height"
-            value={s.height}
-            supportAuto
-            onChange={(v) => update({ height: v })}
-          />
-        </FieldGrid>
+        <div className="space-y-2.5">
+          <FieldGrid cols={2}>
+            <DimensionField
+              label="Width"
+              value={s.width}
+              supportAuto
+              onChange={(v) => update({ width: v })}
+            />
+            <DimensionField
+              label="Height"
+              value={s.height}
+              supportAuto
+              onChange={(v) => update({ height: v })}
+            />
+          </FieldGrid>
+          <FieldGrid cols={2}>
+            <DimensionField
+              label="Min W"
+              value={s.minWidth}
+              onChange={(v) => update({ minWidth: v })}
+            />
+            <DimensionField
+              label="Min H"
+              value={s.minHeight}
+              onChange={(v) => update({ minHeight: v })}
+            />
+            <DimensionField
+              label="Max W"
+              value={s.maxWidth}
+              onChange={(v) => update({ maxWidth: v })}
+            />
+            <DimensionField
+              label="Max H"
+              value={s.maxHeight}
+              onChange={(v) => update({ maxHeight: v })}
+            />
+          </FieldGrid>
+        </div>
       </Section>
 
       <Section title="Flex">

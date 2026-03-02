@@ -27,13 +27,15 @@ function resolveLayoutSize(
   layout: NodeDescriptor,
   node: MiniCanvasNode,
   pixelRatio: number,
-): { width: number; height: number } {
-  const style = (layout as unknown as { style?: { width?: unknown; height?: unknown } }).style;
+): { width: number; height?: number; minHeight?: number } {
+  const style = (layout as unknown as { style?: { width?: unknown; height?: unknown; minHeight?: unknown } }).style;
   const styleWidth = style?.width;
   const styleHeight = style?.height;
+  const styleMinHeight = style?.minHeight;
 
   const widthFromStyle = typeof styleWidth === 'number' && Number.isFinite(styleWidth) ? styleWidth : undefined;
   const heightFromStyle = typeof styleHeight === 'number' && Number.isFinite(styleHeight) ? styleHeight : undefined;
+  const minHeightFromStyle = typeof styleMinHeight === 'number' && Number.isFinite(styleMinHeight) ? styleMinHeight : undefined;
 
   const widthFromNode = typeof node.width === 'number' && Number.isFinite(node.width) && node.width > 0 ? node.width / pixelRatio : undefined;
   const heightFromNode = typeof node.height === 'number' && Number.isFinite(node.height) && node.height > 0 ? node.height / pixelRatio : undefined;
@@ -44,11 +46,8 @@ function resolveLayoutSize(
   if (!width || width <= 0) {
     throw new Error('无法推断画布宽度：请设置 layout.style.width（number）或传入 options.width');
   }
-  if (!height || height <= 0) {
-    throw new Error('无法推断画布高度：请设置 layout.style.height（number）或传入 options.height');
-  }
 
-  return { width, height };
+  return { width, height, minHeight: minHeightFromStyle };
 }
 
 export type InitYogaCanvasTaroResult = {
@@ -73,6 +72,9 @@ export async function initYogaCanvasTaro(
   const size = resolveLayoutSize(layout, canvasNode, pixelRatio);
   const width = typeof options?.width === 'number' && options.width > 0 ? options.width : size.width;
   const height = typeof options?.height === 'number' && options.height > 0 ? options.height : size.height;
+  const initialHeight = typeof height === 'number' && height > 0
+    ? height
+    : (typeof size.minHeight === 'number' && size.minHeight > 0 ? size.minHeight : 1);
 
   if (typeof canvasNode.getContext === 'function') {
     try {
@@ -83,7 +85,7 @@ export async function initYogaCanvasTaro(
   }
 
   canvasNode.width = width * pixelRatio;
-  canvasNode.height = height * pixelRatio;
+  canvasNode.height = initialHeight * pixelRatio;
 
   const adapter = new WxAdapter();
   const instance = createYogaCanvas(canvasNode, layout, {
@@ -95,8 +97,12 @@ export async function initYogaCanvasTaro(
   } as YogaCanvasOptions);
 
   await instance.init();
+  const rootHeight = instance.getRootNode()?.computedLayout.height;
+  const finalHeight = typeof rootHeight === 'number' && Number.isFinite(rootHeight) && rootHeight > 0 ? rootHeight : initialHeight;
+  if (Math.abs(finalHeight - initialHeight) > 1e-6) {
+    canvasNode.height = finalHeight * pixelRatio;
+  }
   instance.render();
 
-  return { instance, adapter, canvas: canvasNode, pixelRatio, width, height };
+  return { instance, adapter, canvas: canvasNode, pixelRatio, width, height: finalHeight };
 }
-

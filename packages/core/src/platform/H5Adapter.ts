@@ -77,28 +77,88 @@ class H5CanvasContext implements CanvasContextLike {
   }
 }
 
-// Offscreen div for text measurement
-let measureDiv: HTMLDivElement | null = null;
-
-function getMeasureDiv(): HTMLDivElement {
-  if (!measureDiv) {
-    measureDiv = document.createElement('div');
-    measureDiv.style.position = 'absolute';
-    measureDiv.style.visibility = 'hidden';
-    measureDiv.style.pointerEvents = 'none';
-    measureDiv.style.left = '-9999px';
-    measureDiv.style.top = '-9999px';
-    measureDiv.style.whiteSpace = 'pre-wrap';
-    measureDiv.style.wordBreak = 'break-word';
-    measureDiv.style.boxSizing = 'content-box';
-    measureDiv.style.padding = '0';
-    document.body.appendChild(measureDiv);
-  }
-  return measureDiv;
-}
-
 // Image cache
 const imageCache = new Map<string, HTMLImageElement>();
+const failedImageCache = new Set<string>();
+
+let measureCanvas: HTMLCanvasElement | null = null;
+function getMeasureCanvasContext(): CanvasRenderingContext2D {
+  if (!measureCanvas) {
+    measureCanvas = document.createElement('canvas');
+  }
+  const ctx = measureCanvas.getContext('2d');
+  if (!ctx) throw new Error('Failed to get 2d context for text measurement');
+  return ctx;
+}
+
+function setMeasureFont(ctx: CanvasRenderingContext2D, options: TextMeasureOptions): void {
+  const weightPart =
+    typeof options.fontWeight === 'number'
+      ? `${options.fontWeight} `
+      : options.fontWeight !== 'normal'
+        ? `${options.fontWeight} `
+        : '';
+  const stylePart =
+    options.fontStyle && options.fontStyle !== 'normal' ? `${options.fontStyle} ` : '';
+  ctx.font = `${stylePart}${weightPart}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
+}
+
+function wrapText(
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] {
+  const EPS = 0.01;
+  const lines: string[] = [];
+  const paragraphs = text.split('\n');
+
+  for (const paragraph of paragraphs) {
+    if (paragraph === '') {
+      lines.push('');
+      continue;
+    }
+
+    const words = paragraph.split(' ');
+    let current = '';
+
+    for (const word of words) {
+      if (word === '') continue;
+
+      const test = current ? `${current} ${word}` : word;
+      if (ctx.measureText(test).width > maxWidth + EPS && current) {
+        lines.push(current);
+        current = '';
+      }
+
+      if (ctx.measureText(word).width > maxWidth + EPS) {
+        if (current) {
+          lines.push(current);
+          current = '';
+        }
+
+        let chunk = '';
+        for (const ch of word) {
+          const nextChunk = chunk + ch;
+          if (ctx.measureText(nextChunk).width > maxWidth + EPS && chunk) {
+            lines.push(chunk);
+            chunk = ch;
+          } else {
+            chunk = nextChunk;
+          }
+        }
+        current = chunk;
+      } else {
+        current = current ? `${current} ${word}` : word;
+      }
+    }
+
+    if (current) {
+      lines.push(current);
+    }
+  }
+
+  return lines;
+}
 
 /**
  * H5 (browser) platform adapter.
@@ -114,45 +174,62 @@ export class H5Adapter implements PlatformAdapter {
   }
 
   measureText(options: TextMeasureOptions): { width: number; height: number } {
-    const div = getMeasureDiv();
-    div.style.display = 'inline-block';
-    div.style.fontSize = `${options.fontSize}px`;
-    div.style.fontWeight = typeof options.fontWeight === 'number' ? `${options.fontWeight}` : options.fontWeight;
-    div.style.fontStyle = options.fontStyle;
-    div.style.fontFamily = options.fontFamily || 'sans-serif';
-    div.style.lineHeight = `${options.lineHeight}`;
-    div.textContent = options.content;
+    if (!options.content) return { width: 0, height: 0 };
+
+    const ctx = getMeasureCanvasContext();
+    setMeasureFont(ctx, options);
 
     if (options.whiteSpace === 'nowrap') {
-      div.style.whiteSpace = 'nowrap';
-      div.style.wordBreak = 'normal';
-      div.style.width = 'auto';
-      div.style.maxWidth = 'none';
-      const rect = div.getBoundingClientRect();
-      return { width: rect.width, height: rect.height };
+      const singleLine = options.content.replace(/\n/g, ' ');
+      const w = ctx.measureText(singleLine).width;
+      return { width: w, height: options.fontSize * options.lineHeight };
     }
 
-    div.style.whiteSpace = 'pre-wrap';
-    div.style.wordBreak = 'break-word';
-    div.style.width = 'auto';
-    div.style.maxWidth = `${options.availableWidth}px`;
-    const rect = div.getBoundingClientRect();
-    return { width: Math.min(rect.width, options.availableWidth), height: rect.height };
+    const lines = wrapText(ctx, options.content, options.availableWidth);
+    let maxLineWidth = 0;
+    for (const line of lines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxLineWidth) maxLineWidth = w;
+    }
+    return {
+      width: Math.min(maxLineWidth, options.availableWidth),
+      height: lines.length * options.fontSize * options.lineHeight,
+    };
   }
 
   loadImage(src: string): Promise<CanvasImageLike> {
     const cached = imageCache.get(src);
-    if (cached && cached.complete) {
+    if (
+      cached
+      && cached.complete
+      && cached.naturalWidth > 0
+      && cached.naturalHeight > 0
+      && !failedImageCache.has(src)
+    ) {
       return Promise.resolve(cached);
     }
     return new Promise((resolve, reject) => {
+      if (failedImageCache.has(src)) {
+        reject(new Error(`Image failed to load: ${src}`));
+        return;
+      }
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
+          failedImageCache.add(src);
+          imageCache.delete(src);
+          reject(new Error(`Image loaded but invalid: ${src}`));
+          return;
+        }
         imageCache.set(src, img);
         resolve(img);
       };
-      img.onerror = (err) => reject(err);
+      img.onerror = (err) => {
+        failedImageCache.add(src);
+        imageCache.delete(src);
+        reject(err);
+      };
       img.src = src;
     });
   }
@@ -163,13 +240,30 @@ export class H5Adapter implements PlatformAdapter {
    */
   getCachedImage(src: string): CanvasImageLike | null {
     if (!src) return null;
+    if (failedImageCache.has(src)) return null;
     const cached = imageCache.get(src);
-    if (cached && cached.complete) return cached;
+    if (
+      cached
+      && cached.complete
+      && cached.naturalWidth > 0
+      && cached.naturalHeight > 0
+    ) return cached;
     if (!cached) {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
+        if (img.naturalWidth <= 0 || img.naturalHeight <= 0) {
+          failedImageCache.add(src);
+          imageCache.delete(src);
+          this.renderCallback?.();
+          return;
+        }
         imageCache.set(src, img);
+        this.renderCallback?.();
+      };
+      img.onerror = () => {
+        failedImageCache.add(src);
+        imageCache.delete(src);
         this.renderCallback?.();
       };
       img.src = src;

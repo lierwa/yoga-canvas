@@ -1,6 +1,6 @@
 import type { NodeTree, CanvasContextLike, CanvasImageLike } from '../types';
 import type { ScrollManager } from '../scroll/ScrollManager';
-import { drawBox } from './painters/BoxPainter';
+import { drawBox, drawRoundedRect } from './painters/BoxPainter';
 import { drawText } from './painters/TextPainter';
 import { drawImage } from './painters/ImagePainter';
 import { drawScrollViewScrollbar } from './painters/ScrollViewPainter';
@@ -93,8 +93,23 @@ function renderNode(
     }
   } else {
     const orderedChildren = getOrderedChildren(tree, node);
-    for (const childId of orderedChildren) {
-      renderNode(ctx, tree, childId, options);
+    if (node.type === 'view' && node.flexStyle.overflow === 'hidden') {
+      ctx.save();
+      ctx.beginPath();
+      if (node.visualStyle.borderRadius > 0) {
+        drawRoundedRect(ctx, left, top, width, height, node.visualStyle.borderRadius);
+      } else {
+        ctx.rect(left, top, width, height);
+      }
+      ctx.clip();
+      for (const childId of orderedChildren) {
+        renderNode(ctx, tree, childId, options);
+      }
+      ctx.restore();
+    } else {
+      for (const childId of orderedChildren) {
+        renderNode(ctx, tree, childId, options);
+      }
     }
   }
 }

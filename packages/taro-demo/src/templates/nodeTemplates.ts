@@ -9,7 +9,7 @@ import {
 
 type TemplateOptions = {
   width: number;
-  height: number;
+  height?: number;
 };
 
 const PALETTE = {
@@ -161,7 +161,9 @@ export function createNodeTemplateDescriptor({
     name: "Root",
     style: {
       width,
-      height,
+      ...(typeof height === "number"
+        ? { height }
+        : { height: "auto", minHeight: 400 }),
       flexDirection: "column",
       backgroundColor: PALETTE.white,
       padding: SPACE.xl,

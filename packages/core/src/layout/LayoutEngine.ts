@@ -67,13 +67,17 @@ export function calculateLayout(
   tree: NodeTree,
   yogaNodes: Map<string, YogaNode>,
   canvasWidth: number,
-  canvasHeight: number,
+  canvasHeight?: number,
 ): NodeTree {
   const rootYogaNode = yogaNodes.get(tree.rootId);
   if (!rootYogaNode) return tree;
 
   const direction = getDirection();
-  rootYogaNode.calculateLayout(canvasWidth, canvasHeight, direction.LTR);
+  (rootYogaNode.calculateLayout as unknown as (w?: number, h?: number, dir?: number) => void)(
+    canvasWidth,
+    canvasHeight,
+    direction.LTR,
+  );
 
   const updatedNodes = { ...tree.nodes };
   updateComputedLayouts(tree.rootId, updatedNodes, yogaNodes, 0, 0);
@@ -183,4 +187,10 @@ export function flexValueToNum(v: unknown, fallback: number): number {
   if (v === undefined || v === 'auto') return fallback;
   if (typeof v === 'number') return v;
   return fallback;
+}
+
+export function flexValueToOptionalNum(v: unknown): number | undefined {
+  if (v === undefined || v === 'auto') return undefined;
+  if (typeof v === 'number') return Number.isFinite(v) ? v : undefined;
+  return undefined;
 }

@@ -66,20 +66,52 @@ export default function LeftPanel({
   onMoveNode,
 }: LeftPanelProps) {
   const root = tree.nodes[tree.rootId];
-  const [containerWidth, setContainerWidth] = useState(
+  const [containerWidth, setContainerWidth] = useState(() =>
     typeof root?.flexStyle.width === "number" ? root.flexStyle.width : 375,
   );
-  const [containerHeight, setContainerHeight] = useState(
-    typeof root?.flexStyle.height === "number" ? root.flexStyle.height : 667,
-  );
-  const [selectedPreset, setSelectedPreset] = useState("iPhone SE");
+  const [containerHeight, setContainerHeight] = useState<number | "auto">(() => {
+    const h = root?.flexStyle.height;
+    if (typeof h === "number") return h;
+    if (h === "auto") return "auto";
+    return 667;
+  });
+  const [selectedPreset, setSelectedPreset] = useState("Custom");
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
   const [pendingRevealId, setPendingRevealId] = useState<string | null>(null);
   const rowElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const nodeTreeScrollRef = useRef<HTMLDivElement | null>(null);
 
+  useEffect(() => {
+    const nextW = typeof root?.flexStyle.width === "number" ? root.flexStyle.width : 375;
+    const rawH = root?.flexStyle.height;
+    const nextH: number | "auto" =
+      typeof rawH === "number" ? rawH : rawH === "auto" ? "auto" : 667;
+
+    setContainerWidth(nextW);
+    setContainerHeight(nextH);
+
+    if (nextH === "auto") {
+      setSelectedPreset("Auto Height");
+      return;
+    }
+
+    const matched = DEVICE_PRESETS.find(
+      (p) => p.name !== "Custom" && p.width === nextW && p.height === nextH,
+    );
+    setSelectedPreset(matched?.name ?? "Custom");
+  }, [root?.flexStyle.height, root?.flexStyle.width]);
+
   const handlePresetChange = (name: string) => {
     setSelectedPreset(name);
+    if (name === "Auto Height") {
+      setContainerHeight("auto");
+      onUpdateContainer({
+        name: "Auto Height",
+        width: containerWidth,
+        height: "auto",
+      });
+      return;
+    }
     const preset = DEVICE_PRESETS.find((p) => p.name === name);
     if (preset && preset.name !== "Custom") {
       setContainerWidth(preset.width);
@@ -92,7 +124,7 @@ export default function LeftPanel({
     }
   };
 
-  const handleCustomSize = (w: number, h: number) => {
+  const handleCustomSize = (w: number, h: number | "auto") => {
     setContainerWidth(w);
     setContainerHeight(h);
     setSelectedPreset("Custom");
@@ -189,11 +221,17 @@ export default function LeftPanel({
               className="flex-1 text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
                 focus:outline-none focus:ring-1 focus:ring-blue-400"
             >
-              {DEVICE_PRESETS.map((p) => (
+              <option value="Auto Height">
+                Auto Height ({containerWidth}×auto)
+              </option>
+              {DEVICE_PRESETS.filter((p) => p.name !== "Custom").map((p) => (
                 <option key={p.name} value={p.name}>
                   {p.name} ({p.width}×{p.height})
                 </option>
               ))}
+              <option value="Custom">
+                Custom ({containerWidth}×{containerHeight === "auto" ? "auto" : containerHeight})
+              </option>
             </select>
           </div>
           <div className="grid grid-cols-2 gap-1.5">
@@ -213,11 +251,17 @@ export default function LeftPanel({
             <div>
               <label className="text-[10px] text-gray-400 block">Height</label>
               <input
-                type="number"
-                value={containerHeight}
-                onChange={(e) =>
-                  handleCustomSize(containerWidth, Number(e.target.value))
-                }
+                value={containerHeight === "auto" ? "auto" : String(containerHeight)}
+                onChange={(e) => {
+                  const raw = e.target.value.trim();
+                  if (!raw || raw.toLowerCase() === "auto") {
+                    handleCustomSize(containerWidth, "auto");
+                    return;
+                  }
+                  const next = Number(raw);
+                  if (!Number.isFinite(next)) return;
+                  handleCustomSize(containerWidth, next);
+                }}
                 className="w-full text-xs border border-gray-200 rounded px-1.5 py-1 bg-gray-50
                   focus:outline-none focus:ring-1 focus:ring-blue-400
                   [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"

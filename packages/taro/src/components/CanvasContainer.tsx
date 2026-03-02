@@ -127,6 +127,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
 
   const logIndicatorDebug = React.useCallback((payload: unknown) => {
     if (!debugIndicator) return;
+    void payload;
     // console.log('[YogaCanvas][Indicator]', JSON.stringify(payload));
   }, [debugIndicator]);
 
@@ -143,6 +144,10 @@ export function CanvasContainer(props: CanvasContainerProps) {
   const displayWidth = typeof width === 'number' ? width : layoutSize.width;
   const displayHeight = typeof height === 'number' ? height : layoutSize.height;
   const layout = baseLayout;
+  const [canvasSize, setCanvasSize] = useState<{ width?: number; height?: number }>({
+    width: displayWidth,
+    height: displayHeight,
+  });
 
   useEffect(() => {
     let cancelled = false;
@@ -181,6 +186,7 @@ export function CanvasContainer(props: CanvasContainerProps) {
             });
             if (cancelled) return;
             initInfoRef.current = { pixelRatio: result.pixelRatio, width: result.width, height: result.height };
+            setCanvasSize({ width: result.width, height: result.height });
             const info: ReadyInfo = { instance: result.instance };
             setReadyInfo(info);
             setError(null);
@@ -199,6 +205,27 @@ export function CanvasContainer(props: CanvasContainerProps) {
       cancelled = true;
     };
   }, [layout, width, height, pixelRatio, onReady, onError]);
+
+  useEffect(() => {
+    if (!readyInfo) return;
+    const handler = (payload: unknown) => {
+      const next = payload as { width?: unknown; height?: unknown };
+      const w = typeof next.width === 'number' && Number.isFinite(next.width) && next.width > 0 ? next.width : undefined;
+      const h = typeof next.height === 'number' && Number.isFinite(next.height) && next.height > 0 ? next.height : undefined;
+      if (!w || !h) return;
+      setCanvasSize({ width: w, height: h });
+      const prev = initInfoRef.current;
+      initInfoRef.current = {
+        pixelRatio: prev?.pixelRatio ?? (typeof pixelRatio === 'number' && pixelRatio > 0 ? pixelRatio : 1),
+        width: w,
+        height: h,
+      };
+    };
+    readyInfo.instance.on('resize', handler);
+    return () => {
+      readyInfo.instance.off('resize', handler);
+    };
+  }, [readyInfo, pixelRatio]);
 
   useEffect(() => {
     const timers = scrollBarTimersRef.current;
@@ -638,8 +665,8 @@ export function CanvasContainer(props: CanvasContainerProps) {
         id={canvasIdRef.current}
         type="2d"
         style={{
-          width: typeof displayWidth === 'number' ? `${displayWidth}px` : undefined,
-          height: typeof displayHeight === 'number' ? `${displayHeight}px` : undefined,
+          width: typeof (canvasSize.width ?? displayWidth) === 'number' ? `${canvasSize.width ?? displayWidth}px` : undefined,
+          height: typeof (canvasSize.height ?? displayHeight) === 'number' ? `${canvasSize.height ?? displayHeight}px` : undefined,
           ...(typeof canvasStyle === 'object' && canvasStyle ? canvasStyle : {}),
         }}
         onTouchStart={handleTouchStart}

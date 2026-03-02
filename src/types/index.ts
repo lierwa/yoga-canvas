@@ -14,7 +14,7 @@ export type {
 export interface CanvasContainerConfig {
   name: string;
   width: number;
-  height: number;
+  height: number | 'auto';
 }
 
 export const DEVICE_PRESETS: CanvasContainerConfig[] = [

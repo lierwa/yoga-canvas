@@ -37,7 +37,7 @@ export interface YogaNode {
   setPositionType(n: number): void;
   setMeasureFunc(fn: (width: number, widthMode: number) => { width: number; height: number }): void;
   insertChild(child: YogaNode, index: number): void;
-  calculateLayout(w: number, h: number, dir: number): void;
+  calculateLayout(w?: number, h?: number, dir?: number): void;
   getComputedLayout(): { left: number; top: number; width: number; height: number };
   free(): void;
 }
