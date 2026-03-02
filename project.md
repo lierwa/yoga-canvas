@@ -148,7 +148,3 @@
 - 根目录 scripts：`dev / build / lint / preview`（Vite + TS）
 - `packages/core`、`packages/react` 用 `tsup` 输出 `dist`（esm/cjs + dts）
 - workspace 依赖：根目录与 demo 依赖 `@yoga-canvas/core`、`@yoga-canvas/react`
-
-## 项目约束（对 AI 很重要）
-
-- 不要执行 `npm run dev:h5`（仓库规则）。
