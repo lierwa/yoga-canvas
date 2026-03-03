@@ -6,15 +6,21 @@ import type { SelectionState, DropIndicator } from './types';
 import { getResizeHandlePositions, getRotationHandlePosition } from './CanvasRenderer';
 
 interface DragState {
-  type: 'none' | 'pan' | 'resize' | 'rotate' | 'move';
+  type: 'none' | 'pan' | 'resize' | 'rotate' | 'move' | 'absolute-move';
   startX: number;
   startY: number;
+  startCanvasX: number;
+  startCanvasY: number;
   resizeHandle: string | null;
   originalWidth: number;
   originalHeight: number;
+  originalLeft: number;
+  originalTop: number;
   originalRotation: number;
   nodeCenterX: number;
   nodeCenterY: number;
+  scrollOffsetX: number;
+  scrollOffsetY: number;
 }
 
 function isDescendant(tree: NodeTree, ancestorId: string, nodeId: string): boolean {
@@ -220,7 +226,8 @@ export function useCanvasInteraction(
   onRotate?: (nodeId: string, rotation: number) => void,
   onMove?: (nodeId: string, newParentId: string, insertIndex?: number) => void,
   onDragEnd?: () => void,
-  scrollManager?: ScrollManager
+  scrollManager?: ScrollManager,
+  onMoveAbsolute?: (nodeId: string, left: number, top: number) => void
 ) {
   const [selection, setSelection] = useState<SelectionState>({
     selectedNodeId: null,
@@ -236,12 +243,18 @@ export function useCanvasInteraction(
     type: 'none',
     startX: 0,
     startY: 0,
+    startCanvasX: 0,
+    startCanvasY: 0,
     resizeHandle: null,
     originalWidth: 0,
     originalHeight: 0,
+    originalLeft: 0,
+    originalTop: 0,
     originalRotation: 0,
     nodeCenterX: 0,
     nodeCenterY: 0,
+    scrollOffsetX: 0,
+    scrollOffsetY: 0,
   });
   const lastOffsetRef = useRef({ x: 0, y: 0 });
   const scrollFadeTimeoutsRef = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
@@ -320,12 +333,18 @@ export function useCanvasInteraction(
               type: 'rotate',
               startX: x,
               startY: y,
+              startCanvasX: 0,
+              startCanvasY: 0,
               resizeHandle: null,
               originalWidth: 0,
               originalHeight: 0,
+              originalLeft: 0,
+              originalTop: 0,
               originalRotation: selectedNode.visualStyle.rotate || 0,
               nodeCenterX: left + width / 2,
               nodeCenterY: top + height / 2,
+              scrollOffsetX: 0,
+              scrollOffsetY: 0,
             };
             return;
           }
@@ -335,12 +354,18 @@ export function useCanvasInteraction(
               type: 'resize',
               startX: x,
               startY: y,
+              startCanvasX: 0,
+              startCanvasY: 0,
               resizeHandle: handle,
               originalWidth: selectedNode.computedLayout.width,
               originalHeight: selectedNode.computedLayout.height,
+              originalLeft: 0,
+              originalTop: 0,
               originalRotation: 0,
               nodeCenterX: 0,
               nodeCenterY: 0,
+              scrollOffsetX: 0,
+              scrollOffsetY: 0,
             };
             return;
           }
@@ -352,16 +377,55 @@ export function useCanvasInteraction(
       const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
       if (hitNodeId) {
         if (hitNodeId === selection.selectedNodeId && hitNodeId !== tree.rootId) {
+          const node = tree.nodes[hitNodeId];
+          const isAbsolute = node?.flexStyle?.position === 'absolute';
+          if (isAbsolute && onMoveAbsolute) {
+            const scrollOffset = scrollManager ? getAncestorScrollOffset(tree, hitNodeId, scrollManager) : { x: 0, y: 0 };
+            const startCanvasX = (x - offset.x) / scale + scrollOffset.x;
+            const startCanvasY = (y - offset.y) / scale + scrollOffset.y;
+            const parent = node?.parentId ? tree.nodes[node.parentId] : null;
+            const derivedLeft = node && parent ? node.computedLayout.left - parent.computedLayout.left : node?.computedLayout.left ?? 0;
+            const derivedTop = node && parent ? node.computedLayout.top - parent.computedLayout.top : node?.computedLayout.top ?? 0;
+            const originalLeft = typeof node?.flexStyle?.left === 'number' ? node.flexStyle.left : derivedLeft;
+            const originalTop = typeof node?.flexStyle?.top === 'number' ? node.flexStyle.top : derivedTop;
+
+            dragRef.current = {
+              type: 'absolute-move',
+              startX: x,
+              startY: y,
+              startCanvasX,
+              startCanvasY,
+              resizeHandle: null,
+              originalWidth: 0,
+              originalHeight: 0,
+              originalLeft,
+              originalTop,
+              originalRotation: 0,
+              nodeCenterX: 0,
+              nodeCenterY: 0,
+              scrollOffsetX: scrollOffset.x,
+              scrollOffsetY: scrollOffset.y,
+            };
+            e.currentTarget.style.cursor = 'move';
+            return;
+          }
+
           dragRef.current = {
             type: 'move',
             startX: x,
             startY: y,
+            startCanvasX: 0,
+            startCanvasY: 0,
             resizeHandle: null,
             originalWidth: 0,
             originalHeight: 0,
+            originalLeft: 0,
+            originalTop: 0,
             originalRotation: 0,
             nodeCenterX: 0,
             nodeCenterY: 0,
+            scrollOffsetX: 0,
+            scrollOffsetY: 0,
           };
           return;
         }
@@ -372,17 +436,23 @@ export function useCanvasInteraction(
           type: 'pan',
           startX: x,
           startY: y,
+          startCanvasX: 0,
+          startCanvasY: 0,
           resizeHandle: null,
           originalWidth: 0,
           originalHeight: 0,
+          originalLeft: 0,
+          originalTop: 0,
           originalRotation: 0,
           nodeCenterX: 0,
           nodeCenterY: 0,
+          scrollOffsetX: 0,
+          scrollOffsetY: 0,
         };
         lastOffsetRef.current = { ...offset };
       }
     },
-    [cancelViewAnimation, tree, scale, offset, selection.selectedNodeId, scrollManager]
+    [cancelViewAnimation, tree, scale, offset, selection.selectedNodeId, scrollManager, onMoveAbsolute]
   );
 
   const handleMouseMove = useCallback(
@@ -398,6 +468,16 @@ export function useCanvasInteraction(
           x: lastOffsetRef.current.x + dx,
           y: lastOffsetRef.current.y + dy,
         });
+        return;
+      }
+
+      if (dragRef.current.type === 'absolute-move' && selection.selectedNodeId && onMoveAbsolute) {
+        const canvasX = (x - offset.x) / scale + dragRef.current.scrollOffsetX;
+        const canvasY = (y - offset.y) / scale + dragRef.current.scrollOffsetY;
+        const dx = canvasX - dragRef.current.startCanvasX;
+        const dy = canvasY - dragRef.current.startCanvasY;
+        onMoveAbsolute(selection.selectedNodeId, Math.round(dragRef.current.originalLeft + dx), Math.round(dragRef.current.originalTop + dy));
+        e.currentTarget.style.cursor = 'move';
         return;
       }
 
@@ -493,11 +573,16 @@ export function useCanvasInteraction(
             }
             return;
           }
+
+          if (selectedNode.flexStyle.position === 'absolute' && hitNodeId === selection.selectedNodeId) {
+            e.currentTarget.style.cursor = 'move';
+            return;
+          }
         }
       }
       e.currentTarget.style.cursor = hitNodeId ? 'pointer' : 'grab';
     },
-    [tree, scale, offset, selection.selectedNodeId, onResize, onRotate, scrollManager]
+    [tree, scale, offset, selection.selectedNodeId, onResize, onRotate, scrollManager, onMoveAbsolute]
   );
 
   const handleMouseUp = useCallback(() => {
@@ -515,6 +600,10 @@ export function useCanvasInteraction(
       onDragEnd();
     }
 
+    if (dragType === 'absolute-move' && onDragEnd) {
+      onDragEnd();
+    }
+
     setSelection((prev) => {
       if (prev.dropTargetId || prev.dropIndicator) {
         return { ...prev, dropTargetId: null, dropIndicator: null };
@@ -525,12 +614,18 @@ export function useCanvasInteraction(
       type: 'none',
       startX: 0,
       startY: 0,
+      startCanvasX: 0,
+      startCanvasY: 0,
       resizeHandle: null,
       originalWidth: 0,
       originalHeight: 0,
+      originalLeft: 0,
+      originalTop: 0,
       originalRotation: 0,
       nodeCenterX: 0,
       nodeCenterY: 0,
+      scrollOffsetX: 0,
+      scrollOffsetY: 0,
     };
   }, [selection.selectedNodeId, selection.dropTargetId, selection.dropIndicator, onMove, onDragEnd]);
 

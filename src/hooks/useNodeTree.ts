@@ -1057,6 +1057,36 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     [refresh],
   );
 
+  const moveAbsoluteNodeLive = useCallback(
+    (nodeId: string, left: number, top: number) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.applyLive((prev: NodeTree) => {
+        const node = prev.nodes[nodeId];
+        if (!node) return null;
+        return {
+          ...prev,
+          nodes: {
+            ...prev.nodes,
+            [nodeId]: {
+              ...node,
+              flexStyle: {
+                ...node.flexStyle,
+                position: "absolute",
+                left: Math.round(left),
+                top: Math.round(top),
+                right: undefined,
+                bottom: undefined,
+              },
+            },
+          },
+        };
+      });
+      refresh();
+    },
+    [refresh],
+  );
+
   const updateCanvasContainer = useCallback(
     (config: CanvasContainerConfig) => {
       const manager = managerRef.current;
@@ -1104,6 +1134,7 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     moveNode,
     resizeNode,
     rotateNodeLive,
+    moveAbsoluteNodeLive,
     commitLiveUpdate,
     updateImageProps,
     updateCanvasContainer,

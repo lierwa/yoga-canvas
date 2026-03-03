@@ -5,6 +5,7 @@ import { CanvasContainer } from '@yoga-canvas/taro';
 import { createNodeTemplateDescriptor } from '../../templates/nodeTemplates';
 
 const CANVAS_WIDTH = 360;
+const CANVAS_HEIGHT = 667;
 
 export default function LayoutPage() {
   const [ready, setReady] = useState(false);
@@ -29,6 +30,7 @@ export default function LayoutPage() {
       <View style={{ borderRadius: 12, overflow: 'hidden', borderWidth: 1, borderColor: '#e2e8f0' }}>
         <CanvasContainer
           width={CANVAS_WIDTH}
+          height={CANVAS_HEIGHT}
           layout={layout}
           containerStyle={{ width: `${CANVAS_WIDTH}px` }}
           canvasStyle={{ background: '#ffffff' }}

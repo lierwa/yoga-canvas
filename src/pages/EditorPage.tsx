@@ -35,6 +35,7 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     moveNode,
     resizeNode,
     rotateNodeLive,
+    moveAbsoluteNodeLive,
     commitLiveUpdate,
     updateImageProps,
     updateCanvasContainer,
@@ -61,7 +62,7 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     handleMouseUp,
     handleDoubleClick,
     handleWheel,
-  } = useCanvasInteraction(tree, resizeNode, rotateNodeLive, moveNode, commitLiveUpdate, scrollManager);
+  } = useCanvasInteraction(tree, resizeNode, rotateNodeLive, moveNode, commitLiveUpdate, scrollManager, moveAbsoluteNodeLive);
 
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showPreview, setShowPreview] = useState(false);
@@ -365,4 +366,3 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     </div>
   );
 }
-

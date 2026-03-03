@@ -24,26 +24,29 @@ export function LiveEditor({ defaultCode, onDescriptorChange }: LiveEditorProps)
   const transpileAndEval = useCallback(
     (code: string) => {
       try {
-        // Wrap the JSX expression in a return statement for eval
-        const wrapped = `return (${code.trim()})`;
+        const evalWithSource = (source: string) => {
+          const result = transform(source, {
+            transforms: ['jsx'],
+            jsxRuntime: 'classic',
+            production: true,
+          });
+          const fn = new Function('React', 'View', 'Text', 'Image', 'ScrollView', result.code);
+          return fn(React, View, Text, Image, ScrollView);
+        };
 
-        // Transpile JSX → JS using sucrase
-        const result = transform(wrapped, {
-          transforms: ['jsx'],
-          jsxRuntime: 'classic',
-          production: true,
-        });
-
-        // Eval with Yoga components in scope
-        const fn = new Function('React', 'View', 'Text', 'Image', 'ScrollView', result.code);
-        const element = fn(React, View, Text, Image, ScrollView);
+        let element: unknown;
+        const trimmed = code.trim();
+        try {
+          element = evalWithSource(`return (${trimmed})`);
+        } catch {
+          element = evalWithSource(trimmed);
+        }
 
         if (!React.isValidElement(element)) {
-          setError('Code must return a single JSX element');
+          setError('Code must return a JSX element');
           return;
         }
 
-        // Convert the React element tree to a NodeDescriptor
         const descriptors = convertChildrenToDescriptors(element);
         if (descriptors.length === 0) {
           setError('No valid Yoga nodes found');

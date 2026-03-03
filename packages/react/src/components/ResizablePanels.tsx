@@ -118,7 +118,7 @@ export function ResizablePanels({
             <div className="absolute inset-y-0 -left-1 -right-1 group-hover:bg-indigo-400/20" />
           </div>
 
-          <div style={{ width: rightWidths[index] ?? minWidth, minWidth }} className="flex flex-col shrink-0 overflow-hidden min-w-0">
+          <div style={{ width: rightWidths[index] ?? minWidth, minWidth }} className="flex h-full flex-col shrink-0 overflow-hidden min-w-0">
             {panel}
           </div>
         </div>

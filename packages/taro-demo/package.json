@@ -3,8 +3,9 @@
   "private": true,
   "version": "0.0.0",
   "scripts": {
-    "dev:weapp": "pnpm -C ../.. run build:libs && taro build --type weapp --watch",
-    "build:weapp": "pnpm -C ../.. run build:libs && taro build --type weapp",
+    "build:deps": "pnpm -C ../.. run build:libs",
+    "dev:weapp": "taro build --type weapp --watch",
+    "build:weapp": "taro build --type weapp",
     "dev:h5": "taro build --type h5 --watch",
     "build:h5": "taro build --type h5"
   },

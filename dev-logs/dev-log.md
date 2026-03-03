@@ -1,8 +1,8 @@
 ```yaml
 DEV_LOG_META:
-  LastLogId: 2026-03-02/02
-  LastAnchorCommit: ccdaa56
-  LastAnchorDate: 2026-03-02
+  LastLogId: 2026-03-03/01
+  LastAnchorCommit: d3057d3
+  LastAnchorDate: 2026-03-03
 ```
 
 ## Log Entry: BOOTSTRAP-2026-03-02/01
@@ -115,5 +115,52 @@ DEV_LOG_META:
 - 补充 Workspace 项目导入/导出 JSON 工作流
 - 在 demo/taro-demo 加入 auto-height 模板示例与回归用例
 - 在 run-log.md 中补齐 Windows/CI 下 git/pager 的诊断命令（如 `git var GIT_PAGER`）
+
+---
+
+## Log Entry: 2026-03-03/01
+- Date: 2026-03-03
+- Range: ccdaa56.. d3057d3
+- Focus: 编辑器 UI 重构：预览/导出面板与属性面板组件化
+
+### Summary
+- Editor：新增 PreviewModal，支持画布预览、节点点选与导出 TypeScript/JSON/HTML
+- Editor：属性面板拆分为可复用的 property-controls（颜色/尺寸/数字/选择/分组等），减少重复表单逻辑
+- Editor：LeftPanel / Toolbar / LiveCodeEditorPanel 结构重排并拆分子组件，提升可维护性
+- React(editor)：CanvasRenderer 增加 overlay 绘制阶段，并支持 view+overflow=hidden 的裁剪渲染
+- Core/React：收敛 overflow 语义，类型与 JSX style 转换仅允许 visible/hidden
+- Tooling：新增 predev 脚本，启动 dev 前先构建 workspace 库产物
+
+### Changes By Area
+- Core (@yoga-canvas/core):
+  - FlexStyle.overflow 移除 'scroll' 类型分支（packages/core/src/types/style.ts）
+- React (@yoga-canvas/react):
+  - editor CanvasRenderer：新增 drawOverlays，dropIndicator/选中框等覆盖层与 ScrollView offset 对齐；view overflow=hidden 时对子节点做 clip（packages/react/src/editor/CanvasRenderer.ts）
+  - JSX style 转换：overflow 仅接受 visible/hidden（packages/react/src/jsx/tailwindToStyle.ts）
+- Editor (root src/):
+  - 预览/导出：新增 PreviewModal 及 preview-modal 子模块（canvas/code/inspector/ResizablePanels/codegen 等）（src/components/PreviewModal.tsx、src/components/preview-modal/*）
+  - 属性面板：改造 PropertiesPanel 并新增 property-controls 组件库（src/components/PropertiesPanel.tsx、src/components/property-controls/*）
+  - 面板拆分：新增 left-panel 子模块与 live-code-editor 子模块（src/components/left-panel/*、src/components/live-code-editor/*）
+  - 工具条：拆分 HistoryControls/ZoomControls 等子组件（src/components/toolbar/*）
+  - 工作台：WorkspacePage 适配新 UI 结构（src/pages/WorkspacePage.tsx）
+- Demo / Taro:
+  - 无
+
+### Notable API / Data Model Changes
+- Breaking: FlexStyle.overflow 不再包含 'scroll'（packages/core/src/types/style.ts）
+- 行为收敛：JSX style 转换将过滤 overflow='scroll'（packages/react/src/jsx/tailwindToStyle.ts）
+
+### Notes & Gotchas
+- overflow=hidden 的裁剪目前在 React editor CanvasRenderer 中实现；core 渲染侧仍以 ScrollView 的裁剪/平移为主
+- pnpm-lock.yaml 变更量较大，注意后续合并冲突与依赖一致性
+
+### Open Issues
+- PreviewModal 的 hitTest/选区在复杂 ScrollView 嵌套下仍需更多回归验证
+- codegen（JSX/HTML）输出的格式化与稳定性需要补充测试样例
+
+### Next
+- 为 PreviewModal 的导出（JSON/HTML/TS）补充最小回归样例
+- 验证 overflow='scroll' 迁移路径：明确 ScrollView 与 view overflow 的职责边界
+- 对属性面板的关键控件（尺寸/颜色/图片输入）补充交互测试或 Story/示例
 
 ---

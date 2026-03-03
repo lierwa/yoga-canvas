@@ -128,7 +128,7 @@ export function NodeTreePanel({
 
   return (
     <div className={`flex flex-col h-full overflow-hidden ${className ?? ''}`}>
-      <div className="px-3 py-3 border-b border-gray-100 flex items-center gap-2">
+      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2">
         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex-1">{title}</h4>
         <button
           type="button"
@@ -140,7 +140,7 @@ export function NodeTreePanel({
           {icons?.reveal ?? '⦿'}
         </button>
       </div>
-      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-3 py-2">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5">
         <NodeTreeItem
           node={root}
           tree={tree}
@@ -331,10 +331,10 @@ function NodeTreeItem({
           rowRef.current = el;
           registerRowElement(node.id, el);
         }}
-        className={`group flex items-center gap-0.5 py-1 pr-1 rounded cursor-pointer text-[11px]
+        className={`group flex items-center gap-1 py-1.5 pr-1.5 rounded-md cursor-pointer text-xs
           ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-600'}
           ${dropIndicatorClass}`}
-        style={{ paddingLeft: depth * 12 + 4 }}
+        style={{ paddingLeft: depth * 14 + 6 }}
         onClick={() => onSelect(node.id)}
         draggable={canDrag}
         onDragStart={canDrag ? handleDragStart : undefined}
@@ -354,13 +354,13 @@ function NodeTreeItem({
             {expandCollapseIcon}
           </button>
         ) : (
-          <span className="w-[14px] shrink-0" />
+          <span className="w-[16px] shrink-0" />
         )}
 
         {typeIcon ? (
           <span className="shrink-0 opacity-60">{typeIcon}</span>
         ) : (
-          <span className="text-[10px] font-mono font-bold opacity-70 w-[12px] text-center shrink-0">{typeLetter}</span>
+          <span className="text-[10px] font-mono font-bold opacity-70 w-[14px] text-center shrink-0">{typeLetter}</span>
         )}
         <span className="truncate flex-1 ml-0.5">{node.name}</span>
 

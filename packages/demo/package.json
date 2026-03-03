@@ -4,6 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm -C ../.. run build:libs",
     "dev": "vite",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
