@@ -26,7 +26,7 @@ export function ComponentsSection({
           <button
             key={item.type}
             onClick={() => onAddNode(targetId, item.type)}
-            className="flex flex-col items-center gap-1 px-2 py-2.5 rounded-md border border-gray-200
+            className="flex flex-col items-center gap-1 px-2 py-2 rounded-md border border-gray-200
               hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600
               text-gray-600 transition-colors group"
             title={item.desc}

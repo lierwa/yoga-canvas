@@ -32,6 +32,7 @@
     "react": ">=17.0.0"
   },
   "devDependencies": {
+    "@types/react": "^18.3.12",
     "@tarojs/components": "^3.6.38",
     "@tarojs/plugin-platform-weapp": "^3.6.38",
     "@tarojs/taro": "^3.6.38",

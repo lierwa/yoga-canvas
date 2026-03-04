@@ -17,8 +17,8 @@ import {
   Trash2,
   Type,
 } from 'lucide-react';
-import PropertiesPanel from '../../../src/components/PropertiesPanel';
-import { useNodeTree } from '../../../src/hooks/useNodeTree';
+import PropertiesPanel from '../../editor/src/components/PropertiesPanel';
+import { useNodeTree } from '../../editor/src/hooks/useNodeTree';
 import { LiveEditor } from './LiveEditor';
 
 export default function App() {
@@ -253,9 +253,9 @@ const FeatureRow = ({ name, desc, color }) => (
 );
 
 return (<View name="Root" style={{
-  width: 375, height: 'auto', minHeight: 400,
+  width: 375, height: 667, minHeight: 400,
   flexDirection: 'column',
-  backgroundColor: '#f8fafc',
+  backgroundColor: '#fff',
   padding: 16, gap: 12,
 }}>
   <View name="Header" style={{

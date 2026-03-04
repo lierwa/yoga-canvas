@@ -128,7 +128,7 @@ export function NodeTreePanel({
 
   return (
     <div className={`flex flex-col h-full overflow-hidden ${className ?? ''}`}>
-      <div className="px-3 py-2.5 border-b border-gray-100 flex items-center gap-2">
+      <div className="px-3 py-2 border-b border-gray-100 flex items-center gap-2">
         <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider flex-1">{title}</h4>
         <button
           type="button"
@@ -140,7 +140,7 @@ export function NodeTreePanel({
           {icons?.reveal ?? '⦿'}
         </button>
       </div>
-      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-2.5 py-2.5">
+      <div ref={containerRef} className="flex-1 min-h-0 overflow-y-auto px-2 py-2">
         <NodeTreeItem
           node={root}
           tree={tree}
