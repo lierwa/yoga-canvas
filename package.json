@@ -4,16 +4,14 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "pnpm --filter @yoga-canvas/editor dev",
-    "build": "pnpm --filter @yoga-canvas/editor build",
+    "dev": "pnpm --filter @yoga-canvas/demo dev",
+    "build": "pnpm --filter @yoga-canvas/demo build",
     "lint": "eslint .",
-    "preview": "pnpm --filter @yoga-canvas/editor preview",
+    "preview": "pnpm --filter @yoga-canvas/demo preview",
     "build:libs": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react --filter @yoga-canvas/taro build",
     "dev:libs": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react --filter @yoga-canvas/taro dev",
-    "dev:editor": "pnpm --filter @yoga-canvas/editor dev",
-    "build:editor": "pnpm --filter @yoga-canvas/editor build",
     "dev:demo": "pnpm --filter @yoga-canvas/demo dev",
-    "build:demo": "pnpm -r --filter @yoga-canvas/editor --filter @yoga-canvas/demo build",
+    "build:demo": "pnpm --filter @yoga-canvas/demo build",
     "build:all": "pnpm run build:libs"
   },
   "devDependencies": {

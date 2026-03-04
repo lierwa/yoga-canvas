@@ -51,10 +51,16 @@ export function setRenderCallback(cb: () => void) {
 function getCachedImage(src: string): HTMLImageElement | null {
   if (!src) return null;
   const cached = imageCache.get(src);
-  if (cached && cached.complete) return cached;
+  if (cached && cached.complete) {
+    if (cached.naturalWidth > 0 && cached.naturalHeight > 0) return cached;
+    return null;
+  }
   if (!cached) {
     const img = new Image();
     img.onload = () => {
+      for (const cb of renderCallbacks) cb();
+    };
+    img.onerror = () => {
       for (const cb of renderCallbacks) cb();
     };
     img.src = src;
@@ -585,7 +591,11 @@ function drawImageContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void
   ctx.beginPath();
   ctx.rect(left, top, width, height);
   ctx.clip();
-  ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+  try {
+    ctx.drawImage(img, dx, dy, drawWidth, drawHeight);
+  } catch {
+    drawImagePlaceholder(ctx, node);
+  }
   ctx.restore();
 }
 
