@@ -17,6 +17,8 @@ import { LiveCodeEditorResizer } from './live-code-editor/LiveCodeEditorResizer'
 
 type Tab = 'jsx' | 'json';
 
+const OMIT_HELPER_NODE_PREFIXES = ['CodeBtn_', 'CodeBtnText_'];
+
 type MonacoEditorLike = {
   getValue: () => string;
   onDidBlurEditorText: (cb: () => void) => { dispose: () => void };
@@ -27,11 +29,17 @@ export default function LiveCodeEditorPanel({
   onClose,
   onDescriptorChange,
   embedded = false,
+  readOnly = false,
+  rootNodeId,
+  initialCode,
 }: {
   tree: NodeTree;
   onClose: () => void;
   onDescriptorChange: (descriptor: NodeDescriptor) => void;
   embedded?: boolean;
+  readOnly?: boolean;
+  rootNodeId?: string;
+  initialCode?: { jsx?: string; json?: string };
 }) {
   const [activeTab, setActiveTab] = useState<Tab>('jsx');
   const [jsxPropsMode, setJsxPropsMode] = useState<JSXPropsMode>('className');
@@ -41,22 +49,34 @@ export default function LiveCodeEditorPanel({
   const editorRef = useRef<MonacoEditorLike | null>(null);
   const blurSubscriptionRef = useRef<{ dispose: () => void } | null>(null);
 
-  const snapshotDescriptor = useMemo(() => buildDescriptorFromTree(tree, tree.rootId), [tree]);
+  const effectiveRootId = rootNodeId ?? tree.rootId;
+  const snapshotDescriptor = useMemo(
+    () =>
+      buildDescriptorFromTree(tree, effectiveRootId, {
+        omitNamePrefixes: OMIT_HELPER_NODE_PREFIXES,
+      }),
+    [tree, effectiveRootId],
+  );
   const initialJSX = useMemo(() => renderJSXFromDescriptor(snapshotDescriptor, 0, jsxPropsMode), [snapshotDescriptor, jsxPropsMode]);
   const initialJSON = useMemo(() => JSON.stringify(snapshotDescriptor, null, 2), [snapshotDescriptor]);
 
-  const [code, setCode] = useState<{ jsx: string; json: string }>(() => ({ jsx: initialJSX, json: initialJSON }));
-  const lastGeneratedJSXRef = useRef<string>(initialJSX);
+  const seededJSX = initialCode?.jsx ?? initialJSX;
+  const seededJSON = initialCode?.json ?? initialJSON;
+  const jsxIsGeneratedFromTree = initialCode?.jsx === undefined;
+
+  const [code, setCode] = useState<{ jsx: string; json: string }>(() => ({ jsx: seededJSX, json: seededJSON }));
+  const lastGeneratedJSXRef = useRef<string>(seededJSX);
   const [panelWidth, setPanelWidth] = useState(560);
 
   useEffect(() => {
+    if (!jsxIsGeneratedFromTree) return;
     if (activeTab !== 'jsx') return;
     if (code.jsx !== lastGeneratedJSXRef.current) return;
-    const desc = buildDescriptorFromTree(tree, tree.rootId);
+    const desc = buildDescriptorFromTree(tree, effectiveRootId, { omitNamePrefixes: OMIT_HELPER_NODE_PREFIXES });
     const next = renderJSXFromDescriptor(desc, 0, jsxPropsMode);
     lastGeneratedJSXRef.current = next;
     setCode((prev) => ({ ...prev, jsx: next }));
-  }, [activeTab, code.jsx, jsxPropsMode, tree]);
+  }, [activeTab, code.jsx, jsxIsGeneratedFromTree, jsxPropsMode, tree, effectiveRootId]);
 
   const rememberDescriptor = useCallback((descriptor: NodeDescriptor) => {
     lastValidDescriptorRef.current = descriptor;
@@ -145,7 +165,7 @@ export default function LiveCodeEditorPanel({
   }, [activeTab, code]);
 
   const handleResetFromCanvas = useCallback(() => {
-    const desc = buildDescriptorFromTree(tree, tree.rootId);
+    const desc = buildDescriptorFromTree(tree, effectiveRootId, { omitNamePrefixes: OMIT_HELPER_NODE_PREFIXES });
     lastValidDescriptorRef.current = desc;
     const nextJSX = renderJSXFromDescriptor(desc, 0, jsxPropsMode);
     lastGeneratedJSXRef.current = nextJSX;
@@ -154,7 +174,7 @@ export default function LiveCodeEditorPanel({
       json: JSON.stringify(desc, null, 2),
     });
     setError(null);
-  }, [tree, jsxPropsMode]);
+  }, [tree, jsxPropsMode, effectiveRootId]);
 
   useEffect(() => {
     return () => {
@@ -181,6 +201,7 @@ export default function LiveCodeEditorPanel({
         jsxPropsMode={jsxPropsMode}
         onJsxPropsModeChange={setJsxPropsMode}
         showJsxPropsMode={activeTab === 'jsx'}
+        showSync={!readOnly}
         onSyncFromCanvas={handleResetFromCanvas}
         onCopy={handleCopy}
         onClose={onClose}
@@ -206,15 +227,19 @@ export default function LiveCodeEditorPanel({
               noSyntaxValidation: false,
             });
           }}
-          onChange={handleChange}
+          onChange={readOnly ? undefined : handleChange}
           onMount={(editor) => {
             editorRef.current = editor as unknown as MonacoEditorLike;
             blurSubscriptionRef.current?.dispose();
-            blurSubscriptionRef.current = editorRef.current.onDidBlurEditorText(() => {
-              commitFromEditor();
-            });
+            blurSubscriptionRef.current = null;
+            if (!readOnly) {
+              blurSubscriptionRef.current = editorRef.current.onDidBlurEditorText(() => {
+                commitFromEditor();
+              });
+            }
           }}
           options={{
+            readOnly,
             minimap: { enabled: false },
             fontSize: 12,
             lineNumbers: 'on',

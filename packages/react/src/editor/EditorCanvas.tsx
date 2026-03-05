@@ -95,7 +95,7 @@ export function EditorCanvas({
         onMouseLeave={onMouseUp}
         onDoubleClick={onDoubleClick}
       />
-      {onFocusNode && selection.selectedNodeId && renderFocusAction?.(onFocusNode)}
+      {renderFocusAction && onFocusNode ? renderFocusAction(onFocusNode) : null}
     </div>
   );
 }

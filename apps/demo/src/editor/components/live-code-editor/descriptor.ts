@@ -3,11 +3,23 @@ import type { CanvasNode, NodeTree } from '../../types';
 
 export type JSXPropsMode = 'style' | 'className';
 
-export function buildDescriptorFromTree(tree: NodeTree, nodeId: string): NodeDescriptor {
+export type BuildDescriptorOptions = {
+  omitNamePrefixes?: string[];
+  omitNames?: string[];
+};
+
+export function buildDescriptorFromTree(tree: NodeTree, nodeId: string, options?: BuildDescriptorOptions): NodeDescriptor {
   const node = tree.nodes[nodeId];
   if (!node) {
     return { type: 'view', style: { width: 375, height: 667 } };
   }
+
+  const shouldOmit = (name: string | undefined) => {
+    if (!name) return false;
+    if (options?.omitNames?.includes(name)) return true;
+    if (options?.omitNamePrefixes?.some((p) => name.startsWith(p))) return true;
+    return false;
+  };
 
   const style: Record<string, unknown> = {
     ...(node.flexStyle ?? {}),
@@ -48,12 +60,16 @@ export function buildDescriptorFromTree(tree: NodeTree, nodeId: string): NodeDes
       ...base,
       scrollDirection: node.scrollViewProps?.scrollDirection ?? 'vertical',
       scrollBarVisibility: node.scrollViewProps?.scrollBarVisibility ?? 'auto',
-      children: node.children.map((id) => buildDescriptorFromTree(tree, id)),
+      children: node.children
+        .filter((id) => !shouldOmit(tree.nodes[id]?.name))
+        .map((id) => buildDescriptorFromTree(tree, id, options)),
     };
   }
   return {
     ...base,
-    children: node.children.map((id) => buildDescriptorFromTree(tree, id)),
+    children: node.children
+      .filter((id) => !shouldOmit(tree.nodes[id]?.name))
+      .map((id) => buildDescriptorFromTree(tree, id, options)),
   };
 }
 
@@ -377,4 +393,3 @@ export function mergeRestStylesByStructure(base: NodeDescriptor, next: NodeDescr
 
   return { ...next, style: nextStyle, children: mergedChildren };
 }
-

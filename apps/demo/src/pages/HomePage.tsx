@@ -1,55 +1,207 @@
-type LinkCardProps = {
+import { useCallback, useMemo } from 'react';
+import { ArrowRight, Sparkles } from 'lucide-react';
+
+type ProductKey = 'playground' | 'workspace' | 'components';
+
+type ProductCard = {
+  key: ProductKey;
   title: string;
-  subtitle?: string;
+  subtitle: string;
+  desc: string;
   href: string;
-  gradient: string;
+  accent: { from: string; to: string };
+  bullets: string[];
 };
 
-function LinkCard({ title, subtitle, href, gradient }: LinkCardProps) {
-  return (
-    <a
-      href={href}
-      className={[
-        'w-[520px] max-w-[88vw] h-[150px] rounded-[28px] flex flex-col items-center justify-center',
-        'shadow-[0_18px_45px_rgba(15,23,42,0.18)] hover:shadow-[0_22px_60px_rgba(15,23,42,0.22)]',
-        'transition-shadow duration-200 select-none',
-        gradient,
-      ].join(' ')}
-    >
-      <div className="text-white font-extrabold tracking-tight text-[44px] leading-none">{title}</div>
-      {subtitle ? <div className="mt-2 text-white/90 text-sm font-semibold">{subtitle}</div> : null}
-    </a>
-  );
-}
-
 export default function HomePage() {
+  const products: ProductCard[] = useMemo(
+    () => [
+      {
+        key: 'playground',
+        title: 'Playground',
+        subtitle: '即时体验编辑能力',
+        desc: '在同一屏里完成“数据/JSX → 渲染 → 选中 → 调参”，快速验证布局、交互与导出链路。',
+        href: '#/playground',
+        accent: { from: '#a78bfa', to: '#ec4899' },
+        bullets: ['Live JSX → Canvas', '节点树与选中', '缩放/平移/对齐'],
+      },
+      {
+        key: 'workspace',
+        title: 'Workspace',
+        subtitle: '项目化的设计工作台',
+        desc: '把模板变成可管理的项目：创建、复制、重命名，并进入编辑器持续迭代与协作。',
+        href: '#/workspace',
+        accent: { from: '#fb7185', to: '#f97316' },
+        bullets: ['项目列表管理', '可视化编辑器', '预览与导出'],
+      },
+      {
+        key: 'components',
+        title: 'Components',
+        subtitle: '能力覆盖一眼看清',
+        desc: '用“设计稿式”的画布展示核心组件与布局能力，帮助你快速评估可用范围与落地效果。',
+        href: '#/components',
+        accent: { from: '#60a5fa', to: '#22c55e' },
+        bullets: ['只读展示', 'Flex / gap / grid', 'Image fill / ScrollView'],
+      },
+    ],
+    [],
+  );
+
+  const goToProduct = useCallback(
+    (key: ProductKey) => {
+      const item = products.find((p) => p.key === key);
+      if (!item) return;
+      window.location.hash = item.href;
+    },
+    [products],
+  );
+
   return (
-    <div className="h-screen w-screen bg-white overflow-hidden flex items-center justify-center">
-      <div className="w-full h-full flex flex-col items-center justify-center">
-        <div className="text-[44px] leading-none font-light text-slate-500 tracking-wide">Yoga Canvas Examples</div>
-        <div className="mt-12 flex flex-col items-center gap-10">
-          <LinkCard
-            title="Playground"
-            subtitle="实时编辑 + 预览"
-            href="#/playground"
-            gradient="bg-gradient-to-r from-violet-500 to-fuchsia-500"
-          />
-          <LinkCard
-            title="Editor"
-            subtitle="工作台 + 可视化编辑器"
-            href="#/workspace"
-            gradient="bg-gradient-to-r from-fuchsia-500 to-rose-500"
-          />
-          <LinkCard
-            title="Components"
-            subtitle="组件能力设计图画布"
-            href="#/components"
-            gradient="bg-gradient-to-r from-blue-500 to-indigo-500"
-          />
+    <div className="h-screen w-screen overflow-hidden bg-[#050816] text-white">
+      <div className="absolute inset-0">
+        <div className="absolute -inset-[35%] bg-[radial-gradient(circle_at_20%_15%,rgba(168,85,247,0.32),transparent_55%),radial-gradient(circle_at_72%_30%,rgba(59,130,246,0.26),transparent_58%),radial-gradient(circle_at_60%_80%,rgba(34,197,94,0.18),transparent_62%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),transparent_30%,rgba(255,255,255,0.03))]" />
+      </div>
+
+      <div className="relative h-full">
+        <div className="mx-auto max-w-6xl h-full px-6">
+          <div className="pt-10 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center justify-center">
+                <Sparkles size={18} className="text-white/90" />
+              </div>
+              <div className="leading-tight">
+                <div className="text-sm font-semibold tracking-wide">Yoga Canvas</div>
+                <div className="text-[11px] text-white/55">基于 Yoga Layout的Canvas画布引擎</div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="#/playground"
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
+              >
+                Playground
+              </a>
+              <a
+                href="#/workspace"
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
+              >
+                Workspace
+              </a>
+              <a
+                href="#/components"
+                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
+              >
+                Components
+              </a>
+            </div>
+          </div>
+
+          <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
+            <div className="min-w-0">
+              <h1 className="mt-6 text-[46px] leading-[1.05] font-extrabold tracking-tight">
+                一个面向
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-violet-200 to-cyan-200">布局与可视化编辑</span>
+                的 Canvas 引擎与组件库
+              </h1>
+              <p className="mt-4 text-sm leading-6 text-white/65 max-w-[54ch]">
+                Yoga Canvas 让你用数据或 JSX 描述 UI 布局，并在 Canvas 中完成渲染、命中测试、选中高亮、缩放与平移、属性面板调参以及导出。它更像一套“搭建与编辑体验的基础设施”，而不是单点组件集合。
+              </p>
+
+              <div className="mt-8 flex flex-wrap items-center gap-3">
+                <button
+                  type="button"
+                  className="group inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white text-slate-900 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.35)] hover:shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-shadow"
+                  onClick={() => goToProduct('playground')}
+                >
+                  立即体验
+                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                </button>
+              </div>
+
+              <div className="mt-10 grid grid-cols-2 gap-3 max-w-[560px]">
+                {[
+                  { label: '布局引擎', value: 'Yoga Flex Layout' },
+                  { label: '渲染目标', value: 'Canvas / DOM' },
+                  { label: '编辑能力', value: '选中 / 缩放 / 平移' },
+                  { label: '导出能力', value: 'JSON / Image' },
+                ].map((x) => (
+                  <div key={x.label} className="rounded-2xl bg-white/7 border border-white/12 backdrop-blur px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
+                    <div className="text-[11px] font-semibold text-white/55 tracking-wide">{x.label}</div>
+                    <div className="mt-1 text-sm font-bold text-white/90">{x.value}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="relative">
+              <div className="grid gap-4">
+                {products.map((p) => (
+                  <button
+                    key={p.key}
+                    type="button"
+                    className="group relative text-left cursor-pointer select-none"
+                    onClick={() => goToProduct(p.key)}
+                  >
+                    <div
+                      className="relative rounded-[28px] border border-white/14 bg-white/9 backdrop-blur-xl shadow-[0_24px_90px_rgba(0,0,0,0.35)] overflow-hidden"
+                      style={{
+                        transition: 'transform 220ms ease, border-color 220ms ease, background-color 220ms ease',
+                      }}
+                    >
+                      <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+                        <div
+                          className="absolute -inset-10"
+                          style={{
+                            background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.20), transparent 58%)',
+                          }}
+                        />
+                      </div>
+                      <div
+                        className="absolute inset-0 opacity-60"
+                        style={{
+                          background: `linear-gradient(120deg, ${p.accent.from}, ${p.accent.to})`,
+                          maskImage: 'radial-gradient(circle at 30% 20%, black, transparent 65%)',
+                          WebkitMaskImage: 'radial-gradient(circle at 30% 20%, black, transparent 65%)',
+                        }}
+                      />
+                      <div className="relative p-5">
+                        <div className="flex items-start gap-4">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2">
+                              <div className="text-[18px] font-extrabold tracking-tight">{p.title}</div>
+                              <div className="text-[11px] font-semibold text-white/60">{p.subtitle}</div>
+                            </div>
+                            <div className="mt-2 text-[12px] leading-5 text-white/70">{p.desc}</div>
+                          </div>
+                          <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/12 border border-white/15 backdrop-blur flex items-center justify-center">
+                            <ArrowRight size={18} className="text-white/85" />
+                          </div>
+                        </div>
+
+                        <div className="mt-4 flex flex-wrap gap-2">
+                          {p.bullets.map((b) => (
+                            <div
+                              key={b}
+                              className="px-2.5 py-1.5 rounded-xl bg-white/10 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/70"
+                            >
+                              {b}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                ))}
+              </div>
+
+              <div className="mt-6 text-[11px] text-white/50">
+                提示：点击卡片进入对应体验页。
+              </div>
+            </div>
+          </div>
         </div>
-        <div className="mt-14 text-sm text-slate-900">Yoga Canvas</div>
       </div>
     </div>
   );
 }
-

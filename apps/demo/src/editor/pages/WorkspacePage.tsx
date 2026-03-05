@@ -1,4 +1,4 @@
-import { Copy, Pencil, Plus, Trash2 } from "lucide-react";
+import { ArrowLeft, Copy, Pencil, Plus, Trash2 } from "lucide-react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useYogaCanvas } from "@yoga-canvas/react";
@@ -333,6 +333,23 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       <div className="h-full overflow-auto">
+        <div className="sticky top-0 z-20 border-b border-white/70 bg-white/75 backdrop-blur">
+          <div className="mx-auto max-w-6xl px-6 py-3 flex items-center gap-4">
+            <button
+              type="button"
+              className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+              onClick={() => {
+                window.location.hash = "#/";
+              }}
+              title="返回首页"
+            >
+              <ArrowLeft size={14} />
+              返回
+            </button>
+
+            <div className="flex-1" />
+          </div>
+        </div>
         <div className="mx-auto max-w-6xl px-6 py-10">
           <div className="flex items-end justify-between gap-6">
             <div className="min-w-0">

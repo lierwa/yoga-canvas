@@ -220,6 +220,12 @@ function findInsertionPoint(
   return null;
 }
 
+export type CanvasInteractionOptions = {
+  panOn?: 'empty' | 'root' | 'any';
+  selectionEnabled?: boolean;
+  transformEnabled?: boolean;
+};
+
 export function useCanvasInteraction(
   tree: NodeTree,
   onResize: (nodeId: string, width: number, height: number) => void,
@@ -227,8 +233,13 @@ export function useCanvasInteraction(
   onMove?: (nodeId: string, newParentId: string, insertIndex?: number) => void,
   onDragEnd?: () => void,
   scrollManager?: ScrollManager,
-  onMoveAbsolute?: (nodeId: string, left: number, top: number) => void
+  onMoveAbsolute?: (nodeId: string, left: number, top: number) => void,
+  options?: CanvasInteractionOptions
 ) {
+  const panOn = options?.panOn ?? 'empty';
+  const selectionEnabled = options?.selectionEnabled ?? true;
+  const transformEnabled = options?.transformEnabled ?? true;
+
   const [selection, setSelection] = useState<SelectionState>({
     selectedNodeId: null,
     hoveredNodeId: null,
@@ -321,7 +332,7 @@ export function useCanvasInteraction(
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      if (selection.selectedNodeId) {
+      if (transformEnabled && selectionEnabled && selection.selectedNodeId) {
         const selectedNode = tree.nodes[selection.selectedNodeId];
         if (selectedNode) {
           const scrollOffset = scrollManager
@@ -375,8 +386,36 @@ export function useCanvasInteraction(
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
       const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+
+      const shouldPan =
+        panOn === 'any' ? true : panOn === 'root' ? !hitNodeId || hitNodeId === tree.rootId : !hitNodeId;
+
+      if (shouldPan) {
+        if (selectionEnabled) setSelection((prev) => ({ ...prev, selectedNodeId: null }));
+        dragRef.current = {
+          type: 'pan',
+          startX: x,
+          startY: y,
+          startCanvasX: 0,
+          startCanvasY: 0,
+          resizeHandle: null,
+          originalWidth: 0,
+          originalHeight: 0,
+          originalLeft: 0,
+          originalTop: 0,
+          originalRotation: 0,
+          nodeCenterX: 0,
+          nodeCenterY: 0,
+          scrollOffsetX: 0,
+          scrollOffsetY: 0,
+        };
+        lastOffsetRef.current = { ...offset };
+        e.currentTarget.style.cursor = 'grabbing';
+        return;
+      }
+
       if (hitNodeId) {
-        if (hitNodeId === selection.selectedNodeId && hitNodeId !== tree.rootId) {
+        if (transformEnabled && selectionEnabled && hitNodeId === selection.selectedNodeId && hitNodeId !== tree.rootId) {
           const node = tree.nodes[hitNodeId];
           const isAbsolute = node?.flexStyle?.position === 'absolute';
           if (isAbsolute && onMoveAbsolute) {
@@ -429,30 +468,23 @@ export function useCanvasInteraction(
           };
           return;
         }
-        setSelection((prev) => ({ ...prev, selectedNodeId: hitNodeId, dropTargetId: null }));
+        if (selectionEnabled) setSelection((prev) => ({ ...prev, selectedNodeId: hitNodeId, dropTargetId: null }));
       } else {
-        setSelection((prev) => ({ ...prev, selectedNodeId: null }));
-        dragRef.current = {
-          type: 'pan',
-          startX: x,
-          startY: y,
-          startCanvasX: 0,
-          startCanvasY: 0,
-          resizeHandle: null,
-          originalWidth: 0,
-          originalHeight: 0,
-          originalLeft: 0,
-          originalTop: 0,
-          originalRotation: 0,
-          nodeCenterX: 0,
-          nodeCenterY: 0,
-          scrollOffsetX: 0,
-          scrollOffsetY: 0,
-        };
-        lastOffsetRef.current = { ...offset };
+        if (selectionEnabled) setSelection((prev) => ({ ...prev, selectedNodeId: null }));
       }
     },
-    [cancelViewAnimation, tree, scale, offset, selection.selectedNodeId, scrollManager, onMoveAbsolute]
+    [
+      cancelViewAnimation,
+      tree,
+      scale,
+      offset,
+      selection.selectedNodeId,
+      scrollManager,
+      onMoveAbsolute,
+      panOn,
+      selectionEnabled,
+      transformEnabled,
+    ]
   );
 
   const handleMouseMove = useCallback(
@@ -468,10 +500,11 @@ export function useCanvasInteraction(
           x: lastOffsetRef.current.x + dx,
           y: lastOffsetRef.current.y + dy,
         });
+        e.currentTarget.style.cursor = 'grabbing';
         return;
       }
 
-      if (dragRef.current.type === 'absolute-move' && selection.selectedNodeId && onMoveAbsolute) {
+      if (transformEnabled && dragRef.current.type === 'absolute-move' && selection.selectedNodeId && onMoveAbsolute) {
         const canvasX = (x - offset.x) / scale + dragRef.current.scrollOffsetX;
         const canvasY = (y - offset.y) / scale + dragRef.current.scrollOffsetY;
         const dx = canvasX - dragRef.current.startCanvasX;
@@ -481,7 +514,7 @@ export function useCanvasInteraction(
         return;
       }
 
-      if (dragRef.current.type === 'move' && selection.selectedNodeId) {
+      if (transformEnabled && dragRef.current.type === 'move' && selection.selectedNodeId) {
         const insertion = findInsertionPoint(tree, x, y, scale, offset.x, offset.y, selection.selectedNodeId);
         if (insertion && !isDescendant(tree, selection.selectedNodeId, insertion.parentId)) {
           setSelection((prev) => ({ ...prev, dropTargetId: null, dropIndicator: insertion }));
@@ -502,7 +535,7 @@ export function useCanvasInteraction(
         return;
       }
 
-      if (dragRef.current.type === 'rotate' && selection.selectedNodeId && onRotate) {
+      if (transformEnabled && dragRef.current.type === 'rotate' && selection.selectedNodeId && onRotate) {
         const canvasX = (x - offset.x) / scale;
         const canvasY = (y - offset.y) / scale;
         const { nodeCenterX, nodeCenterY, originalRotation } = dragRef.current;
@@ -517,7 +550,7 @@ export function useCanvasInteraction(
         return;
       }
 
-      if (dragRef.current.type === 'resize' && selection.selectedNodeId) {
+      if (transformEnabled && dragRef.current.type === 'resize' && selection.selectedNodeId) {
         const dx = (x - dragRef.current.startX) / scale;
         const dy = (y - dragRef.current.startY) / scale;
         const handle = dragRef.current.resizeHandle;
@@ -540,55 +573,74 @@ export function useCanvasInteraction(
         return;
       }
 
-      const canvasX = (x - offset.x) / scale;
-      const canvasY = (y - offset.y) / scale;
-      const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
-      setSelection((prev) => {
-        if (prev.hoveredNodeId !== hitNodeId) {
-          return { ...prev, hoveredNodeId: hitNodeId };
-        }
-        return prev;
-      });
-
-      if (selection.selectedNodeId) {
-        const selectedNode = tree.nodes[selection.selectedNodeId];
-        if (selectedNode) {
-          const scrollOffset = scrollManager
-            ? getAncestorScrollOffset(tree, selection.selectedNodeId, scrollManager)
-            : { x: 0, y: 0 };
-          const handle = hitTestResizeHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset);
-          if (hitTestRotationHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset)) {
-            e.currentTarget.style.cursor = 'grab';
-            return;
+      if (selectionEnabled) {
+        const canvasX = (x - offset.x) / scale;
+        const canvasY = (y - offset.y) / scale;
+        const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+        setSelection((prev) => {
+          if (prev.hoveredNodeId !== hitNodeId) {
+            return { ...prev, hoveredNodeId: hitNodeId };
           }
-          if (handle) {
-            if (handle === 'top-left' || handle === 'bottom-right') {
-              e.currentTarget.style.cursor = 'nwse-resize';
-            } else if (handle === 'top-right' || handle === 'bottom-left') {
-              e.currentTarget.style.cursor = 'nesw-resize';
-            } else if (handle === 'mid-top' || handle === 'mid-bottom') {
-              e.currentTarget.style.cursor = 'ns-resize';
-            } else if (handle === 'mid-left' || handle === 'mid-right') {
-              e.currentTarget.style.cursor = 'ew-resize';
+          return prev;
+        });
+
+        if (transformEnabled && selection.selectedNodeId) {
+          const selectedNode = tree.nodes[selection.selectedNodeId];
+          if (selectedNode) {
+            const scrollOffset = scrollManager
+              ? getAncestorScrollOffset(tree, selection.selectedNodeId, scrollManager)
+              : { x: 0, y: 0 };
+            const handle = hitTestResizeHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset);
+            if (hitTestRotationHandleWithScroll(selectedNode, x, y, scale, offset.x, offset.y, scrollOffset)) {
+              e.currentTarget.style.cursor = 'grab';
+              return;
             }
-            return;
-          }
+            if (handle) {
+              if (handle === 'top-left' || handle === 'bottom-right') {
+                e.currentTarget.style.cursor = 'nwse-resize';
+              } else if (handle === 'top-right' || handle === 'bottom-left') {
+                e.currentTarget.style.cursor = 'nesw-resize';
+              } else if (handle === 'mid-top' || handle === 'mid-bottom') {
+                e.currentTarget.style.cursor = 'ns-resize';
+              } else if (handle === 'mid-left' || handle === 'mid-right') {
+                e.currentTarget.style.cursor = 'ew-resize';
+              }
+              return;
+            }
 
-          if (selectedNode.flexStyle.position === 'absolute' && hitNodeId === selection.selectedNodeId) {
-            e.currentTarget.style.cursor = 'move';
-            return;
+            const hitNodeId = selection.hoveredNodeId;
+            if (selectedNode.flexStyle.position === 'absolute' && hitNodeId === selection.selectedNodeId) {
+              e.currentTarget.style.cursor = 'move';
+              return;
+            }
           }
         }
+
+        e.currentTarget.style.cursor = selection.hoveredNodeId ? 'pointer' : 'grab';
+        return;
       }
-      e.currentTarget.style.cursor = hitNodeId ? 'pointer' : 'grab';
+
+      e.currentTarget.style.cursor = 'grab';
     },
-    [tree, scale, offset, selection.selectedNodeId, onResize, onRotate, scrollManager, onMoveAbsolute]
+    [
+      tree,
+      scale,
+      offset,
+      selection.selectedNodeId,
+      selection.hoveredNodeId,
+      onResize,
+      onRotate,
+      scrollManager,
+      onMoveAbsolute,
+      selectionEnabled,
+      transformEnabled,
+    ]
   );
 
   const handleMouseUp = useCallback(() => {
     const dragType = dragRef.current.type;
 
-    if (dragType === 'move' && selection.selectedNodeId && onMove) {
+    if (transformEnabled && dragType === 'move' && selection.selectedNodeId && onMove) {
       if (selection.dropIndicator) {
         onMove(selection.selectedNodeId, selection.dropIndicator.parentId, selection.dropIndicator.index);
       } else if (selection.dropTargetId) {
@@ -596,20 +648,22 @@ export function useCanvasInteraction(
       }
     }
 
-    if ((dragType === 'resize' || dragType === 'rotate') && onDragEnd) {
+    if (transformEnabled && (dragType === 'resize' || dragType === 'rotate') && onDragEnd) {
       onDragEnd();
     }
 
-    if (dragType === 'absolute-move' && onDragEnd) {
+    if (transformEnabled && dragType === 'absolute-move' && onDragEnd) {
       onDragEnd();
     }
 
-    setSelection((prev) => {
-      if (prev.dropTargetId || prev.dropIndicator) {
-        return { ...prev, dropTargetId: null, dropIndicator: null };
-      }
-      return prev;
-    });
+    if (selectionEnabled) {
+      setSelection((prev) => {
+        if (prev.dropTargetId || prev.dropIndicator) {
+          return { ...prev, dropTargetId: null, dropIndicator: null };
+        }
+        return prev;
+      });
+    }
     dragRef.current = {
       type: 'none',
       startX: 0,
@@ -627,7 +681,7 @@ export function useCanvasInteraction(
       scrollOffsetX: 0,
       scrollOffsetY: 0,
     };
-  }, [selection.selectedNodeId, selection.dropTargetId, selection.dropIndicator, onMove, onDragEnd]);
+  }, [selection.selectedNodeId, selection.dropTargetId, selection.dropIndicator, onMove, onDragEnd, selectionEnabled, transformEnabled]);
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -694,9 +748,13 @@ export function useCanvasInteraction(
     [cancelViewAnimation, scale, offset, tree, scrollManager]
   );
 
-  const selectNode = useCallback((nodeId: string | null) => {
-    setSelection((prev) => ({ ...prev, selectedNodeId: nodeId }));
-  }, []);
+  const selectNode = useCallback(
+    (nodeId: string | null) => {
+      if (!selectionEnabled) return;
+      setSelection((prev) => ({ ...prev, selectedNodeId: nodeId }));
+    },
+    [selectionEnabled]
+  );
 
   const setScaleAt = useCallback(
     (nextScale: number, screenX: number, screenY: number) => {
@@ -763,6 +821,7 @@ export function useCanvasInteraction(
 
   const handleDoubleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (!selectionEnabled) return;
       const rect = e.currentTarget.getBoundingClientRect();
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
@@ -780,7 +839,7 @@ export function useCanvasInteraction(
       }
       setSelection((prev) => ({ ...prev, selectedNodeId: allHit[allHit.length - 1] }));
     },
-    [tree, selection.selectedNodeId, scale, offset, scrollManager]
+    [tree, selection.selectedNodeId, scale, offset, scrollManager, selectionEnabled]
   );
 
   return {
