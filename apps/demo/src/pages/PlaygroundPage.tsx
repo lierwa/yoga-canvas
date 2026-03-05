@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   EditorCanvas,
   NodeTreePanel,
@@ -6,7 +6,7 @@ import {
   useCanvasInteraction,
   type CanvasNode,
   type NodeDescriptor,
-} from '@yoga-canvas/react';
+} from "@yoga-canvas/react";
 import {
   ArrowLeft,
   Box,
@@ -19,15 +19,23 @@ import {
   ScrollText,
   Trash2,
   Type,
-} from 'lucide-react';
-import PropertiesPanel from '../editor/components/PropertiesPanel';
-import { ZoomControls } from '../editor/components/toolbar/ZoomControls';
-import { useNodeTree } from '../editor/hooks/useNodeTree';
-import { LiveEditor } from '../LiveEditor';
+} from "lucide-react";
+import { DemoTopNav } from "../components/DemoTopNav";
+import PropertiesPanel from "../editor/components/PropertiesPanel";
+import { ZoomControls } from "../editor/components/toolbar/ZoomControls";
+import { useNodeTree } from "../editor/hooks/useNodeTree";
+import { LiveEditor } from "../LiveEditor";
+import { useDemoI18n } from "../i18n";
 
 export default function PlaygroundPage() {
+  const { locale, toggleLocale, t } = useDemoI18n();
   const canvasContainerRef = useRef<HTMLDivElement>(null);
   const [showInspector, setShowInspector] = useState(true);
+  const initialViewRef = useRef<{
+    scale: number;
+    offset: { x: number; y: number };
+  } | null>(null);
+  const didInitViewRef = useRef(false);
   const {
     tree,
     ready,
@@ -93,7 +101,10 @@ export default function PlaygroundPage() {
       const el = canvasContainerRef.current;
       if (!el) return;
       const rect = el.getBoundingClientRect();
-      focusNode(nodeId, rect.width, rect.height, { animate: true, durationMs: 280 });
+      focusNode(nodeId, rect.width, rect.height, {
+        animate: true,
+        durationMs: 280,
+      });
     },
     [selectNode, focusNode],
   );
@@ -103,11 +114,17 @@ export default function PlaygroundPage() {
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    focusNode(selection.selectedNodeId, rect.width, rect.height, { animate: true, durationMs: 320 });
+    focusNode(selection.selectedNodeId, rect.width, rect.height, {
+      animate: true,
+      durationMs: 320,
+    });
   }, [selection.selectedNodeId, focusNode]);
 
   const selectedNode = useMemo(
-    () => (selection.selectedNodeId ? tree.nodes[selection.selectedNodeId] ?? null : null),
+    () =>
+      selection.selectedNodeId
+        ? tree.nodes[selection.selectedNodeId] ?? null
+        : null,
     [selection.selectedNodeId, tree.nodes],
   );
 
@@ -125,17 +142,58 @@ export default function PlaygroundPage() {
     const host = canvasContainerRef.current;
     if (!host) return;
     const rect = host.getBoundingClientRect();
-    resetView(rect.width, rect.height, { scale: 1, animate: true, durationMs: 260 });
-  }, [resetView]);
+    const next = resetView(rect.width, rect.height, {
+      scale: 1,
+      targetId: tree.rootId,
+      animate: true,
+      durationMs: 260,
+    });
+    initialViewRef.current = next;
+  }, [resetView, tree.rootId]);
 
   const canResetView = useMemo(() => {
-    return Math.abs(scale - 1) > 0.0005 || Math.abs(offset.x) > 0.5 || Math.abs(offset.y) > 0.5;
+    const initial = initialViewRef.current;
+    if (!initial) {
+      return (
+        Math.abs(scale - 1) > 0.0005 ||
+        Math.abs(offset.x) > 0.5 ||
+        Math.abs(offset.y) > 0.5
+      );
+    }
+    return (
+      Math.abs(scale - initial.scale) > 0.0005 ||
+      Math.abs(offset.x - initial.offset.x) > 0.5 ||
+      Math.abs(offset.y - initial.offset.y) > 0.5
+    );
   }, [offset.x, offset.y, scale]);
 
-  const leftPanel = <LiveEditor defaultCode={DEFAULT_EDITOR_CODE} onDescriptorChange={handleDescriptorChange} />;
+  useEffect(() => {
+    if (!ready) return;
+    if (didInitViewRef.current) return;
+    const el = canvasContainerRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const next = resetView(rect.width, rect.height, {
+      scale: 1,
+      targetId: tree.rootId,
+    });
+    initialViewRef.current = next;
+    didInitViewRef.current = true;
+  }, [ready, resetView, tree.rootId]);
+
+  const leftPanel = (
+    <LiveEditor
+      defaultCode={DEFAULT_EDITOR_CODE}
+      onDescriptorChange={handleDescriptorChange}
+    />
+  );
 
   const centerPanel = (
-    <div ref={canvasContainerRef} className="flex-1 overflow-hidden bg-gray-100">
+    <div
+      ref={canvasContainerRef}
+      className="flex-1 overflow-hidden bg-gray-100"
+    >
       <div className="w-full h-full">
         <EditorCanvas
           tree={tree}
@@ -156,18 +214,22 @@ export default function PlaygroundPage() {
                 type="button"
                 onClick={() => setShowInspector((v) => !v)}
                 className="absolute top-3 right-3 flex items-center justify-center w-9 h-9 rounded-xl bg-white/90 backdrop-blur border border-gray-200 shadow-sm text-slate-700 hover:bg-white transition-colors"
-                title={showInspector ? '隐藏右侧栏' : '显示右侧栏'}
+                title={showInspector ? t("playground.inspector.hide") : t("playground.inspector.show")}
               >
-                {showInspector ? <PanelRightClose size={16} /> : <PanelRightOpen size={16} />}
+                {showInspector ? (
+                  <PanelRightClose size={16} />
+                ) : (
+                  <PanelRightOpen size={16} />
+                )}
               </button>
               <button
                 type="button"
                 onClick={onFocus}
                 className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5 bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-sm text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300 transition-colors"
-                title="Focus selected node"
+                title={t("nav.locateTitle")}
               >
                 <Crosshair size={14} />
-                <span>Locate</span>
+                <span>{t("nav.locate")}</span>
               </button>
             </>
           )}
@@ -180,13 +242,15 @@ export default function PlaygroundPage() {
     <div className="bg-white flex flex-col h-full">
       <div className="shrink-0 px-3 py-2 border-b border-gray-200 flex items-center gap-2">
         <div className="min-w-0">
-          <div className="text-xs font-semibold text-slate-800">Inspector</div>
-          <div className="text-[11px] text-slate-400">NodeTree · Properties</div>
+          <div className="text-xs font-semibold text-slate-800">{t("playground.inspector.title")}</div>
+          <div className="text-[11px] text-slate-400">
+            {t("playground.inspector.subtitle")}
+          </div>
         </div>
       </div>
       <div
         className="border-b h-full border-gray-200 overflow-hidden shrink-0 bg-white"
-        style={{ flexBasis: '44%', minHeight: 260, maxHeight: '58%' }}
+        style={{ flexBasis: "44%", minHeight: 260, maxHeight: "58%" }}
       >
         {ready && (
           <NodeTreePanel
@@ -203,13 +267,13 @@ export default function PlaygroundPage() {
               collapse: <ChevronDown size={10} />,
               renderNodeType: (node: CanvasNode) => {
                 switch (node.type) {
-                  case 'view':
+                  case "view":
                     return <Box size={11} className="shrink-0" />;
-                  case 'text':
+                  case "text":
                     return <Type size={11} className="shrink-0" />;
-                  case 'image':
+                  case "image":
                     return <ImageIcon size={11} className="shrink-0" />;
-                  case 'scrollview':
+                  case "scrollview":
                     return <ScrollText size={11} className="shrink-0" />;
                   default:
                     return null;
@@ -234,29 +298,40 @@ export default function PlaygroundPage() {
 
   return (
     <div className="h-screen w-screen flex flex-col bg-gray-100 overflow-hidden">
-      <div className="relative bg-white/90 backdrop-blur border-b border-gray-200 px-6 py-3 flex items-center gap-4">
-        <button
-          type="button"
-          className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-          onClick={() => {
-            window.location.hash = '#/';
-          }}
-          title="返回首页"
-        >
-          <ArrowLeft size={14} />
-          返回
-        </button>
-
-        <ZoomControls
-          scale={scale}
-          initialScale={1}
-          onScaleChange={handleScaleChange}
-          canResetView={canResetView}
-          onResetView={handleResetView}
-        />
-
-        <div className="flex-1" />
-      </div>
+      <DemoTopNav
+        leftSlot={
+          <button
+            type="button"
+            className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+            onClick={() => {
+              window.location.hash = "#/";
+            }}
+            title={t("nav.backHome")}
+          >
+            <ArrowLeft size={14} />
+            {t("nav.back")}
+          </button>
+        }
+        centerSlot={
+          <ZoomControls
+            scale={scale}
+            initialScale={1}
+            onScaleChange={handleScaleChange}
+            canResetView={canResetView}
+            onResetView={handleResetView}
+          />
+        }
+        rightSlot={
+          <button
+            type="button"
+            onClick={toggleLocale}
+            className="px-3 py-2 rounded-xl bg-white/80 border border-slate-200/70 text-xs font-semibold text-slate-700 hover:bg-white transition-colors"
+            title={locale === "zh" ? t("lang.switchToEn") : t("lang.switchToZh")}
+          >
+            {locale === "zh" ? "EN" : "中文"}
+          </button>
+        }
+      />
       <ResizablePanels
         left={leftPanel}
         center={centerPanel}

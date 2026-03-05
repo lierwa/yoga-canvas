@@ -50,8 +50,18 @@ export { ScrollManager } from './scroll';
 export type { ScrollState } from './scroll';
 
 // === Events ===
-export { EventEmitter, hitTest, hitTestAll } from './events';
-export type { EventHandler, HitTestOptions } from './events';
+export { EventEmitter, hitTest, hitTestAll, PointerEventDispatcher, CANVAS_EVENT_TARGET_ID } from './events';
+export type {
+  EventHandler,
+  HitTestOptions,
+  CanvasEventPhase,
+  CanvasPointerEventType,
+  CanvasPointerEventInput,
+  CanvasPointerEventDispatchResult,
+  CanvasPointerEventListenerOptions,
+  CanvasPointerEventHandler,
+  CanvasPointerEvent,
+} from './events';
 
 // === Export Utilities ===
 export {

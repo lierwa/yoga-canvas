@@ -9,6 +9,7 @@ import PreviewModal from '../components/PreviewModal';
 import LiveCodeEditorPanel from '../components/LiveCodeEditorPanel';
 import { useNodeTree } from '../hooks/useNodeTree';
 import { getProject, saveProjectPayload } from '../workspace/projectStore';
+import { useDemoI18n } from '../../i18n';
 
 type EditorPageProps = {
   projectId: string;
@@ -16,6 +17,7 @@ type EditorPageProps = {
 };
 
 export default function EditorPage({ projectId, onExit }: EditorPageProps) {
+  const { t } = useDemoI18n();
   const project = useMemo(() => getProject(projectId), [projectId]);
   const initial = project?.payload ?? null;
 
@@ -231,13 +233,13 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     return (
       <div className="h-screen flex items-center justify-center bg-slate-50">
         <div className="text-center">
-          <div className="text-sm font-semibold text-slate-800">项目不存在或已被删除</div>
+          <div className="text-sm font-semibold text-slate-800">{t('editor.projectMissing')}</div>
           <button
             type="button"
             className="mt-3 px-3 py-2 rounded-xl bg-slate-900 text-white text-sm font-semibold hover:bg-slate-800 transition-colors"
             onClick={onExit}
           >
-            返回工作台
+            {t('editor.backWorkspace')}
           </button>
         </div>
       </div>
@@ -249,7 +251,7 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
       <div className="h-screen flex items-center justify-center bg-gray-50">
         <div className="text-center">
           <div className="animate-spin w-8 h-8 border-2 border-blue-500 border-t-transparent rounded-full mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Loading Yoga Layout Engine...</p>
+          <p className="text-sm text-gray-500">{t('editor.loading')}</p>
         </div>
       </div>
     );
@@ -268,16 +270,16 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
             type="button"
             className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
             onClick={onExit}
-            title="返回工作台"
+            title={t('editor.backWorkspaceTitle')}
           >
             <ArrowLeft size={14} />
-            返回
+            {t('editor.back')}
           </button>
         }
         rightContent={
           <div className="flex items-center gap-2 text-xs text-slate-400">
             <span className="inline-flex h-2 w-2 rounded-full bg-emerald-400" style={{ opacity: saving ? 1 : 0.25 }} />
-            <span>{saving ? '保存中…' : '已保存'}</span>
+            <span>{saving ? t('editor.saving') : t('editor.saved')}</span>
           </div>
         }
         canUndo={canUndo}
@@ -327,10 +329,10 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
                       bg-white/90 backdrop-blur border border-gray-200 rounded-lg shadow-sm
                       text-xs text-gray-600 hover:bg-blue-50 hover:text-blue-600 hover:border-blue-300
                       transition-colors"
-                    title="Focus selected node"
+                    title={t('nav.locateTitle')}
                   >
                     <Crosshair size={14} />
-                    <span>Locate</span>
+                    <span>{t('nav.locate')}</span>
                   </button>
                 )}
               />

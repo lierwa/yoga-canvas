@@ -18,6 +18,7 @@ export interface TextMeasureOptions {
   lineHeight: number;
   availableWidth: number;
   whiteSpace: 'normal' | 'nowrap';
+  lineClamp?: number;
 }
 
 export interface CanvasGradientLike {

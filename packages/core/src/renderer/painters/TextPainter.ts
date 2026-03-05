@@ -1,4 +1,5 @@
 import type { CanvasNode, CanvasContextLike, FlexValue } from '../../types';
+import { clampWrappedLines, ellipsizeToWidth, normalizeLineClamp, wrapText } from '../../text/textLayout';
 
 function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
   if (value === undefined || value === 'auto') return fallback;
@@ -10,14 +11,13 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (!node.textProps) return;
 
   const { left, top, width } = node.computedLayout;
-  const { content, fontSize, fontWeight, fontStyle, fontFamily, color, lineHeight, textAlign, whiteSpace, textShadow } = node.textProps;
+  const { content, fontSize, fontWeight, fontStyle, fontFamily, color, lineHeight, textAlign, whiteSpace, lineClamp, textShadow } = node.textProps;
 
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
   const padRight = flexValueToPx(node.flexStyle.paddingRight);
   const padTop = flexValueToPx(node.flexStyle.paddingTop);
   const maxWidth = width - pad - padRight;
   if (maxWidth <= 0) return;
-  const EPS = 0.01;
 
   ctx.save();
   ctx.setFillStyle(color);
@@ -42,49 +42,19 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (textAlign === 'center') textX = left + width / 2;
   else if (textAlign === 'right') textX = left + width - padRight;
 
-  if (whiteSpace === 'nowrap') {
-    const singleLine = content.replace(/\n/g, ' ');
-    ctx.fillText(singleLine, textX, y);
-    ctx.restore();
-    return;
-  }
+  const normalizedClamp = normalizeLineClamp(lineClamp);
+  const rawLines =
+    whiteSpace === 'nowrap'
+      ? [normalizedClamp ? ellipsizeToWidth(ctx, content.replace(/\n/g, ' '), maxWidth) : content.replace(/\n/g, ' ')]
+      : wrapText(ctx, content, maxWidth);
+  const displayedLines =
+    normalizedClamp && whiteSpace !== 'nowrap'
+      ? clampWrappedLines(ctx, rawLines, normalizedClamp, maxWidth, content.includes(' ') ? ' ' : '')
+      : rawLines;
 
-  const lines = content.split('\n');
-  for (const line of lines) {
-    // Word wrap
-    const words = line.split(' ');
-    let currentLine = '';
-    for (const word of words) {
-      const testLine = currentLine ? `${currentLine} ${word}` : word;
-      const tw = ctx.measureText(testLine).width;
-      if (tw > maxWidth + EPS && currentLine) {
-        ctx.fillText(currentLine, textX, y);
-        currentLine = '';
-        y += lineH;
-      }
-
-      if (ctx.measureText(word).width > maxWidth + EPS) {
-        let chunk = '';
-        for (const char of word) {
-          const nextChunk = chunk + char;
-          if (ctx.measureText(nextChunk).width > maxWidth + EPS && chunk) {
-            ctx.fillText(chunk, textX, y);
-            y += lineH;
-            chunk = char;
-          } else {
-            chunk = nextChunk;
-          }
-        }
-        currentLine = currentLine ? `${currentLine} ${chunk}` : chunk;
-      } else {
-        const nextLine = currentLine ? `${currentLine} ${word}` : word;
-        currentLine = nextLine;
-      }
-    }
-    if (currentLine) {
-      ctx.fillText(currentLine, textX, y);
-      y += lineH;
-    }
+  for (const line of displayedLines) {
+    ctx.fillText(line, textX, y);
+    y += lineH;
   }
 
   ctx.restore();

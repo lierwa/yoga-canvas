@@ -1,8 +1,8 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
-import type { NodeTree } from '@yoga-canvas/core';
-import type { ScrollManager } from '@yoga-canvas/core';
-import type { SelectionState } from './types';
-import { renderCanvas, setRenderCallback } from './CanvasRenderer';
+import { useRef, useEffect, useState, useCallback } from "react";
+import type { NodeTree } from "@yoga-canvas/core";
+import type { ScrollManager } from "@yoga-canvas/core";
+import type { SelectionState } from "./types";
+import { renderCanvas, setRenderCallback } from "./CanvasRenderer";
 
 interface EditorCanvasProps {
   tree: NodeTree;
@@ -14,11 +14,11 @@ interface EditorCanvasProps {
   showGrid?: boolean;
   onMouseDown: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onMouseMove: (e: React.MouseEvent<HTMLCanvasElement>) => void;
-  onMouseUp: () => void;
+  onMouseUp: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onWheel: (e: WheelEvent) => void;
   onDoubleClick?: (e: React.MouseEvent<HTMLCanvasElement>) => void;
   onFocusNode?: () => void;
-  renderFocusAction?: (onFocusNode: () => void) => React.ReactNode;
+  renderFocusAction?: (onFocusNode?: () => void) => React.ReactNode;
 }
 
 export function EditorCanvas({
@@ -54,14 +54,33 @@ export function EditorCanvas({
     const rect = canvas.getBoundingClientRect();
     canvas.width = rect.width * dpr;
     canvas.height = rect.height * dpr;
-    const ctx = canvas.getContext('2d');
+    const ctx = canvas.getContext("2d");
     if (!ctx) return;
     ctx.scale(dpr, dpr);
-    renderCanvas(ctx, tree, selection, rect.width, rect.height, scale, offset.x, offset.y, {
-      showGrid,
-      scrollManager,
-    });
-  }, [tree, selection, scale, offset, imageLoadTick, renderTick, showGrid, scrollManager]);
+    renderCanvas(
+      ctx,
+      tree,
+      selection,
+      rect.width,
+      rect.height,
+      scale,
+      offset.x,
+      offset.y,
+      {
+        showGrid,
+        scrollManager,
+      },
+    );
+  }, [
+    tree,
+    selection,
+    scale,
+    offset,
+    imageLoadTick,
+    renderTick,
+    showGrid,
+    scrollManager,
+  ]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -79,8 +98,8 @@ export function EditorCanvas({
     const canvas = canvasRef.current;
     if (!canvas) return;
     const handler = (e: WheelEvent) => onWheel(e);
-    canvas.addEventListener('wheel', handler, { passive: false });
-    return () => canvas.removeEventListener('wheel', handler);
+    canvas.addEventListener("wheel", handler, { passive: false });
+    return () => canvas.removeEventListener("wheel", handler);
   }, [onWheel]);
 
   return (
@@ -88,14 +107,14 @@ export function EditorCanvas({
       <canvas
         ref={canvasRef}
         className="w-full h-full block"
-        style={{ background: '#f8fafc' }}
+        style={{ background: "#f8fafc" }}
         onMouseDown={onMouseDown}
         onMouseMove={onMouseMove}
         onMouseUp={onMouseUp}
         onMouseLeave={onMouseUp}
         onDoubleClick={onDoubleClick}
       />
-      {renderFocusAction && onFocusNode ? renderFocusAction(onFocusNode) : null}
+      {renderFocusAction?.(onFocusNode)}
     </div>
   );
 }

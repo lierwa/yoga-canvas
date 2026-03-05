@@ -1,14 +1,16 @@
 import { useCallback, useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react';
 import { EditorCanvas, useCanvasInteraction } from '@yoga-canvas/react';
-import { hitTestAll, type NodeDescriptor } from '@yoga-canvas/core';
+import { PointerEventDispatcher, type NodeDescriptor } from '@yoga-canvas/core';
 import { ArrowLeft, Crosshair } from 'lucide-react';
+import { DemoTopNav } from '../components/DemoTopNav';
+import { ZoomControls } from '../editor/components/toolbar/ZoomControls';
 import { useNodeTree } from '../editor/hooks/useNodeTree';
 import { CodeSidebar } from './components/CodeSidebar';
-import { ZoomControl } from './components/ZoomControl';
 
 const CODE_TARGET_NAMES = new Set([
   'FrameView',
   'FrameText',
+  'FrameTextClamp',
   'FrameImage',
   'FrameScrollView',
   'FrameFlexLayout',
@@ -67,6 +69,19 @@ export default function ComponentsCanvasPage() {
     moveNode,
     commitLiveUpdate,
   } = useNodeTree({ initialDescriptor: COMPONENTS_DESIGN_DESCRIPTOR });
+
+  const treeRef = useRef(tree);
+  useEffect(() => {
+    treeRef.current = tree;
+  }, [tree]);
+
+  const dispatcherRef = useRef<PointerEventDispatcher | null>(null);
+  if (!dispatcherRef.current) {
+    dispatcherRef.current = new PointerEventDispatcher(() => treeRef.current, { scrollManager });
+  }
+  useEffect(() => {
+    dispatcherRef.current?.setScrollManager(scrollManager);
+  }, [scrollManager]);
 
   const {
     selection,
@@ -151,29 +166,84 @@ export default function ComponentsCanvasPage() {
         if (dx * dx + dy * dy > 25) ref.moved = true;
       }
       handleMouseMove(e);
+      if (e.buttons !== 0) return;
 
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
-      const hits = hitTestAll(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
-
-      const isOverCodeButton = (() => {
-        for (let i = hits.length - 1; i >= 0; i--) {
-          let cur = tree.nodes[hits[i]];
-          while (cur) {
-            if (cur.name?.startsWith('CodeBtn_')) return true;
-            if (!cur.parentId) break;
-            cur = tree.nodes[cur.parentId];
-          }
-        }
-        return false;
-      })();
-
+      const hits = dispatcherRef.current?.getHitPath(canvasX, canvasY).slice(1) ?? [];
+      const isOverCodeButton = hits.some((id) => tree.nodes[id]?.name?.startsWith('CodeBtn_'));
       e.currentTarget.style.cursor = isOverCodeButton ? 'pointer' : '';
     },
-    [handleMouseMove, offset.x, offset.y, scale, scrollManager, tree],
+    [handleMouseMove, offset.x, offset.y, scale, tree],
   );
 
   const getInitialJSXForNodeName = useCallback((name: string | undefined): string | undefined => {
+    const clampTitle = 'Text: lineClamp';
+    const clampLabel1 = 'lineClamp: 1';
+    const clampLabel3 = 'lineClamp: 3';
+    const clampSample1 = 'This is a very long text that should be clamped to a single line with an ellipsis at the end. Keep adding more words so overflow always happens.';
+    const clampSample3 = 'After setting lineClamp, the text will be limited to a maximum number of lines; overflow ends with an ellipsis at the end of the last line. This extra sentence makes sure the content exceeds three lines under typical widths. Add one more sentence to guarantee overflow even on wider containers.';
+    const scrollTitle = 'ScrollView';
+    const scrollHint = 'Wheel scrolls ScrollView first; elsewhere wheel zooms, drag pans';
+
+    if (name === 'FrameTextClamp') {
+      return `<View
+  name="FrameTextClamp"
+  style={{
+    width: 1380,
+    height: 300,
+    backgroundColor: "#ffffff",
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: "#e2e8f0",
+    boxShadow: { color: "rgba(15, 23, 42, 0.35)", blur: 28, offsetX: 0, offsetY: 14, spread: 0 },
+    padding: 18,
+    gap: 12,
+    position: "relative",
+  }}
+>
+  <Text style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{${JSON.stringify(clampTitle)}}</Text>
+  <View
+    style={{
+      width: "100%",
+      flex: 1,
+      backgroundColor: "#f8fafc",
+      borderRadius: 14,
+      borderWidth: 1,
+      borderColor: "#e2e8f0",
+      padding: 14,
+      gap: 10,
+    }}
+  >
+    <Text style={{ fontSize: 12, fontWeight: 800, color: "#0f172a" }}>{${JSON.stringify(clampLabel1)}}</Text>
+    <Text
+      style={{
+        width: 320,
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: "#334155",
+        whiteSpace: "nowrap",
+        lineClamp: 1,
+      }}
+    >
+      {${JSON.stringify(clampSample1)}}
+    </Text>
+    <Text style={{ fontSize: 12, fontWeight: 800, color: "#0f172a", marginTop: 6 }}>{${JSON.stringify(clampLabel3)}}</Text>
+    <Text
+      style={{
+        width: 320,
+        fontSize: 14,
+        lineHeight: 1.5,
+        color: "#334155",
+        whiteSpace: "normal",
+        lineClamp: 3,
+      }}
+    >
+      {${JSON.stringify(clampSample3)}}
+    </Text>
+  </View>
+</View>`;
+    }
     if (name !== 'FrameScrollView') return undefined;
     return `<View
   name="FrameScrollView"
@@ -190,9 +260,9 @@ export default function ComponentsCanvasPage() {
     position: "relative",
   }}
 >
-  <Text style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{"ScrollView"}</Text>
+  <Text style={{ fontSize: 18, fontWeight: 800, color: "#0f172a" }}>{${JSON.stringify(scrollTitle)}}</Text>
   <Text style={{ fontSize: 11, color: "#64748b" }}>
-    {"滚轮优先滚动 ScrollView；其余区域滚轮缩放，拖拽平移"}
+    {${JSON.stringify(scrollHint)}}
   </Text>
 
   <ScrollView
@@ -267,38 +337,36 @@ export default function ComponentsCanvasPage() {
 </View>`;
   }, []);
 
-  const handleCanvasMouseUp = useCallback(() => {
+  const handleCanvasMouseUp = useCallback((e: ReactMouseEvent<HTMLCanvasElement>) => {
     const ref = pointerRef.current;
     pointerRef.current = null;
-    handleMouseUp();
+    handleMouseUp(e);
 
     if (!ref || ref.moved) return;
     if (Date.now() - ref.time > 450) return;
 
     const canvasX = (ref.x - offset.x) / scale;
     const canvasY = (ref.y - offset.y) / scale;
-    const hits = hitTestAll(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+    const hits = dispatcherRef.current?.getHitPath(canvasX, canvasY).slice(1) ?? [];
     if (hits.length === 0) return;
 
     let targetId: string | null = null;
-    for (let i = hits.length - 1; i >= 0 && !targetId; i--) {
-      let cur = tree.nodes[hits[i]];
-      let foundCodeBtn = false;
-      while (cur) {
-        if (cur.name?.startsWith('CodeBtn_')) foundCodeBtn = true;
-        if (foundCodeBtn && CODE_TARGET_NAMES.has(cur.name)) {
-          targetId = cur.id;
-          break;
-        }
-        if (!cur.parentId) break;
-        cur = tree.nodes[cur.parentId];
+    let foundCodeBtn = false;
+    for (let i = hits.length - 1; i >= 0; i--) {
+      const node = tree.nodes[hits[i]];
+      const name = node?.name;
+      if (!name) continue;
+      if (name.startsWith('CodeBtn_')) foundCodeBtn = true;
+      if (foundCodeBtn && CODE_TARGET_NAMES.has(name)) {
+        targetId = node.id;
+        break;
       }
     }
 
     if (!targetId) return;
     const name = tree.nodes[targetId]?.name;
     setCodePanel({ rootId: targetId, initialJSX: getInitialJSXForNodeName(name) });
-  }, [getInitialJSXForNodeName, handleMouseUp, offset.x, offset.y, scale, scrollManager, tree]);
+  }, [getInitialJSXForNodeName, handleMouseUp, offset.x, offset.y, scale, tree]);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-slate-900">
@@ -316,44 +384,41 @@ export default function ComponentsCanvasPage() {
           onWheel={handleWheel}
           onFocusNode={() => focusRoot(true)}
           renderFocusAction={(onFocus) => (
-            <div className="absolute top-0 left-0 right-0 z-10">
-              <div className="bg-white/85 backdrop-blur border-b border-white/35 px-6 py-3 grid grid-cols-3 items-center">
-                <div className="justify-self-start">
-                  <button
-                    type="button"
-                    className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-colors"
-                    onClick={() => {
-                      window.location.hash = '#/';
-                    }}
-                    title="返回首页"
-                  >
-                    <ArrowLeft size={14} />
-                    返回
-                  </button>
-                </div>
-
-                <div className="justify-self-center">
-                  <ZoomControl
-                    scale={scale}
-                    onZoomOut={() => zoomTo(scale / 1.12)}
-                    onZoomIn={() => zoomTo(scale * 1.12)}
-                    onReset={resetZoom}
-                  />
-                </div>
-
-                <div className="justify-self-end">
-                  <button
-                    type="button"
-                    onClick={onFocus}
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50/80 border border-slate-200/70 text-xs font-semibold text-slate-700 hover:bg-white/80 transition-colors"
-                    title="聚焦画布"
-                  >
-                    <Crosshair size={14} />
-                    <span>Locate</span>
-                  </button>
-                </div>
-              </div>
-            </div>
+            <DemoTopNav
+              variant="overlay"
+              leftSlot={
+                <button
+                  type="button"
+                  className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100/70 transition-colors"
+                  onClick={() => {
+                    window.location.hash = '#/';
+                  }}
+                  title="Back to Home"
+                >
+                  <ArrowLeft size={14} />
+                  Back
+                </button>
+              }
+              centerSlot={
+                <ZoomControls
+                  scale={scale}
+                  initialScale={1}
+                  onScaleChange={zoomTo}
+                  onResetView={resetZoom}
+                />
+              }
+              rightSlot={
+                <button
+                  type="button"
+                  onClick={onFocus}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50/80 border border-slate-200/70 text-xs font-semibold text-slate-700 hover:bg-white/80 transition-colors"
+                  title="Locate"
+                >
+                  <Crosshair size={14} />
+                  <span>Locate</span>
+                </button>
+              }
+            />
           )}
         />
       </div>
@@ -543,13 +608,73 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
     },
     {
       type: 'view',
+      name: 'RowTextClamp',
+      style: { flexDirection: 'row', gap: 60, alignItems: 'flex-start' },
+      children: [
+        {
+          type: 'view',
+          name: 'FrameTextClamp',
+          style: { ...CARD_BASE_STYLE, width: 1380, height: 300, gap: 10 },
+          children: [
+            {
+              type: 'view',
+              name: 'CodeBtn_FrameTextClamp',
+              style: { ...CODE_BTN_BASE_STYLE, top: 14, right: 14 },
+              children: [
+                { type: 'text', name: 'CodeBtnText_FrameTextClamp', content: 'Code', style: CODE_BTN_TEXT_STYLE },
+              ],
+            },
+            {
+              type: 'view',
+              name: 'FrameTextClampHeader',
+              style: { flexDirection: 'column', gap: 4 },
+              children: [
+                { type: 'text', name: 'FrameTextClampTitle', content: 'Text: lineClamp', style: { fontSize: 18, fontWeight: 800, color: '#0f172a' } },
+                { type: 'text', name: 'FrameTextClampDesc', content: 'Clamp to N lines; overflow ends with ellipsis', style: { fontSize: 11, color: '#64748b' } },
+              ],
+            },
+            {
+              type: 'view',
+              name: 'TextClampArea',
+              style: {
+                flex: 1,
+                backgroundColor: '#f8fafc',
+                borderRadius: 14,
+                borderWidth: 1,
+                borderColor: '#e2e8f0',
+                padding: 14,
+                gap: 10,
+              },
+              children: [
+                { type: 'text', name: 'TextClampLabel1', content: 'lineClamp: 1', style: { fontSize: 12, fontWeight: 800, color: '#0f172a' } },
+                {
+                  type: 'text',
+                  name: 'TextClampSample1',
+                  content: 'This is a very long text that should be clamped to a single line with an ellipsis at the end.',
+                  style: { width: 320, fontSize: 14, lineHeight: 1.5, color: '#334155', whiteSpace: 'nowrap', lineClamp: 1 },
+                },
+                { type: 'text', name: 'TextClampLabel3', content: 'lineClamp: 3', style: { fontSize: 12, fontWeight: 800, color: '#0f172a', marginTop: 6 } },
+                {
+                  type: 'text',
+                  name: 'TextClampSample3',
+                  content: 'After setting lineClamp, the text will be limited to a maximum number of lines; overflow ends with an ellipsis at the end of the last line. This extra sentence makes sure the content exceeds three lines under typical widths. Add one more sentence to guarantee overflow even on wider containers.',
+                  style: { width: 320, fontSize: 14, lineHeight: 1.5, color: '#334155', whiteSpace: 'normal', lineClamp: 3 },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
+    {
+      type: 'view',
       name: 'RowMiddle',
       style: { flexDirection: 'row', gap: 60, alignItems: 'flex-start' },
       children: [
         {
           type: 'view',
           name: 'FrameImage',
-          style: { ...CARD_BASE_STYLE, width: 560, height: 310 },
+          style: { ...CARD_BASE_STYLE, width: 560, height: 520 },
           children: [
             {
               type: 'view',
@@ -651,7 +776,7 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
                 { type: 'text', name: 'FrameScrollTitle', content: 'ScrollView', style: { fontSize: 18, fontWeight: 800, color: '#0f172a' } },
               ],
             },
-            { type: 'text', name: 'ScrollHint', content: '滚轮优先滚动 ScrollView；其余区域滚轮缩放，拖拽平移', style: { fontSize: 11, color: '#64748b' } },
+            { type: 'text', name: 'ScrollHint', content: 'Wheel scrolls ScrollView first; elsewhere wheel zooms, drag pans', style: { fontSize: 11, color: '#64748b' } },
             {
               type: 'scrollview',
               name: 'HorizontalScroll',
@@ -778,25 +903,25 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
                 {
                   type: 'text',
                   name: 'FlexExplainLine1',
-                  content: '像 CSS Flex：主轴由 flexDirection 决定，交叉轴与主轴垂直',
+                  content: 'Like CSS Flex: the main axis is flexDirection, and the cross axis is perpendicular',
                   style: { fontSize: 11, fontWeight: 800, color: '#334155' },
                 },
                 {
                   type: 'text',
                   name: 'FlexExplainLine2',
-                  content: '容器：justifyContent（主轴分布）/ alignItems（交叉轴对齐）/ gap（子项间距）',
+                  content: 'Container: justifyContent (main-axis) / alignItems (cross-axis) / gap (spacing)',
                   style: { fontSize: 11, color: '#475569' },
                 },
                 {
                   type: 'text',
                   name: 'FlexExplainLine3',
-                  content: '子项：flex/flexGrow/flexShrink/flexBasis 决定如何分配剩余空间；alignSelf 可覆盖交叉轴对齐',
+                  content: 'Items: flex/flexGrow/flexShrink/flexBasis allocate remaining space; alignSelf overrides',
                   style: { fontSize: 11, color: '#475569' },
                 },
                 {
                   type: 'text',
                   name: 'FlexExplainLine4',
-                  content: '当前支持：flexDirection / flexWrap / justifyContent / alignItems / alignSelf / flex* / gap；暂不支持：alignContent / order / flexFlow',
+                  content: 'Supported: flexDirection / flexWrap / justifyContent / alignItems / alignSelf / flex* / gap; Not yet: alignContent / order / flexFlow',
                   style: { fontSize: 11, color: '#475569' },
                 },
               ],
@@ -806,7 +931,7 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
               name: 'JustifyGallery',
               style: { width: '100%', flexDirection: 'column', backgroundColor: '#f8fafc', borderRadius: 14, borderWidth: 1, borderColor: '#e2e8f0', padding: 12, gap: 8 },
               children: [
-                { type: 'text', name: 'JustifyTitle', content: 'justifyContent（row 主轴）：', style: { fontSize: 11, fontWeight: 800, color: '#334155' } },
+                { type: 'text', name: 'JustifyTitle', content: 'justifyContent (row main axis):', style: { fontSize: 11, fontWeight: 800, color: '#334155' } },
                 {
                   type: 'view',
                   name: 'JustifyRow_flex_start',
@@ -937,7 +1062,7 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
                 })),
               ],
             },
-            { type: 'text', name: 'WrapHint', content: 'flexWrap: wrap + gap → 可做「卡片流」布局', style: { fontSize: 11, color: '#64748b' } },
+            { type: 'text', name: 'WrapHint', content: 'flexWrap: wrap + gap → card-flow layout', style: { fontSize: 11, color: '#64748b' } },
           ],
         },
         {
@@ -959,7 +1084,7 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
                 { type: 'text', name: 'GridTitle', content: 'Grid-like', style: { fontSize: 18, fontWeight: 800, color: '#0f172a' } },
               ],
             },
-            { type: 'text', name: 'GridExplain', content: 'Yoga 暂无原生 grid；用 flexWrap + 百分比宽度 + rowGap/columnGap 来近似网格', style: { fontSize: 11, color: '#64748b' } },
+            { type: 'text', name: 'GridExplain', content: 'Yoga has no native grid; approximate with flexWrap + % width + rowGap/columnGap', style: { fontSize: 11, color: '#64748b' } },
             {
               type: 'view',
               name: 'GridLikeDemo',
@@ -986,10 +1111,10 @@ const COMPONENTS_DESIGN_DESCRIPTOR: NodeDescriptor = {
               name: 'LayoutPropsList',
               style: { flexDirection: 'column', gap: 6, marginTop: 6 },
               children: [
-                { type: 'text', name: 'LayoutProps1', content: 'Flex：flexDirection / justifyContent / alignItems / flexWrap / gap', style: { fontSize: 11, color: '#475569' } },
-                { type: 'text', name: 'LayoutProps2', content: 'Flex 子项：flex / flexGrow / flexShrink / flexBasis / alignSelf', style: { fontSize: 11, color: '#475569' } },
-                { type: 'text', name: 'LayoutProps3', content: 'Grid-like：flexWrap + % width + rowGap/columnGap', style: { fontSize: 11, color: '#475569' } },
-                { type: 'text', name: 'LayoutProps4', content: '暂不支持：alignContent / order / flexFlow', style: { fontSize: 11, color: '#475569' } },
+                { type: 'text', name: 'LayoutProps1', content: 'Flex: flexDirection / justifyContent / alignItems / flexWrap / gap', style: { fontSize: 11, color: '#475569' } },
+                { type: 'text', name: 'LayoutProps2', content: 'Flex items: flex / flexGrow / flexShrink / flexBasis / alignSelf', style: { fontSize: 11, color: '#475569' } },
+                { type: 'text', name: 'LayoutProps3', content: 'Grid-like: flexWrap + % width + rowGap/columnGap', style: { fontSize: 11, color: '#475569' } },
+                { type: 'text', name: 'LayoutProps4', content: 'Not yet: alignContent / order / flexFlow', style: { fontSize: 11, color: '#475569' } },
               ],
             },
           ],

@@ -5,6 +5,7 @@ import type {
   CanvasGradientLike,
   TextMeasureOptions,
 } from '../types';
+import { clampWrappedLines, ellipsizeToWidth, normalizeLineClamp, wrapText } from '../text/textLayout';
 
 /**
  * H5 (browser) canvas context wrapper implementing CanvasContextLike.
@@ -103,63 +104,6 @@ function setMeasureFont(ctx: CanvasRenderingContext2D, options: TextMeasureOptio
   ctx.font = `${stylePart}${weightPart}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
 }
 
-function wrapText(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-): string[] {
-  const EPS = 0.01;
-  const lines: string[] = [];
-  const paragraphs = text.split('\n');
-
-  for (const paragraph of paragraphs) {
-    if (paragraph === '') {
-      lines.push('');
-      continue;
-    }
-
-    const words = paragraph.split(' ');
-    let current = '';
-
-    for (const word of words) {
-      if (word === '') continue;
-
-      const test = current ? `${current} ${word}` : word;
-      if (ctx.measureText(test).width > maxWidth + EPS && current) {
-        lines.push(current);
-        current = '';
-      }
-
-      if (ctx.measureText(word).width > maxWidth + EPS) {
-        if (current) {
-          lines.push(current);
-          current = '';
-        }
-
-        let chunk = '';
-        for (const ch of word) {
-          const nextChunk = chunk + ch;
-          if (ctx.measureText(nextChunk).width > maxWidth + EPS && chunk) {
-            lines.push(chunk);
-            chunk = ch;
-          } else {
-            chunk = nextChunk;
-          }
-        }
-        current = chunk;
-      } else {
-        current = current ? `${current} ${word}` : word;
-      }
-    }
-
-    if (current) {
-      lines.push(current);
-    }
-  }
-
-  return lines;
-}
-
 /**
  * H5 (browser) platform adapter.
  */
@@ -178,22 +122,32 @@ export class H5Adapter implements PlatformAdapter {
 
     const ctx = getMeasureCanvasContext();
     setMeasureFont(ctx, options);
+    const lineClamp = normalizeLineClamp(options.lineClamp);
+    const lineH = options.fontSize * options.lineHeight;
 
     if (options.whiteSpace === 'nowrap') {
       const singleLine = options.content.replace(/\n/g, ' ');
+      if (lineClamp) {
+        const displayed = ellipsizeToWidth(ctx, singleLine, options.availableWidth);
+        return { width: Math.min(ctx.measureText(displayed).width, options.availableWidth), height: lineH };
+      }
       const w = ctx.measureText(singleLine).width;
-      return { width: w, height: options.fontSize * options.lineHeight };
+      return { width: w, height: lineH };
     }
 
     const lines = wrapText(ctx, options.content, options.availableWidth);
+    const displayedLines = lineClamp
+      ? clampWrappedLines(ctx, lines, lineClamp, options.availableWidth, options.content.includes(' ') ? ' ' : '')
+      : lines;
+
     let maxLineWidth = 0;
-    for (const line of lines) {
+    for (const line of displayedLines) {
       const w = ctx.measureText(line).width;
       if (w > maxLineWidth) maxLineWidth = w;
     }
     return {
       width: Math.min(maxLineWidth, options.availableWidth),
-      height: lines.length * options.fontSize * options.lineHeight,
+      height: displayedLines.length * lineH,
     };
   }
 

@@ -4,7 +4,6 @@
     { "path": "./packages/core/tsconfig.json" },
     { "path": "./packages/react/tsconfig.json" },
     { "path": "./packages/taro/tsconfig.json" },
-    { "path": "./apps/demo/tsconfig.json" },
-    { "path": "./apps/editor/tsconfig.json" }
+    { "path": "./apps/demo/tsconfig.json" }
   ]
 }

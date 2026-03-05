@@ -31,6 +31,7 @@ type TextPropsEx = {
   lineHeight: number;
   textAlign: 'left' | 'center' | 'right';
   whiteSpace: 'normal' | 'nowrap';
+  lineClamp?: number;
   textShadow?: ShadowStyle | null;
 };
 
@@ -104,7 +105,7 @@ function drawGrid(
   offsetY: number
 ): void {
   const gridSize = 20 * scale;
-  ctx.strokeStyle = '#f0f0f0';
+  ctx.strokeStyle = '#e1e1e1';
   ctx.lineWidth = 0.5;
   const startX = offsetX % gridSize;
   const startY = offsetY % gridSize;
@@ -444,6 +445,49 @@ function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
   return fallback;
 }
 
+function normalizeLineClamp(lineClamp: number | undefined): number | null {
+  if (lineClamp === undefined) return null;
+  const n = Math.floor(lineClamp);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  return n;
+}
+
+function ellipsizeToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  const ellipsis = '…';
+  if (maxWidth <= 0) return '';
+  if (ctx.measureText(text).width <= maxWidth) return text;
+  if (ctx.measureText(ellipsis).width > maxWidth) return '';
+
+  let lo = 0;
+  let hi = text.length;
+  while (lo < hi) {
+    const mid = Math.floor((lo + hi + 1) / 2);
+    const slice = text.slice(0, mid);
+    if (ctx.measureText(slice + ellipsis).width <= maxWidth) lo = mid;
+    else hi = mid - 1;
+  }
+  const slice = text.slice(0, lo);
+  return slice ? slice + ellipsis : ellipsis;
+}
+
+function buildClampedLastLineText(lines: string[], startIndex: number, joiner: string): string {
+  let result = lines[startIndex] ?? '';
+  for (let i = startIndex + 1; i < lines.length; i += 1) {
+    const next = lines[i];
+    if (!next) continue;
+    if (!result) {
+      result = next;
+      continue;
+    }
+    if (joiner === ' ') {
+      result = `${result.trimEnd()} ${next.trimStart()}`;
+    } else {
+      result += next;
+    }
+  }
+  return result;
+}
+
 function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   if (!node.textProps) return;
   const { left, top, width } = node.computedLayout;
@@ -457,6 +501,7 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   const lineHeight = tp.lineHeight;
   const textAlign = tp.textAlign as CanvasTextAlign;
   const whiteSpace = tp.whiteSpace;
+  const normalizedClamp = normalizeLineClamp(tp.lineClamp);
   const textShadow = tp.textShadow ?? null;
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
   const padRight = flexValueToPx(node.flexStyle.paddingRight);
@@ -481,18 +526,27 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   const computedLineHeight = fontSize * lineHeight;
   const halfLeading = (computedLineHeight - fontSize) / 2;
 
-  if (whiteSpace === 'nowrap') {
-    ctx.beginPath();
-    ctx.rect(left, top, width, node.computedLayout.height);
-    ctx.clip();
-  }
+  ctx.beginPath();
+  ctx.rect(left, top, width, node.computedLayout.height);
+  ctx.clip();
 
-  const lines =
+  const rawLines =
     whiteSpace === 'nowrap'
-      ? [content.replace(/\n/g, ' ')]
+      ? [normalizedClamp ? ellipsizeToWidth(ctx, content.replace(/\n/g, ' '), maxWidth) : content.replace(/\n/g, ' ')]
       : wrapText(ctx, content, maxWidth);
+  const displayedLines =
+    normalizedClamp && rawLines.length > normalizedClamp
+      ? [
+          ...rawLines.slice(0, normalizedClamp - 1),
+          ellipsizeToWidth(
+            ctx,
+            buildClampedLastLineText(rawLines, normalizedClamp - 1, content.includes(' ') ? ' ' : ''),
+            maxWidth,
+          ),
+        ]
+      : rawLines;
   let y = top + padTop + halfLeading;
-  for (const line of lines) {
+  for (const line of displayedLines) {
     const x =
       textAlign === 'left'
         ? left + pad

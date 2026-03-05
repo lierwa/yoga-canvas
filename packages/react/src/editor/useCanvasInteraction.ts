@@ -1,6 +1,6 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { NodeTree } from '@yoga-canvas/core';
-import { hitTest, hitTestAll } from '@yoga-canvas/core';
+import { PointerEventDispatcher, CANVAS_EVENT_TARGET_ID } from '@yoga-canvas/core';
 import type { ScrollManager } from '@yoga-canvas/core';
 import type { SelectionState, DropIndicator } from './types';
 import { getResizeHandlePositions, getRotationHandlePosition } from './CanvasRenderer';
@@ -240,6 +240,19 @@ export function useCanvasInteraction(
   const selectionEnabled = options?.selectionEnabled ?? true;
   const transformEnabled = options?.transformEnabled ?? true;
 
+  const treeRef = useRef(tree);
+  useEffect(() => {
+    treeRef.current = tree;
+  }, [tree]);
+
+  const dispatcherRef = useRef<PointerEventDispatcher | null>(null);
+  if (!dispatcherRef.current) {
+    dispatcherRef.current = new PointerEventDispatcher(() => treeRef.current, { scrollManager });
+  }
+  useEffect(() => {
+    dispatcherRef.current?.setScrollManager(scrollManager);
+  }, [scrollManager]);
+
   const [selection, setSelection] = useState<SelectionState>({
     selectedNodeId: null,
     hoveredNodeId: null,
@@ -385,7 +398,15 @@ export function useCanvasInteraction(
 
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
-      const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+      const dispatched = dispatcherRef.current?.dispatchPointerEvent({
+        type: 'pointerdown',
+        x: canvasX,
+        y: canvasY,
+        button: e.button,
+        buttons: e.buttons,
+        timeStamp: e.timeStamp,
+      });
+      const hitNodeId = dispatched?.targetId ?? null;
 
       const shouldPan =
         panOn === 'any' ? true : panOn === 'root' ? !hitNodeId || hitNodeId === tree.rootId : !hitNodeId;
@@ -484,6 +505,7 @@ export function useCanvasInteraction(
       panOn,
       selectionEnabled,
       transformEnabled,
+      dispatcherRef,
     ]
   );
 
@@ -576,7 +598,14 @@ export function useCanvasInteraction(
       if (selectionEnabled) {
         const canvasX = (x - offset.x) / scale;
         const canvasY = (y - offset.y) / scale;
-        const hitNodeId = hitTest(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+        const dispatched = dispatcherRef.current?.dispatchPointerEvent({
+          type: 'pointermove',
+          x: canvasX,
+          y: canvasY,
+          buttons: e.buttons,
+          timeStamp: e.timeStamp,
+        });
+        const hitNodeId = dispatched?.targetId ?? null;
         setSelection((prev) => {
           if (prev.hoveredNodeId !== hitNodeId) {
             return { ...prev, hoveredNodeId: hitNodeId };
@@ -637,7 +666,21 @@ export function useCanvasInteraction(
     ]
   );
 
-  const handleMouseUp = useCallback(() => {
+  const handleMouseUp = useCallback((e: React.MouseEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    const canvasX = (x - offset.x) / scale;
+    const canvasY = (y - offset.y) / scale;
+    dispatcherRef.current?.dispatchPointerEvent({
+      type: 'pointerup',
+      x: canvasX,
+      y: canvasY,
+      button: e.button,
+      buttons: e.buttons,
+      timeStamp: e.timeStamp,
+    });
+
     const dragType = dragRef.current.type;
 
     if (transformEnabled && dragType === 'move' && selection.selectedNodeId && onMove) {
@@ -681,7 +724,7 @@ export function useCanvasInteraction(
       scrollOffsetX: 0,
       scrollOffsetY: 0,
     };
-  }, [selection.selectedNodeId, selection.dropTargetId, selection.dropIndicator, onMove, onDragEnd, selectionEnabled, transformEnabled]);
+  }, [dispatcherRef, offset.x, offset.y, onDragEnd, onMove, scale, selection.dropIndicator, selection.dropTargetId, selection.selectedNodeId, selectionEnabled, transformEnabled]);
 
   const handleWheel = useCallback(
     (e: WheelEvent) => {
@@ -693,9 +736,18 @@ export function useCanvasInteraction(
 
       const canvasX = (mouseX - offset.x) / scale;
       const canvasY = (mouseY - offset.y) / scale;
+      const dispatched = dispatcherRef.current?.dispatchPointerEvent({
+        type: 'wheel',
+        x: canvasX,
+        y: canvasY,
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        timeStamp: typeof e.timeStamp === 'number' ? e.timeStamp : Date.now(),
+      });
+      if (dispatched?.defaultPrevented) return;
+      const hitPath = (dispatched?.path ?? dispatcherRef.current?.getHitPath(canvasX, canvasY) ?? [CANVAS_EVENT_TARGET_ID]).slice(1);
 
       if (scrollManager) {
-        const hitPath = hitTestAll(tree, canvasX, canvasY, { scrollManager });
         let scrollViewId: string | null = null;
         for (let i = hitPath.length - 1; i >= 0; i--) {
           const id = hitPath[i];
@@ -827,7 +879,7 @@ export function useCanvasInteraction(
       const y = e.clientY - rect.top;
       const canvasX = (x - offset.x) / scale;
       const canvasY = (y - offset.y) / scale;
-      const allHit = hitTestAll(tree, canvasX, canvasY, scrollManager ? { scrollManager } : undefined);
+      const allHit = (dispatcherRef.current?.getHitPath(canvasX, canvasY) ?? [CANVAS_EVENT_TARGET_ID]).slice(1);
       if (allHit.length === 0) return;
 
       if (selection.selectedNodeId) {
@@ -839,7 +891,7 @@ export function useCanvasInteraction(
       }
       setSelection((prev) => ({ ...prev, selectedNodeId: allHit[allHit.length - 1] }));
     },
-    [tree, selection.selectedNodeId, scale, offset, scrollManager, selectionEnabled]
+    [selection.selectedNodeId, scale, offset.x, offset.y, selectionEnabled]
   );
 
   return {

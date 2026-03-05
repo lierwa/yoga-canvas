@@ -5,6 +5,7 @@ import type {
   CanvasGradientLike,
   TextMeasureOptions,
 } from '../types';
+import { clampWrappedLines, ellipsizeToWidth, normalizeLineClamp, wrapText } from '../text/textLayout';
 
 /**
  * WeChat mini-program canvas context wrapper implementing CanvasContextLike.
@@ -161,56 +162,31 @@ export class WxAdapter implements PlatformAdapter {
     const fontStyle = options.fontStyle && options.fontStyle !== 'normal' ? `${options.fontStyle} ` : '';
     ctx.font = `${fontStyle}${fontWeight !== 'normal' ? `${fontWeight} ` : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
     const lineH = options.fontSize * options.lineHeight;
-    let maxLineWidth = 0;
-    let lineCount = 0;
+    const lineClamp = normalizeLineClamp(options.lineClamp);
 
     if (options.whiteSpace === 'nowrap') {
       const singleLine = options.content.replace(/\n/g, ' ');
-      const width = ctx.measureText(singleLine).width;
-      return { width, height: lineH };
+      if (lineClamp) {
+        const displayed = ellipsizeToWidth(ctx, singleLine, options.availableWidth);
+        return { width: Math.min(ctx.measureText(displayed).width, options.availableWidth), height: lineH };
+      }
+      return { width: ctx.measureText(singleLine).width, height: lineH };
     }
 
-    const lines = options.content.split('\n');
-    for (const line of lines) {
-      const words = line.split(' ');
-      let currentLine = '';
-      for (const word of words) {
-        const testLine = currentLine ? `${currentLine} ${word}` : word;
-        const tw = ctx.measureText(testLine).width;
-        if (tw > options.availableWidth && currentLine) {
-          maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
-          lineCount++;
-          currentLine = '';
-        }
+    const lines = wrapText(ctx, options.content, options.availableWidth);
+    const displayedLines = lineClamp
+      ? clampWrappedLines(ctx, lines, lineClamp, options.availableWidth, options.content.includes(' ') ? ' ' : '')
+      : lines;
 
-        if (ctx.measureText(word).width > options.availableWidth) {
-          let chunk = '';
-          for (const char of word) {
-            const nextChunk = chunk + char;
-            if (ctx.measureText(nextChunk).width > options.availableWidth && chunk) {
-              maxLineWidth = Math.max(maxLineWidth, ctx.measureText(chunk).width);
-              lineCount++;
-              chunk = char;
-            } else {
-              chunk = nextChunk;
-            }
-          }
-          currentLine = currentLine ? `${currentLine} ${chunk}` : chunk;
-        } else {
-          currentLine = currentLine ? `${currentLine} ${word}` : word;
-        }
-      }
-      if (currentLine) {
-        maxLineWidth = Math.max(maxLineWidth, ctx.measureText(currentLine).width);
-        lineCount++;
-      } else if (line === '') {
-        lineCount++;
-      }
+    let maxLineWidth = 0;
+    for (const line of displayedLines) {
+      const w = ctx.measureText(line).width;
+      if (w > maxLineWidth) maxLineWidth = w;
     }
 
     return {
       width: Math.min(maxLineWidth, options.availableWidth),
-      height: Math.max(1, lineCount) * lineH,
+      height: Math.max(1, displayedLines.length) * lineH,
     };
   }
 
@@ -283,15 +259,20 @@ export class WxAdapter implements PlatformAdapter {
  */
 function estimateTextSize(options: TextMeasureOptions): { width: number; height: number } {
   const avgCharWidth = options.fontSize * 0.6;
+  const lineClamp = normalizeLineClamp(options.lineClamp);
   if (options.whiteSpace === 'nowrap') {
     const width = options.content.replace(/\n/g, ' ').length * avgCharWidth;
+    if (lineClamp) {
+      return { width: Math.min(width, options.availableWidth), height: options.fontSize * options.lineHeight };
+    }
     return { width, height: options.fontSize * options.lineHeight };
   }
   const charsPerLine = Math.max(1, Math.floor(options.availableWidth / avgCharWidth));
   const lineCount = Math.ceil(options.content.length / charsPerLine);
+  const displayedLineCount = lineClamp ? Math.min(lineCount, lineClamp) : lineCount;
   const lineH = options.fontSize * options.lineHeight;
   return {
     width: Math.min(options.content.length * avgCharWidth, options.availableWidth),
-    height: lineCount * lineH,
+    height: displayedLineCount * lineH,
   };
 }

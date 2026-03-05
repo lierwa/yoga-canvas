@@ -18,6 +18,7 @@ export interface TextProps {
   lineHeight: number;
   textAlign: 'left' | 'center' | 'right';
   whiteSpace: 'normal' | 'nowrap';
+  lineClamp?: number;
   textShadow: {
     offsetX: number;
     offsetY: number;

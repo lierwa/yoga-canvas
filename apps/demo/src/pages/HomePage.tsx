@@ -1,7 +1,8 @@
-import { useCallback, useMemo } from 'react';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { useCallback, useMemo } from "react";
+import { ArrowRight, Sparkles } from "lucide-react";
+import { useDemoI18n } from "../i18n";
 
-type ProductKey = 'playground' | 'workspace' | 'components';
+type ProductKey = "playground" | "workspace" | "components";
 
 type ProductCard = {
   key: ProductKey;
@@ -14,37 +15,50 @@ type ProductCard = {
 };
 
 export default function HomePage() {
+  const { locale, toggleLocale, t } = useDemoI18n();
   const products: ProductCard[] = useMemo(
     () => [
       {
-        key: 'playground',
-        title: 'Playground',
-        subtitle: '即时体验编辑能力',
-        desc: '在同一屏里完成“数据/JSX → 渲染 → 选中 → 调参”，快速验证布局、交互与导出链路。',
-        href: '#/playground',
-        accent: { from: '#a78bfa', to: '#ec4899' },
-        bullets: ['Live JSX → Canvas', '节点树与选中', '缩放/平移/对齐'],
+        key: "playground",
+        title: "Playground",
+        subtitle: t("product.playground.subtitle"),
+        desc: t("product.playground.desc"),
+        href: "#/playground",
+        accent: { from: "#a78bfa", to: "#ec4899" },
+        bullets: [
+          t("product.playground.b1"),
+          t("product.playground.b2"),
+          t("product.playground.b3"),
+        ],
       },
       {
-        key: 'workspace',
-        title: 'Workspace',
-        subtitle: '项目化的设计工作台',
-        desc: '把模板变成可管理的项目：创建、复制、重命名，并进入编辑器持续迭代与协作。',
-        href: '#/workspace',
-        accent: { from: '#fb7185', to: '#f97316' },
-        bullets: ['项目列表管理', '可视化编辑器', '预览与导出'],
+        key: "workspace",
+        title: "Workspace",
+        subtitle: t("product.workspace.subtitle"),
+        desc: t("product.workspace.desc"),
+        href: "#/workspace",
+        accent: { from: "#fb7185", to: "#f97316" },
+        bullets: [
+          t("product.workspace.b1"),
+          t("product.workspace.b2"),
+          t("product.workspace.b3"),
+        ],
       },
       {
-        key: 'components',
-        title: 'Components',
-        subtitle: '能力覆盖一眼看清',
-        desc: '用“设计稿式”的画布展示核心组件与布局能力，帮助你快速评估可用范围与落地效果。',
-        href: '#/components',
-        accent: { from: '#60a5fa', to: '#22c55e' },
-        bullets: ['只读展示', 'Flex / gap / grid', 'Image fill / ScrollView'],
+        key: "components",
+        title: "Components",
+        subtitle: t("product.components.subtitle"),
+        desc: t("product.components.desc"),
+        href: "#/components",
+        accent: { from: "#60a5fa", to: "#22c55e" },
+        bullets: [
+          t("product.components.b1"),
+          t("product.components.b2"),
+          t("product.components.b3"),
+        ],
       },
     ],
-    [],
+    [t],
   );
 
   const goToProduct = useCallback(
@@ -71,64 +85,68 @@ export default function HomePage() {
                 <Sparkles size={18} className="text-white/90" />
               </div>
               <div className="leading-tight">
-                <div className="text-sm font-semibold tracking-wide">Yoga Canvas</div>
-                <div className="text-[11px] text-white/55">基于 Yoga Layout的Canvas画布引擎</div>
+                <div className="text-sm font-semibold tracking-wide">
+                  {t("home.tagline")}
+                </div>
+                <div className="text-[11px] text-white/55">
+                  {t("home.subtitle")}
+                </div>
               </div>
             </div>
-            <div className="flex items-center gap-2">
-              <a
-                href="#/playground"
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
-              >
-                Playground
-              </a>
-              <a
-                href="#/workspace"
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
-              >
-                Workspace
-              </a>
-              <a
-                href="#/components"
-                className="px-3 py-2 rounded-xl bg-white/10 border border-white/15 backdrop-blur text-xs font-semibold text-white/90 hover:bg-white/14 transition-colors"
-              >
-                Components
-              </a>
-            </div>
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="px-3 py-2 rounded-2xl bg-white/7 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/75 hover:bg-white/10 transition-colors"
+              title={locale === "zh" ? "Switch to English" : "切换中文"}
+            >
+              {locale === "zh" ? "EN" : "中文"}
+            </button>
           </div>
 
           <div className="mt-14 grid grid-cols-1 lg:grid-cols-2 gap-10 items-start">
             <div className="min-w-0">
               <h1 className="mt-6 text-[46px] leading-[1.05] font-extrabold tracking-tight">
-                一个面向
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-violet-200 to-cyan-200">布局与可视化编辑</span>
-                的 Canvas 引擎与组件库
+                {t("home.hero.lead")}
+                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-violet-200 to-cyan-200">
+                  {t("home.hero.highlight")}
+                </span>
+                {t("home.hero.tail")}
               </h1>
               <p className="mt-4 text-sm leading-6 text-white/65 max-w-[54ch]">
-                Yoga Canvas 让你用数据或 JSX 描述 UI 布局，并在 Canvas 中完成渲染、命中测试、选中高亮、缩放与平移、属性面板调参以及导出。它更像一套“搭建与编辑体验的基础设施”，而不是单点组件集合。
+                {t("home.intro")}
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
                   className="group inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white text-slate-900 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.35)] hover:shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-shadow"
-                  onClick={() => goToProduct('playground')}
+                  onClick={() => goToProduct("playground")}
                 >
-                  立即体验
-                  <ArrowRight size={16} className="transition-transform group-hover:translate-x-0.5" />
+                  {t("home.cta")}
+                  <ArrowRight
+                    size={16}
+                    className="transition-transform group-hover:translate-x-0.5"
+                  />
                 </button>
               </div>
 
               <div className="mt-10 grid grid-cols-2 gap-3 max-w-[560px]">
                 {[
-                  { label: '布局引擎', value: 'Yoga Flex Layout' },
-                  { label: '渲染目标', value: 'Canvas / DOM' },
-                  { label: '编辑能力', value: '选中 / 缩放 / 平移' },
-                  { label: '导出能力', value: 'JSON / Image' },
+                  { label: t("home.stats.layoutEngine"), value: "Yoga Flex Layout" },
+                  { label: t("home.stats.renderTarget"), value: "Canvas / DOM" },
+                  { label: t("home.stats.editor"), value: "Selection / Zoom / Pan" },
+                  { label: t("home.stats.export"), value: "JSON / Image" },
                 ].map((x) => (
-                  <div key={x.label} className="rounded-2xl bg-white/7 border border-white/12 backdrop-blur px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.18)]">
-                    <div className="text-[11px] font-semibold text-white/55 tracking-wide">{x.label}</div>
-                    <div className="mt-1 text-sm font-bold text-white/90">{x.value}</div>
+                  <div
+                    key={x.label}
+                    className="rounded-2xl bg-white/7 border border-white/12 backdrop-blur px-4 py-3 shadow-[0_18px_60px_rgba(0,0,0,0.18)]"
+                  >
+                    <div className="text-[11px] font-semibold text-white/55 tracking-wide">
+                      {x.label}
+                    </div>
+                    <div className="mt-1 text-sm font-bold text-white/90">
+                      {x.value}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -146,14 +164,16 @@ export default function HomePage() {
                     <div
                       className="relative rounded-[28px] border border-white/14 bg-white/9 backdrop-blur-xl shadow-[0_24px_90px_rgba(0,0,0,0.35)] overflow-hidden"
                       style={{
-                        transition: 'transform 220ms ease, border-color 220ms ease, background-color 220ms ease',
+                        transition:
+                          "transform 220ms ease, border-color 220ms ease, background-color 220ms ease",
                       }}
                     >
                       <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
                         <div
                           className="absolute -inset-10"
                           style={{
-                            background: 'radial-gradient(circle at 30% 20%, rgba(255,255,255,0.20), transparent 58%)',
+                            background:
+                              "radial-gradient(circle at 30% 20%, rgba(255,255,255,0.20), transparent 58%)",
                           }}
                         />
                       </div>
@@ -161,18 +181,26 @@ export default function HomePage() {
                         className="absolute inset-0 opacity-60"
                         style={{
                           background: `linear-gradient(120deg, ${p.accent.from}, ${p.accent.to})`,
-                          maskImage: 'radial-gradient(circle at 30% 20%, black, transparent 65%)',
-                          WebkitMaskImage: 'radial-gradient(circle at 30% 20%, black, transparent 65%)',
+                          maskImage:
+                            "radial-gradient(circle at 30% 20%, black, transparent 65%)",
+                          WebkitMaskImage:
+                            "radial-gradient(circle at 30% 20%, black, transparent 65%)",
                         }}
                       />
                       <div className="relative p-5">
                         <div className="flex items-start gap-4">
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center gap-2">
-                              <div className="text-[18px] font-extrabold tracking-tight">{p.title}</div>
-                              <div className="text-[11px] font-semibold text-white/60">{p.subtitle}</div>
+                              <div className="text-[18px] font-extrabold tracking-tight">
+                                {p.title}
+                              </div>
+                              <div className="text-[11px] font-semibold text-white/60">
+                                {p.subtitle}
+                              </div>
                             </div>
-                            <div className="mt-2 text-[12px] leading-5 text-white/70">{p.desc}</div>
+                            <div className="mt-2 text-[12px] leading-5 text-white/70">
+                              {p.desc}
+                            </div>
                           </div>
                           <div className="shrink-0 w-11 h-11 rounded-2xl bg-white/12 border border-white/15 backdrop-blur flex items-center justify-center">
                             <ArrowRight size={18} className="text-white/85" />
@@ -193,10 +221,6 @@ export default function HomePage() {
                     </div>
                   </button>
                 ))}
-              </div>
-
-              <div className="mt-6 text-[11px] text-white/50">
-                提示：点击卡片进入对应体验页。
               </div>
             </div>
           </div>

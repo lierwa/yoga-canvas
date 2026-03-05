@@ -1,9 +1,10 @@
-import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState, useMemo } from 'react';
+import React, { useRef, useEffect, useImperativeHandle, forwardRef, useState, useMemo, useCallback } from 'react';
 import {
   createYogaCanvas,
   YogaCanvas,
   View as createView,
   type NodeDescriptor,
+  type CanvasPointerEventType,
   type YogaCanvasOptions,
 } from '@yoga-canvas/core';
 import { convertChildrenToDescriptors } from './jsx/convertJSX';
@@ -148,10 +149,35 @@ export const YogaCanvasComponent = forwardRef<YogaCanvasRef, YogaCanvasProps>(
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [layout, ready]);
 
+    const dispatchPointer = useCallback(
+      (e: React.PointerEvent<HTMLCanvasElement>, type: CanvasPointerEventType) => {
+        const yoga = instanceRef.current;
+        if (!yoga || !ready) return;
+        const rect = e.currentTarget.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        const result = yoga.dispatchPointerEvent({
+          type,
+          x,
+          y,
+          pointerId: e.pointerId,
+          button: e.button,
+          buttons: e.buttons,
+          timeStamp: e.timeStamp,
+        });
+        if (result.defaultPrevented) e.preventDefault();
+      },
+      [ready],
+    );
+
     return (
       <div className={className} style={style}>
         <canvas
           ref={canvasRef}
+          onPointerDown={(e) => dispatchPointer(e, 'pointerdown')}
+          onPointerMove={(e) => dispatchPointer(e, 'pointermove')}
+          onPointerUp={(e) => dispatchPointer(e, 'pointerup')}
+          onPointerCancel={(e) => dispatchPointer(e, 'pointercancel')}
           style={{
             width: `${canvasSize.width}px`,
             height: `${canvasSize.height}px`,

@@ -134,6 +134,7 @@ export class NodeTreeManager {
           ...(textStyle.lineHeight !== undefined && { lineHeight: textStyle.lineHeight }),
           ...(textStyle.textAlign !== undefined && { textAlign: textStyle.textAlign }),
           ...(textStyle.whiteSpace !== undefined && { whiteSpace: textStyle.whiteSpace }),
+          ...(textStyle.lineClamp !== undefined && { lineClamp: textStyle.lineClamp }),
           ...(textStyle.textShadow !== undefined && { textShadow: textStyle.textShadow }),
         };
       }

@@ -4,7 +4,9 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
+    "predev": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react build",
     "dev": "vite",
+    "prebuild": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react build",
     "build": "tsc -b && vite build",
     "preview": "vite preview"
   },

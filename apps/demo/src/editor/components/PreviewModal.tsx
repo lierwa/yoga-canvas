@@ -6,7 +6,6 @@ import {
   createYogaCanvas,
   exportToDOMString,
   exportToJSON,
-  hitTest,
   type ScrollManager,
   type YogaCanvas,
 } from '@yoga-canvas/core';
@@ -121,8 +120,8 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     const rect = canvas.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
-    const hit = hitTest(inst.getNodeTree(), x, y, { scrollManager: inst.getScrollManager() });
-    setSelectedNodeId(hit);
+    const dispatched = inst.dispatchPointerEvent({ type: 'click', x, y, timeStamp: e.timeStamp });
+    setSelectedNodeId(dispatched.targetId);
   }, []);
 
   const locateNode = useCallback((nodeId: string | null) => {

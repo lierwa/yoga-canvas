@@ -3,6 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useYogaCanvas } from "@yoga-canvas/react";
 import type { NodeDescriptor } from "@yoga-canvas/core";
+import { DemoTopNav } from "../../components/DemoTopNav";
+import { useDemoI18n } from "../../i18n";
 import { seedTemplates } from "../templates/seedDescriptors";
 import { DEVICE_PRESETS } from "../types";
 import { Modal } from "../ui/Modal";
@@ -299,6 +301,7 @@ function resolvePresetName(size: {
 
 export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const [tick, setTick] = useState(0);
+  const { locale, toggleLocale, t } = useDemoI18n();
   const projects = useMemo(() => {
     void tick;
     return listProjects().filter((p) => !p.id.startsWith("seed_"));
@@ -308,7 +311,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const [renameOpen, setRenameOpen] = useState(false);
   const [pendingId, setPendingId] = useState<string | null>(null);
 
-  const [newName, setNewName] = useState("我的项目");
+  const [newName, setNewName] = useState(t("workspace.defaultProjectName"));
   const defaultCreateTemplateId =
     seedTemplates.find((t) => t.id === "seed_blank")?.id ??
     seedTemplates[0]?.id ??
@@ -333,34 +336,42 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50">
       <div className="h-full overflow-auto">
-        <div className="sticky top-0 z-20 border-b border-white/70 bg-white/75 backdrop-blur">
-          <div className="mx-auto max-w-6xl px-6 py-3 flex items-center gap-4">
+        <DemoTopNav
+          variant="sticky"
+          constrainWidth
+          leftSlot={
             <button
               type="button"
               className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               onClick={() => {
                 window.location.hash = "#/";
               }}
-              title="返回首页"
+              title={t("nav.backHome")}
             >
               <ArrowLeft size={14} />
-              返回
+              {t("nav.back")}
             </button>
-
-            <div className="flex-1" />
-          </div>
-        </div>
+          }
+          rightSlot={
+            <button
+              type="button"
+              onClick={toggleLocale}
+              className="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white transition-colors"
+              title={locale === "zh" ? t("lang.switchToEn") : t("lang.switchToZh")}
+            >
+              {locale === "zh" ? "EN" : "中文"}
+            </button>
+          }
+        />
         <div className="mx-auto max-w-6xl px-6 py-10">
           <div className="flex items-end justify-between gap-6">
             <div className="min-w-0">
               <div className="text-[13px] font-medium text-indigo-600 tracking-wide">
                 Yoga Canvas
               </div>
-              <div className="mt-1 text-2xl font-bold text-slate-900">
-                工作台
-              </div>
+              <div className="mt-1 text-2xl font-bold text-slate-900">{t("workspace.title")}</div>
               <div className="mt-2 text-sm text-slate-500 max-w-[56ch]">
-                每个模板就像一个项目。你可以在这里创建、复制、重命名、删除，然后进入二级页面进行低代码编辑。
+                {t("workspace.desc")}
               </div>
             </div>
             <div className="flex items-center gap-3">
@@ -372,7 +383,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                     defaultCreateTemplateId,
                   );
                   setCreateOpen(true);
-                  setNewName("我的项目");
+                  setNewName(t("workspace.defaultProjectName"));
                   setNewTemplateId(defaultCreateTemplateId);
                   setContainerWidth(container.width);
                   setContainerHeight(container.height);
@@ -380,7 +391,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 }}
               >
                 <Plus size={16} />
-                新建项目
+                {t("workspace.newProject")}
               </button>
             </div>
           </div>
@@ -400,7 +411,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                     defaultCreateTemplateId,
                   );
                   setCreateOpen(true);
-                  setNewName("我的项目");
+                  setNewName(t("workspace.defaultProjectName"));
                   setNewTemplateId(defaultCreateTemplateId);
                   setContainerWidth(container.width);
                   setContainerHeight(container.height);
@@ -416,10 +427,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                   </div>
                 </div>
                 <div className="mt-3 text-sm font-semibold text-slate-900">
-                  新增项目
+                  {t("workspace.addProject")}
                 </div>
                 <div className="mt-1 text-[11px] text-slate-500">
-                  从空白模板创建你的新画布
+                  {t("workspace.addProjectDesc")}
                 </div>
               </button>
             </div>
@@ -438,14 +449,15 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         {p.name}
                       </div>
                       <div className="mt-1 text-[11px] text-slate-500">
-                        最近更新：{formatTime(p.updatedAt)}
+                        {t("workspace.recentUpdated")}
+                        {formatTime(p.updatedAt)}
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         type="button"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                        title="重命名"
+                        title={t("workspace.action.rename")}
                         onClick={(e) => {
                           e.stopPropagation();
                           setPendingId(p.id);
@@ -458,7 +470,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                       <button
                         type="button"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
-                        title="复制"
+                        title={t("workspace.action.duplicate")}
                         onClick={(e) => {
                           e.stopPropagation();
                           const copied = duplicateProject(p.id);
@@ -471,7 +483,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                       <button
                         type="button"
                         className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
-                        title="删除"
+                        title={t("workspace.action.delete")}
                         onClick={(e) => {
                           e.stopPropagation();
                           deleteProject(p.id);
@@ -491,7 +503,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
 
       <Modal
         open={createOpen}
-        title="新建项目"
+        title={t("workspace.modal.create.title")}
         onClose={() => setCreateOpen(false)}
         width={920}
         footer={
@@ -501,7 +513,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
               onClick={() => setCreateOpen(false)}
             >
-              取消
+              {t("workspace.modal.create.cancel")}
             </button>
             <button
               type="button"
@@ -527,7 +539,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 onOpenProject(created.id);
               }}
             >
-              创建并打开
+              {t("workspace.modal.create.createAndOpen")}
             </button>
           </>
         }
@@ -535,19 +547,19 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
         <div className="space-y-6">
           <div className="w-full max-w-[520px]">
             <div className="text-xs font-medium text-slate-600 mb-2">
-              项目名称
+              {t("workspace.modal.create.projectName")}
             </div>
             <input
               value={newName}
               onChange={(e) => setNewName(e.target.value)}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300"
-              placeholder="例如：我的海报"
+              placeholder={t("workspace.modal.create.projectNamePlaceholder")}
             />
           </div>
 
           <div className="w-full max-w-[520px]">
             <div className="text-xs font-medium text-slate-600 mb-2">
-              画布尺寸
+              {t("workspace.modal.create.canvasSize")}
             </div>
             <div className="flex items-center gap-2">
               <select
@@ -571,19 +583,19 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                   </option>
                 ))}
                 <option value="Custom">
-                  自定义 ({containerWidth}×
+                  {t("workspace.preset.custom")} ({containerWidth}×
                   {containerHeight === "auto" ? "auto" : containerHeight})
                 </option>
               </select>
             </div>
             {!isBlankTemplate ? (
               <div className="mt-2 text-[11px] text-slate-500">
-                当前模板的画布尺寸由模板决定，创建时不可修改
+                {t("workspace.modal.create.templateLockedHint")}
               </div>
             ) : null}
             <div className="mt-2 grid grid-cols-2 gap-2 max-w-[520px]">
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">宽度</div>
+                <div className="text-[11px] text-slate-500">{t("workspace.modal.create.width")}</div>
                 <input
                   type="number"
                   value={containerWidth}
@@ -597,7 +609,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 />
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">高度</div>
+                <div className="text-[11px] text-slate-500">{t("workspace.modal.create.height")}</div>
                 <input
                   value={
                     containerHeight === "auto"
@@ -625,33 +637,45 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
 
           <div>
             <div className="text-xs font-medium text-slate-600 mb-3">
-              选择模板
+              {t("workspace.modal.create.selectTemplate")}
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-              {seedTemplates.map((t) => (
+              {seedTemplates.map((tpl) => (
                 <button
-                  key={t.id}
+                  key={tpl.id}
                   type="button"
                   className={[
                     "rounded-2xl border p-3 text-left transition-colors w-full mx-auto min-w-[240px] max-w-[360px]",
-                    newTemplateId === t.id
+                    newTemplateId === tpl.id
                       ? "border-indigo-300 bg-indigo-50"
                       : "border-slate-200 bg-white hover:bg-slate-50",
                   ].join(" ")}
                   onClick={() => {
-                    const container = getTemplateDefaultContainer(t.id);
-                    setNewTemplateId(t.id);
+                    const container = getTemplateDefaultContainer(tpl.id);
+                    setNewTemplateId(tpl.id);
                     setContainerWidth(container.width);
                     setContainerHeight(container.height);
                     setSelectedPreset(resolvePresetName(container));
                   }}
                 >
-                  <TemplatePreviewFrame descriptor={t.descriptor} />
+                  <TemplatePreviewFrame descriptor={tpl.descriptor} />
                   <div className="mt-2 text-sm font-semibold text-slate-900 truncate">
-                    {t.name}
+                    {tpl.id === "seed_blank"
+                      ? t("template.seed_blank.name")
+                      : tpl.id === "seed_legacy_demo"
+                        ? t("template.seed_legacy_demo.name")
+                        : tpl.id === "seed_share_poster"
+                          ? t("template.seed_share_poster.name")
+                          : tpl.name}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5 leading-snug max-h-8 overflow-hidden">
-                    {t.description ?? ""}
+                    {tpl.id === "seed_blank"
+                      ? t("template.seed_blank.desc")
+                      : tpl.id === "seed_legacy_demo"
+                        ? t("template.seed_legacy_demo.desc")
+                        : tpl.id === "seed_share_poster"
+                          ? t("template.seed_share_poster.desc")
+                          : tpl.description ?? ""}
                   </div>
                 </button>
               ))}
@@ -662,7 +686,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
 
       <Modal
         open={renameOpen}
-        title="重命名项目"
+        title={t("workspace.modal.rename.title")}
         onClose={() => setRenameOpen(false)}
         footer={
           <>
@@ -671,7 +695,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
               onClick={() => setRenameOpen(false)}
             >
-              取消
+              {t("workspace.modal.rename.cancel")}
             </button>
             <button
               type="button"
@@ -683,18 +707,18 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 setRenameOpen(false);
               }}
             >
-              保存
+              {t("workspace.modal.rename.save")}
             </button>
           </>
         }
       >
         <div className="space-y-3">
-          <div className="text-xs font-medium text-slate-600">项目名称</div>
+          <div className="text-xs font-medium text-slate-600">{t("workspace.modal.rename.projectName")}</div>
           <input
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
             className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-sm outline-none focus:ring-2 focus:ring-indigo-500/40 focus:border-indigo-300"
-            placeholder="请输入新名称"
+            placeholder={t("workspace.modal.rename.placeholder")}
           />
         </div>
       </Modal>

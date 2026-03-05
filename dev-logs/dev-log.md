@@ -1,8 +1,8 @@
 ```yaml
 DEV_LOG_META:
-  LastLogId: 2026-03-03/01
-  LastAnchorCommit: d3057d3
-  LastAnchorDate: 2026-03-03
+  LastLogId: 2026-03-06/01
+  LastAnchorCommit: 9f22aa6
+  LastAnchorDate: 2026-03-06
 ```
 
 ## Log Entry: BOOTSTRAP-2026-03-02/01
@@ -62,6 +62,56 @@ DEV_LOG_META:
 - 明确并补齐根目录与各包的开发/构建/发布工作流（pnpm 口径）
 - 将仓库规则与关键入口同步到根 README（或迁移到 project.md 并在 README 引用）
 - 梳理 H5/WX adapter 的差异清单并补充回归样例（文本测量、图片导出、触摸坐标）
+
+---
+
+## Log Entry: 2026-03-06/01
+- Date: 2026-03-06
+- Range: d3057d3.. 9f22aa6
+- Focus: 应用目录迁移 + Demo 能力增强，并引入 retained-mode 指针事件派发（含未提交增量）
+
+### Summary
+- 完成 apps 目录迁移：将 demo / taro-demo 从 packages 移到 apps，并对相关配置进行适配（tsconfig/workspace/package scripts）
+- 将原根目录编辑器能力合并进演示应用：编辑器页面、组件与 hooks 迁移到 apps/demo/src/editor 体系
+- Demo 新增多页面能力：Home / Playground / ComponentsCanvas 等页面与配套 UI 组件，提升展示与试用路径
+- 交互增强：支持绝对定位节点的实时拖拽移动（absolute move）与相关编辑体验优化
+- 事件系统升级（未提交）：新增 retained-mode PointerEventDispatcher，支持 capture/bubble/stopPropagation，并将散落的 hitTest 逻辑迁移到统一派发入口
+
+### Changes By Area
+- Core (@yoga-canvas/core):
+  - 事件：新增 PointerEventDispatcher 与 CanvasPointerEvent 系列类型/导出；YogaCanvas 增加 addEventListener/removeEventListener/dispatchPointerEvent，并将 wheel 处理与事件派发对齐（packages/core/src/events/*、packages/core/src/YogaCanvas.ts、packages/core/src/index.ts）
+  - 布局/文本/适配：LayoutEngine、TextPainter、H5Adapter/WxAdapter 等有同步调整（packages/core/src/layout/LayoutEngine.ts、packages/core/src/renderer/painters/TextPainter.ts、packages/core/src/platform/*）
+  - 树与类型：NodeTreeManager、node/platform/style 类型有更新（packages/core/src/tree/NodeTreeManager.ts、packages/core/src/types/*）
+- React (@yoga-canvas/react):
+  - 组件：YogaCanvasComponent 增强 DOM pointer 事件转发到 core 的派发入口（packages/react/src/YogaCanvasComponent.tsx）
+  - Editor：useCanvasInteraction 以统一派发器替代零散命中测试；EditorCanvas 事件签名与交互链路随之调整（packages/react/src/editor/useCanvasInteraction.ts、packages/react/src/editor/EditorCanvas.tsx、packages/react/src/editor/CanvasRenderer.ts）
+- Editor (root src/):
+  - 迁移：原 root src 编辑器应用整体迁移到 apps/demo/src/editor，原路径大幅减少/退出主流程（git diff 显示大量 src/ → apps/demo/src/editor/ 的 rename）
+- Demo / Taro:
+  - Demo：新增与调整多个页面（Home/Playground/ComponentsCanvas），并引入页面级组件目录（apps/demo/src/pages/*、apps/demo/src/pages/components/*）
+  - 工程结构：apps/demo、apps/taro-demo 的配置迁移与适配（apps/*/package.json、apps/*/config、apps/*/tsconfig.json）
+
+### Notable API / Data Model Changes
+- @yoga-canvas/core：新增/导出 PointerEventDispatcher、CANVAS_EVENT_TARGET_ID、CanvasPointerEventType/CanvasPointerEvent 等事件相关 API（packages/core/src/events/*、packages/core/src/index.ts）
+- @yoga-canvas/core：YogaCanvas 增加 dispatchPointerEvent 与节点级 add/removeEventListener（行为上为 retained-mode 事件系统入口）
+- @yoga-canvas/react（可能 breaking）：EditorCanvas 的 onMouseUp 由无参改为接收 React MouseEvent（packages/react/src/editor/EditorCanvas.tsx）
+- 目录结构（breaking）：demo 与 taro-demo 从 packages/* 迁移到 apps/*，旧路径在消费侧需要同步更新
+
+### Notes & Gotchas
+- 仓库规则：不要执行 npm run dev:h5
+- Windows 环境下 git 提示 “LF will be replaced by CRLF”，后续提交前建议统一处理换行策略，避免 diff 噪声
+- 本次范围包含未提交改动与未跟踪文件（例如事件派发器新文件、JS 产物与 tsbuildinfo），建议在落盘前整理 .gitignore 与提交边界
+
+### Open Issues
+- 未提交改动较多：当前工作区存在大量 M/??，需要决定哪些应纳入本批次提交，哪些应忽略或回滚（git status --porcelain）
+- 未跟踪文件包含 JS 产物与 buildinfo（例如 apps/taro-demo/src/**/*.js、tsconfig.tsbuildinfo），需确认是否应进入版本库
+- retained-mode 事件系统仍需更系统的交互回归（ScrollView 嵌套、capture/bubble 次序、wheel defaultPrevented 行为）
+
+### Next
+- 将 PointerEventDispatcher 与相关迁移整理为一次可提交的最小变更集（补齐导出/删掉旧入口或保留兼容层）
+- 清理/规范生成文件：为 tsbuildinfo 与编译产物补齐 ignore 规则，降低跨平台 diff 噪声
+- 补充 retained-mode 事件的最小测试/回归样例（click/wheel/stopPropagation、ScrollView 嵌套命中）
+- 梳理 apps 迁移后的开发脚本与路径引用（README/内部文档可后续再补，但先保证脚本与依赖一致）
 
 ---
 

@@ -142,6 +142,7 @@ function measureTextFullWithAdapter(
     lineHeight: textProps.lineHeight,
     availableWidth,
     whiteSpace: textProps.whiteSpace,
+    lineClamp: textProps.lineClamp,
   });
 }
 

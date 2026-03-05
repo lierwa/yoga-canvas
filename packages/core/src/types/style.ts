@@ -99,6 +99,7 @@ export interface TextStyle {
   lineHeight?: number;
   textAlign?: 'left' | 'center' | 'right';
   whiteSpace?: 'normal' | 'nowrap';
+  lineClamp?: number;
   textShadow?: ShadowStyle | null;
 }
 
@@ -143,6 +144,7 @@ export interface CSSStyleProps {
   'line-height'?: number;
   'text-align'?: TextStyle['textAlign'];
   'white-space'?: TextStyle['whiteSpace'];
+  'line-clamp'?: number;
   'z-index'?: number;
 }
 
@@ -216,7 +218,7 @@ export function splitStyle(style: StyleProps): {
   ];
 
   const textKeys: (keyof TextStyle)[] = [
-    'fontSize', 'fontWeight', 'fontStyle', 'fontFamily', 'color', 'lineHeight', 'textAlign', 'whiteSpace', 'textShadow',
+    'fontSize', 'fontWeight', 'fontStyle', 'fontFamily', 'color', 'lineHeight', 'textAlign', 'whiteSpace', 'lineClamp', 'textShadow',
   ];
 
   const src = expanded as Record<string, unknown>;
@@ -281,6 +283,7 @@ function normalizeStyleProps(style: StyleProps): StyleProps {
     ['line-height', 'lineHeight'],
     ['text-align', 'textAlign'],
     ['white-space', 'whiteSpace'],
+    ['line-clamp', 'lineClamp'],
     ['z-index', 'zIndex'],
   ];
   for (const [from, to] of kebabToCamel) {

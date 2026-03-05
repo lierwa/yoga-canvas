@@ -14,8 +14,15 @@ import { initYoga, computeScrollContentSizes } from './layout';
 import { renderTree } from './renderer';
 import { NodeTreeManager } from './tree';
 import { ScrollManager } from './scroll';
-import { EventEmitter, hitTestAll } from './events';
+import { EventEmitter, PointerEventDispatcher, CANVAS_EVENT_TARGET_ID } from './events';
 import type { EventHandler } from './events';
+import type {
+  CanvasPointerEventType,
+  CanvasPointerEventHandler,
+  CanvasPointerEventInput,
+  CanvasPointerEventDispatchResult,
+  CanvasPointerEventListenerOptions,
+} from './events';
 import { exportToJSON, importFromJSON, exportToDOMString } from './export';
 import { exportToDataURL, exportToTempFilePath } from './export';
 import { H5Adapter } from './platform/H5Adapter';
@@ -44,6 +51,7 @@ export class YogaCanvas {
   private treeManager: NodeTreeManager;
   private scrollManager: ScrollManager;
   private emitter: EventEmitter;
+  private pointerDispatcher: PointerEventDispatcher;
   private layout: NodeDescriptor;
   private pixelRatio: number;
   private logicalWidth: number;
@@ -76,6 +84,9 @@ export class YogaCanvas {
 
     this.treeManager = new NodeTreeManager(this.adapter);
     this.scrollManager = new ScrollManager();
+    this.pointerDispatcher = new PointerEventDispatcher(() => this.treeManager.getTree(), {
+      scrollManager: this.scrollManager,
+    });
   }
 
   /**
@@ -314,6 +325,23 @@ export class YogaCanvas {
     this.emitter.off(event, handler);
   }
 
+  addEventListener(
+    nodeId: string,
+    type: CanvasPointerEventType,
+    handler: CanvasPointerEventHandler,
+    options?: CanvasPointerEventListenerOptions,
+  ): void {
+    this.pointerDispatcher.addEventListener(nodeId, type, handler, options);
+  }
+
+  removeEventListener(nodeId: string, type: CanvasPointerEventType, handler: CanvasPointerEventHandler): void {
+    this.pointerDispatcher.removeEventListener(nodeId, type, handler);
+  }
+
+  dispatchPointerEvent(input: CanvasPointerEventInput): CanvasPointerEventDispatchResult {
+    return this.pointerDispatcher.dispatchPointerEvent(input);
+  }
+
   // --- Lifecycle ---
 
   get isInitialized(): boolean {
@@ -339,6 +367,7 @@ export class YogaCanvas {
     this.treeManager.destroy();
     this.scrollManager.reset();
     this.emitter.removeAllListeners();
+    this.pointerDispatcher.removeAllListeners();
     if (this.adapter instanceof H5Adapter || this.adapter instanceof WxAdapter) {
       this.adapter.setRenderCallback(null);
     }
@@ -366,16 +395,27 @@ export class YogaCanvas {
       const x = e.clientX - rect.left;
       const y = e.clientY - rect.top;
 
-      // Find all ScrollView ancestors at this point
       const tree = this.treeManager.getTree();
-      const hitNodes = hitTestAll(tree, x, y, { scrollManager: this.scrollManager });
+      const dispatched = this.pointerDispatcher.dispatchPointerEvent({
+        type: 'wheel',
+        x,
+        y,
+        deltaX: e.deltaX,
+        deltaY: e.deltaY,
+        timeStamp: typeof e.timeStamp === 'number' ? e.timeStamp : Date.now(),
+      });
+      if (dispatched.defaultPrevented) {
+        e.preventDefault();
+        return;
+      }
 
-      // Find the innermost ScrollView in the hit path
       let scrollViewId: string | null = null;
-      for (let i = hitNodes.length - 1; i >= 0; i--) {
-        const node = tree.nodes[hitNodes[i]];
+      for (let i = dispatched.path.length - 1; i >= 0; i--) {
+        const id = dispatched.path[i];
+        if (id === CANVAS_EVENT_TARGET_ID) continue;
+        const node = tree.nodes[id];
         if (node?.type === 'scrollview') {
-          scrollViewId = hitNodes[i];
+          scrollViewId = id;
           break;
         }
       }

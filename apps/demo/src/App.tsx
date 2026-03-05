@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { DemoI18nProvider } from './i18n';
 import ComponentsCanvasPage from './pages/ComponentsCanvasPage';
 import EditorAppPage from './pages/EditorAppPage';
 import HomePage from './pages/HomePage';
@@ -33,17 +34,14 @@ export default function App() {
 
   const route = useMemo(() => parseDemoRoute(hash), [hash]);
 
-  if (route === 'home') {
-    return <HomePage />;
-  }
+  const page =
+    route === 'home'
+      ? <HomePage />
+      : route === 'components'
+        ? <ComponentsCanvasPage />
+        : route === 'editor'
+          ? <EditorAppPage />
+          : <PlaygroundPage />;
 
-  if (route === 'components') {
-    return <ComponentsCanvasPage />;
-  }
-
-  if (route === 'editor') {
-    return <EditorAppPage />;
-  }
-
-  return <PlaygroundPage />;
+  return <DemoI18nProvider>{page}</DemoI18nProvider>;
 }
