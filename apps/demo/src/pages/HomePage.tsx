@@ -34,7 +34,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={toggleLocale}
-              className="px-3 py-2 rounded-2xl bg-white/7 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/75 hover:bg-white/10 transition-colors"
+              className="cursor-pointer px-3 py-2 rounded-2xl bg-white/7 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/75 hover:bg-white/10 transition-colors"
               title={locale === "zh" ? "切换中文" : "Switch to English"}
             >
               {locale === "zh" ? "中文" : "EN"}
@@ -45,19 +45,19 @@ export default function HomePage() {
             <div className="min-w-0">
               <h1 className="mt-6 text-[46px] leading-[1.05] font-extrabold tracking-tight">
                 {t("home.hero.lead")}
-                <span className="block text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-violet-200 to-cyan-200">
+                <span className="block py-1 text-transparent bg-clip-text bg-gradient-to-r from-fuchsia-300 via-violet-200 to-cyan-200">
                   {t("home.hero.highlight")}
                 </span>
                 {t("home.hero.tail")}
               </h1>
-              <p className="mt-4 text-sm leading-6 text-white/65 max-w-[54ch]">
+              <p className="mt-4 text-sm leading-6 text-white/65 max-w-[56ch]">
                 {t("home.intro")}
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
                 <button
                   type="button"
-                  className="group inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white text-slate-900 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.35)] hover:shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-shadow"
+                  className="group cursor-pointer inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white text-slate-900 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.35)] hover:shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-shadow"
                   onClick={goToWorkspace}
                 >
                   {t("home.cta")}
@@ -72,17 +72,17 @@ export default function HomePage() {
                 {[
                   {
                     label: t("home.stats.layoutEngine"),
-                    value: "Yoga Flex Layout",
+                    value: "Yoga Flexbox",
                   },
                   {
                     label: t("home.stats.renderTarget"),
-                    value: "Canvas / DOM",
+                    value: "Canvas (H5/WX) / DOM",
                   },
                   {
                     label: t("home.stats.editor"),
-                    value: "Selection / Zoom / Pan",
+                    value: "HitTest / Select / Inspect",
                   },
-                  { label: t("home.stats.export"), value: "JSON / Image" },
+                  { label: t("home.stats.export"), value: "JSON / DOM / Image" },
                 ].map((x) => (
                   <div
                     key={x.label}

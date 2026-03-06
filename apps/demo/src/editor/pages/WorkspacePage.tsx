@@ -360,10 +360,12 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
             <button
               type="button"
               onClick={toggleLocale}
-              className="px-3 py-2 rounded-xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white transition-colors"
-              title={locale === "zh" ? t("lang.switchToEn") : t("lang.switchToZh")}
+              className="cursor-pointer px-3 py-2 rounded-2xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white transition-colors"
+              title={
+                locale === "zh" ? t("lang.switchToZh") : t("lang.switchToEn")
+              }
             >
-              {locale === "zh" ? "EN" : "中文"}
+              {locale === "zh" ? "中文" : "EN"}
             </button>
           }
         />
@@ -373,7 +375,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               <div className="text-[13px] font-medium text-indigo-600 tracking-wide">
                 Yoga Canvas
               </div>
-              <div className="mt-1 text-2xl font-bold text-slate-900">{t("workspace.title")}</div>
+              <div className="mt-1 text-2xl font-bold text-slate-900">
+                {t("workspace.title")}
+              </div>
               <div className="mt-2 text-sm text-slate-500 max-w-[56ch]">
                 {t("workspace.desc")}
               </div>
@@ -477,7 +481,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         title={t("workspace.action.duplicate")}
                         onClick={(e) => {
                           e.stopPropagation();
-                          const copied = duplicateProject(defaultPanelProject.id);
+                          const copied = duplicateProject(
+                            defaultPanelProject.id,
+                          );
                           setTick((v) => v + 1);
                           if (copied) onOpenProject(copied.id);
                         }}
@@ -662,7 +668,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
             ) : null}
             <div className="mt-2 grid grid-cols-2 gap-2 max-w-[520px]">
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">{t("workspace.modal.create.width")}</div>
+                <div className="text-[11px] text-slate-500">
+                  {t("workspace.modal.create.width")}
+                </div>
                 <input
                   type="number"
                   value={containerWidth}
@@ -676,7 +684,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 />
               </div>
               <div className="rounded-xl border border-slate-200 bg-white px-3 py-2">
-                <div className="text-[11px] text-slate-500">{t("workspace.modal.create.height")}</div>
+                <div className="text-[11px] text-slate-500">
+                  {t("workspace.modal.create.height")}
+                </div>
                 <input
                   value={
                     containerHeight === "auto"
@@ -730,19 +740,19 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                     {tpl.id === "seed_blank"
                       ? t("template.seed_blank.name")
                       : tpl.id === "seed_legacy_demo"
-                        ? t("template.seed_legacy_demo.name")
-                        : tpl.id === "seed_share_poster"
-                          ? t("template.seed_share_poster.name")
-                          : tpl.name}
+                      ? t("template.seed_legacy_demo.name")
+                      : tpl.id === "seed_share_poster"
+                      ? t("template.seed_share_poster.name")
+                      : tpl.name}
                   </div>
                   <div className="text-[11px] text-slate-500 mt-0.5 leading-snug max-h-8 overflow-hidden">
                     {tpl.id === "seed_blank"
                       ? t("template.seed_blank.desc")
                       : tpl.id === "seed_legacy_demo"
-                        ? t("template.seed_legacy_demo.desc")
-                        : tpl.id === "seed_share_poster"
-                          ? t("template.seed_share_poster.desc")
-                          : tpl.description ?? ""}
+                      ? t("template.seed_legacy_demo.desc")
+                      : tpl.id === "seed_share_poster"
+                      ? t("template.seed_share_poster.desc")
+                      : tpl.description ?? ""}
                   </div>
                 </button>
               ))}
@@ -780,7 +790,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
         }
       >
         <div className="space-y-3">
-          <div className="text-xs font-medium text-slate-600">{t("workspace.modal.rename.projectName")}</div>
+          <div className="text-xs font-medium text-slate-600">
+            {t("workspace.modal.rename.projectName")}
+          </div>
           <input
             value={renameName}
             onChange={(e) => setRenameName(e.target.value)}
