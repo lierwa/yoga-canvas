@@ -1,5 +1,9 @@
 import type { NodeDescriptor } from '@yoga-canvas/core';
 import { seedTemplates } from '../templates/seedDescriptors';
+import { COMPONENTS_CANVAS_CONTENT } from '../../pages/components/ComponentsCanvasContent';
+
+export const WORKSPACE_DEFAULT_PANEL_ID = 'workspace_default_panel';
+const WORKSPACE_DEFAULT_PANEL_NAME = '默认面板';
 
 export type ProjectPayload =
   | { kind: 'descriptor'; descriptor: NodeDescriptor }
@@ -83,6 +87,22 @@ function sanitizeDescriptor(descriptor: NodeDescriptor): { descriptor: NodeDescr
   return { descriptor: next as unknown as NodeDescriptor, changed };
 }
 
+function getWorkspaceDefaultPanelDescriptor(): NodeDescriptor {
+  return COMPONENTS_CANVAS_CONTENT;
+}
+
+function buildWorkspaceDefaultPanelRecord(): ProjectRecord {
+  const result = sanitizeDescriptor(getWorkspaceDefaultPanelDescriptor());
+  return {
+    id: WORKSPACE_DEFAULT_PANEL_ID,
+    name: WORKSPACE_DEFAULT_PANEL_NAME,
+    createdAt: now(),
+    updatedAt: now(),
+    payload: { kind: 'descriptor', descriptor: result.descriptor } as const,
+    readonly: false,
+  };
+}
+
 function ensureSeeded(): ProjectStoreV1 {
   const existing = safeParseStore(localStorage.getItem(STORAGE_KEY));
   if (existing) {
@@ -141,9 +161,31 @@ function ensureSeeded(): ProjectStoreV1 {
 
     const removedDeprecatedSeeds = filteredProjects.length !== existing.projects.length;
     const refreshedSeeds = migratedProjects.some((p, idx) => p !== filteredProjects[idx]);
-    if (missing.length === 0 && !removedDeprecatedSeeds && !refreshedSeeds && !anySanitized) return existing;
+    const defaultPanelDescriptor = getWorkspaceDefaultPanelDescriptor();
+    const defaultPanelDescriptorJSON = JSON.stringify(defaultPanelDescriptor);
+    const nextProjectsWithDefault = (() => {
+      const idx = sanitizedProjects.findIndex((p) => p.id === WORKSPACE_DEFAULT_PANEL_ID);
+      const nextDefault = buildWorkspaceDefaultPanelRecord();
+      if (idx < 0) return [nextDefault, ...sanitizedProjects];
+      const current = sanitizedProjects[idx];
+      const currentDescriptorJSON =
+        current.payload.kind === 'descriptor' ? JSON.stringify(current.payload.descriptor) : null;
+      const shouldRefresh =
+        current.name !== WORKSPACE_DEFAULT_PANEL_NAME
+        || current.payload.kind !== 'descriptor'
+        || currentDescriptorJSON !== defaultPanelDescriptorJSON;
+      if (!shouldRefresh) return sanitizedProjects;
+      const replaced = [...sanitizedProjects];
+      replaced[idx] = { ...nextDefault, createdAt: current.createdAt };
+      return replaced;
+    })();
 
-    const next: ProjectStoreV1 = { version: 1, projects: [...missing, ...sanitizedProjects] };
+    const defaultPanelChanged = nextProjectsWithDefault !== sanitizedProjects;
+    if (missing.length === 0 && !removedDeprecatedSeeds && !refreshedSeeds && !anySanitized && !defaultPanelChanged) {
+      return existing;
+    }
+
+    const next: ProjectStoreV1 = { version: 1, projects: [...missing, ...nextProjectsWithDefault] };
     writeStore(next);
     return next;
   }
@@ -157,7 +199,7 @@ function ensureSeeded(): ProjectStoreV1 {
     readonly: false,
   }));
 
-  const store: ProjectStoreV1 = { version: 1, projects: seeded };
+  const store: ProjectStoreV1 = { version: 1, projects: [buildWorkspaceDefaultPanelRecord(), ...seeded] };
   writeStore(store);
   return store;
 }

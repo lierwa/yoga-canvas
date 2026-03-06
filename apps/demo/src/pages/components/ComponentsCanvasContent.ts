@@ -46,16 +46,7 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
           name: "Title",
           style: {
             backgroundColor: "transparent",
-            linearGradient: {
-              type: "linear",
-              start: { x: 0, y: 0 },
-              end: { x: 1, y: 0 },
-              colors: [
-                { offset: 0, color: "rgba(240, 171, 252, 1)" },
-                { offset: 0.55, color: "rgba(221, 214, 254, 1)" },
-                { offset: 1, color: "rgba(165, 243, 252, 1)" },
-              ],
-            },
+            linearGradient: null,
             borderColor: "transparent",
             borderWidth: 0,
             borderRadius: 0,
@@ -73,7 +64,7 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
             whiteSpace: "normal",
             textShadow: null,
           },
-          content: "布局与可视化编辑",
+          content: "Yoga Canvas Component Specs",
         },
         {
           type: "text",
@@ -639,7 +630,27 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
                     top: 85,
                     left: 290,
                     backgroundColor: "transparent",
-                    linearGradient: null,
+                    linearGradient: {
+                      type: "linear",
+                      start: {
+                        x: 0,
+                        y: 0.5,
+                      },
+                      end: {
+                        x: 1,
+                        y: 0.5,
+                      },
+                      colors: [
+                        {
+                          offset: 0,
+                          color: "#ff7070",
+                        },
+                        {
+                          offset: 1,
+                          color: "#4d73ff",
+                        },
+                      ],
+                    },
                     borderColor: "transparent",
                     borderWidth: 0,
                     borderRadius: 0,
@@ -647,8 +658,8 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
                     rotate: 0,
                     boxShadow: null,
                     zIndex: 0,
-                    fontSize: 14,
-                    fontWeight: 400,
+                    fontSize: 18,
+                    fontWeight: 700,
                     fontStyle: "normal",
                     fontFamily: "sans-serif",
                     color: "rgba(51, 65, 85, 1)",
@@ -657,7 +668,7 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
                     whiteSpace: "normal",
                     textShadow: null,
                   },
-                  content: "textAlign: center",
+                  content: "Text Gradient",
                 },
                 {
                   type: "text",

@@ -16,6 +16,7 @@ import {
   listProjects,
   type ProjectRecord,
   renameProject,
+  WORKSPACE_DEFAULT_PANEL_ID,
 } from "../workspace/projectStore";
 
 type WorkspacePageProps = {
@@ -302,9 +303,12 @@ function resolvePresetName(size: {
 export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const [tick, setTick] = useState(0);
   const { locale, toggleLocale, t } = useDemoI18n();
-  const projects = useMemo(() => {
+  const { defaultPanelProject, projects } = useMemo(() => {
     void tick;
-    return listProjects().filter((p) => !p.id.startsWith("seed_"));
+    const all = listProjects().filter((p) => !p.id.startsWith("seed_"));
+    const panel = all.find((p) => p.id === WORKSPACE_DEFAULT_PANEL_ID) ?? null;
+    const rest = all.filter((p) => p.id !== WORKSPACE_DEFAULT_PANEL_ID);
+    return { defaultPanelProject: panel, projects: rest };
   }, [tick]);
 
   const [createOpen, setCreateOpen] = useState(false);
@@ -434,6 +438,69 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 </div>
               </button>
             </div>
+            {defaultPanelProject ? (
+              <div
+                key={defaultPanelProject.id}
+                className="group relative rounded-2xl border border-slate-200/70 bg-white/80 backdrop-blur shadow-[0_10px_30px_rgba(2,6,23,0.06)] hover:shadow-[0_18px_60px_rgba(2,6,23,0.10)] transition-shadow cursor-pointer"
+                onClick={() => onOpenProject(defaultPanelProject.id)}
+              >
+                <div className="absolute inset-0 rounded-2xl bg-gradient-to-br from-indigo-500/0 via-indigo-500/0 to-indigo-500/0 group-hover:from-indigo-500/5 group-hover:via-fuchsia-500/4 group-hover:to-cyan-500/5 transition-colors pointer-events-none" />
+                <div className="relative p-4">
+                  <PreviewFrame project={defaultPanelProject} />
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="mt-3 text-sm font-semibold text-slate-900 truncate">
+                        {defaultPanelProject.name}
+                      </div>
+                      <div className="mt-1 text-[11px] text-slate-500">
+                        {t("workspace.recentUpdated")}
+                        {formatTime(defaultPanelProject.updatedAt)}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        type="button"
+                        className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                        title={t("workspace.action.rename")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPendingId(defaultPanelProject.id);
+                          setRenameName(defaultPanelProject.name);
+                          setRenameOpen(true);
+                        }}
+                      >
+                        <Pencil size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
+                        title={t("workspace.action.duplicate")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const copied = duplicateProject(defaultPanelProject.id);
+                          setTick((v) => v + 1);
+                          if (copied) onOpenProject(copied.id);
+                        }}
+                      >
+                        <Copy size={16} />
+                      </button>
+                      <button
+                        type="button"
+                        className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
+                        title={t("workspace.action.delete")}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteProject(defaultPanelProject.id);
+                          setTick((v) => v + 1);
+                        }}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ) : null}
             {projects.map((p) => (
               <div
                 key={p.id}
