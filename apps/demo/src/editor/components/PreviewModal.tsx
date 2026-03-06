@@ -35,6 +35,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const [previewTree, setPreviewTree] = useState<NodeTree>(tree);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [previewScale, setPreviewScale] = useState(1);
 
   const [activeTab, setActiveTab] = useState<'typescript' | 'json' | 'html'>('typescript');
   const [jsxPropsMode, setJsxPropsMode] = useState<'style' | 'className'>('style');
@@ -118,11 +119,11 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const x = (e.clientX - rect.left) / previewScale;
+    const y = (e.clientY - rect.top) / previewScale;
     const dispatched = inst.dispatchPointerEvent({ type: 'click', x, y, timeStamp: e.timeStamp });
     setSelectedNodeId(dispatched.targetId);
-  }, []);
+  }, [previewScale]);
 
   const locateNode = useCallback((nodeId: string | null) => {
     if (!nodeId) return;
@@ -153,10 +154,10 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
 
     scrollRectIntoView(
       container,
-      { left: frameLeft + left, top: frameTop + top, width: rect.width, height: rect.height },
+      { left: frameLeft + left * previewScale, top: frameTop + top * previewScale, width: rect.width * previewScale, height: rect.height * previewScale },
       40,
     );
-  }, []);
+  }, [previewScale]);
 
   const handleSelectFromTree = useCallback((id: string | null) => {
     setSelectedNodeId(id);
@@ -216,6 +217,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
             canvasFrameRef={canvasFrameRef}
             canvasRef={canvasRef}
             onCanvasClick={handleCanvasClick}
+            onScaleChange={setPreviewScale}
             previewTree={previewTree}
             selectedNodeId={selectedNodeId}
             scrollManager={instanceRef.current?.getScrollManager() ?? null}

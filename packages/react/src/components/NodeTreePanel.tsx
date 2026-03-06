@@ -14,10 +14,14 @@ export type NodeTreePanelIcons = {
 export function NodeTreePanel({
   tree,
   selectedNodeId,
+  selectedNodeIds,
   onSelectNode,
+  onSelectNodes,
+  onRenameNode,
   onDeleteNode,
   onMoveNode,
   canDelete = true,
+  canRename = true,
   disabled = false,
   icons,
   title = 'Node Tree',
@@ -26,10 +30,14 @@ export function NodeTreePanel({
 }: {
   tree: NodeTree;
   selectedNodeId: string | null;
+  selectedNodeIds?: string[];
   onSelectNode: (nodeId: string | null) => void;
+  onSelectNodes?: (nodeIds: string[], primaryNodeId: string | null) => void;
+  onRenameNode?: (nodeId: string, nextName: string) => void;
   onDeleteNode?: (nodeId: string) => void;
   onMoveNode?: (nodeId: string, newParentId: string, insertIndex?: number) => void;
   canDelete?: boolean;
+  canRename?: boolean;
   disabled?: boolean;
   icons?: NodeTreePanelIcons;
   title?: string;
@@ -40,6 +48,9 @@ export function NodeTreePanel({
   const rowElementsRef = useRef<Map<string, HTMLDivElement>>(new Map());
   const [collapsedIds, setCollapsedIds] = useState<Set<string>>(() => new Set());
   const [pendingRevealId, setPendingRevealId] = useState<string | null>(null);
+  const anchorIdRef = useRef<string | null>(null);
+  const [editingNodeId, setEditingNodeId] = useState<string | null>(null);
+  const [draftName, setDraftName] = useState<string>('');
 
   const registerRowElement = useCallback((nodeId: string, el: HTMLDivElement | null) => {
     const map = rowElementsRef.current;
@@ -123,6 +134,131 @@ export function NodeTreePanel({
   const root = tree.nodes[tree.rootId] ?? null;
   const effectiveCanDelete = canDelete && !disabled;
   const effectiveOnMoveNode = disabled ? undefined : onMoveNode;
+  const effectiveCanRename = canRename && !disabled && Boolean(onRenameNode);
+
+  const effectiveSelectedIds = useMemo(() => {
+    if (selectedNodeIds) return selectedNodeIds;
+    if (selectedNodeId) return [selectedNodeId];
+    return [];
+  }, [selectedNodeId, selectedNodeIds]);
+
+  const selectedIdSet = useMemo(() => new Set(effectiveSelectedIds), [effectiveSelectedIds]);
+  const primarySelectedId = selectedNodeId ?? (effectiveSelectedIds.length ? effectiveSelectedIds[0] : null);
+
+  const visibleNodeIds = useMemo(() => {
+    const out: string[] = [];
+    const walk = (nodeId: string, depth: number) => {
+      out.push(nodeId);
+      const node = tree.nodes[nodeId];
+      if (!node) return;
+      if (nodeId !== tree.rootId && collapsedIds.has(nodeId)) return;
+      if (maxDepth !== undefined && depth >= maxDepth) return;
+      for (const childId of node.children) {
+        if (!tree.nodes[childId]) continue;
+        walk(childId, depth + 1);
+      }
+    };
+    if (tree.nodes[tree.rootId]) walk(tree.rootId, 0);
+    return out;
+  }, [tree, collapsedIds, maxDepth]);
+
+  const applySelection = useCallback(
+    (nextIds: string[], nextPrimaryId: string | null) => {
+      const primary = nextPrimaryId ?? (nextIds.length ? nextIds[nextIds.length - 1] : null);
+      onSelectNodes?.(nextIds, primary);
+      onSelectNode(primary);
+    },
+    [onSelectNode, onSelectNodes],
+  );
+
+  const startRename = useCallback(
+    (nodeId: string) => {
+      if (!effectiveCanRename) return;
+      const node = tree.nodes[nodeId];
+      if (!node) return;
+      if (nodeId === tree.rootId) return;
+      setEditingNodeId(nodeId);
+      setDraftName(node.name ?? '');
+    },
+    [effectiveCanRename, tree],
+  );
+
+  const cancelRename = useCallback(() => {
+    setEditingNodeId(null);
+    setDraftName('');
+  }, []);
+
+  const commitRename = useCallback(
+    (nodeId: string) => {
+      if (!effectiveCanRename) {
+        cancelRename();
+        return;
+      }
+      const node = tree.nodes[nodeId];
+      if (!node) {
+        cancelRename();
+        return;
+      }
+      const next = draftName.trim();
+      if (!next) {
+        cancelRename();
+        return;
+      }
+      if (next !== node.name) {
+        onRenameNode?.(nodeId, next);
+      }
+      cancelRename();
+    },
+    [cancelRename, draftName, effectiveCanRename, onRenameNode, tree],
+  );
+
+  const handleRowClick = useCallback(
+    (nodeId: string, e: React.MouseEvent) => {
+      if (disabled) return;
+
+      const isMeta = e.metaKey || e.ctrlKey;
+      const isShift = e.shiftKey;
+
+      if (isShift) {
+        const anchor = anchorIdRef.current ?? primarySelectedId ?? nodeId;
+        const a = visibleNodeIds.indexOf(anchor);
+        const b = visibleNodeIds.indexOf(nodeId);
+        if (a >= 0 && b >= 0) {
+          const [start, end] = a < b ? [a, b] : [b, a];
+          const range = visibleNodeIds.slice(start, end + 1);
+          anchorIdRef.current = anchor;
+          applySelection(range, nodeId);
+          return;
+        }
+      }
+
+      if (isMeta) {
+        const next = new Set(effectiveSelectedIds);
+        if (next.has(nodeId)) next.delete(nodeId);
+        else next.add(nodeId);
+        const ids = Array.from(next);
+        anchorIdRef.current = nodeId;
+        applySelection(ids, nodeId);
+        return;
+      }
+
+      if (effectiveSelectedIds.length > 1) {
+        anchorIdRef.current = nodeId;
+        applySelection([nodeId], nodeId);
+        return;
+      }
+
+      if (primarySelectedId !== nodeId || effectiveSelectedIds.length !== 1) {
+        anchorIdRef.current = nodeId;
+        applySelection([nodeId], nodeId);
+        return;
+      }
+
+      anchorIdRef.current = nodeId;
+      applySelection([nodeId], nodeId);
+    },
+    [applySelection, disabled, effectiveSelectedIds, primarySelectedId, visibleNodeIds],
+  );
 
   if (!root) return null;
 
@@ -144,15 +280,23 @@ export function NodeTreePanel({
         <NodeTreeItem
           node={root}
           tree={tree}
-          selectedNodeId={selectedNodeId}
+          selectedIdSet={selectedIdSet}
+          primarySelectedId={primarySelectedId}
           rootId={tree.rootId}
           depth={0}
           collapsedIds={collapsedIds}
           onToggleCollapse={toggleCollapse}
           registerRowElement={registerRowElement}
-          onSelect={onSelectNode}
+          onRowClick={handleRowClick}
+          onTitleClick={startRename}
+          editingNodeId={editingNodeId}
+          draftName={draftName}
+          setDraftName={setDraftName}
+          onCommitRename={commitRename}
+          onCancelRename={cancelRename}
           disabled={disabled}
           canDelete={effectiveCanDelete}
+          canRename={effectiveCanRename}
           onDelete={onDeleteNode}
           onMoveNode={effectiveOnMoveNode}
           icons={icons}
@@ -176,15 +320,23 @@ function isDescendant(tree: NodeTree, ancestorId: string, nodeId: string): boole
 function NodeTreeItem({
   node,
   tree,
-  selectedNodeId,
+  selectedIdSet,
+  primarySelectedId,
   rootId,
   depth,
   collapsedIds,
   onToggleCollapse,
   registerRowElement,
-  onSelect,
+  onRowClick,
+  onTitleClick,
+  editingNodeId,
+  draftName,
+  setDraftName,
+  onCommitRename,
+  onCancelRename,
   disabled,
   canDelete,
+  canRename,
   onDelete,
   onMoveNode,
   icons,
@@ -192,15 +344,23 @@ function NodeTreeItem({
 }: {
   node: CanvasNode;
   tree: NodeTree;
-  selectedNodeId: string | null;
+  selectedIdSet: Set<string>;
+  primarySelectedId: string | null;
   rootId: string;
   depth: number;
   collapsedIds: Set<string>;
   onToggleCollapse: (nodeId: string) => void;
   registerRowElement: (nodeId: string, el: HTMLDivElement | null) => void;
-  onSelect: (nodeId: string | null) => void;
+  onRowClick: (nodeId: string, e: React.MouseEvent) => void;
+  onTitleClick: (nodeId: string) => void;
+  editingNodeId: string | null;
+  draftName: string;
+  setDraftName: (next: string) => void;
+  onCommitRename: (nodeId: string) => void;
+  onCancelRename: () => void;
   disabled: boolean;
   canDelete: boolean;
+  canRename: boolean;
   onDelete?: ((nodeId: string) => void) | undefined;
   onMoveNode?: ((nodeId: string, newParentId: string, insertIndex?: number) => void) | undefined;
   icons?: NodeTreePanelIcons;
@@ -211,11 +371,13 @@ function NodeTreeItem({
 
   const isRoot = node.id === rootId;
   const hasChildren = node.children.length > 0;
-  const isSelected = node.id === selectedNodeId;
+  const isSelected = selectedIdSet.has(node.id);
+  const isPrimarySelected = node.id === primarySelectedId;
   const expanded = isRoot ? true : !collapsedIds.has(node.id);
   const canAcceptChildren = node.type !== 'text';
   const canDrag = !disabled && Boolean(onMoveNode) && !isRoot;
   const allowRenderChildren = maxDepth === undefined ? true : depth < maxDepth;
+  const isEditing = editingNodeId === node.id;
 
   const getDropZone = useCallback(
     (e: React.DragEvent): DropZone => {
@@ -332,10 +494,16 @@ function NodeTreeItem({
           registerRowElement(node.id, el);
         }}
         className={`group flex items-center gap-1 py-1.5 pr-1.5 rounded-md cursor-pointer text-xs
-          ${isSelected ? 'bg-blue-50 text-blue-700' : 'hover:bg-gray-50 text-gray-600'}
+          ${
+            isPrimarySelected
+              ? 'bg-blue-50 text-blue-700'
+              : isSelected
+                ? 'bg-blue-50/60 text-blue-700'
+                : 'hover:bg-gray-50 text-gray-600'
+          }
           ${dropIndicatorClass}`}
         style={{ paddingLeft: depth * 14 + 6 }}
-        onClick={() => onSelect(node.id)}
+        onClick={(e) => onRowClick(node.id, e)}
         draggable={canDrag}
         onDragStart={canDrag ? handleDragStart : undefined}
         onDragOver={canDrag ? handleDragOver : undefined}
@@ -362,7 +530,42 @@ function NodeTreeItem({
         ) : (
           <span className="text-[10px] font-mono font-bold opacity-70 w-[14px] text-center shrink-0">{typeLetter}</span>
         )}
-        <span className="truncate flex-1 ml-0.5">{node.name}</span>
+
+        {isEditing ? (
+          <input
+            className="flex-1 min-w-0 ml-0.5 px-1 py-0.5 text-xs rounded bg-white text-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-200"
+            value={draftName}
+            autoFocus
+            onMouseDown={(e) => e.stopPropagation()}
+            onChange={(e) => setDraftName(e.target.value)}
+            onBlur={() => onCommitRename(node.id)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                onCommitRename(node.id);
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                onCancelRename();
+              }
+            }}
+          />
+        ) : (
+          <span
+            className="truncate flex-1 ml-0.5"
+            onClick={(e) => {
+              if (!canRename) return;
+              if (isRoot) return;
+              if (disabled) return;
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+              if (!isPrimarySelected) return;
+              if (!isSelected || selectedIdSet.size !== 1) return;
+              e.stopPropagation();
+              onTitleClick(node.id);
+            }}
+          >
+            {node.name}
+          </span>
+        )}
 
         {Boolean(onDelete) && !isRoot && (
           <button
@@ -390,15 +593,23 @@ function NodeTreeItem({
                 key={childId}
                 node={child}
                 tree={tree}
-                selectedNodeId={selectedNodeId}
+                selectedIdSet={selectedIdSet}
+                primarySelectedId={primarySelectedId}
                 rootId={rootId}
                 depth={depth + 1}
                 collapsedIds={collapsedIds}
                 onToggleCollapse={onToggleCollapse}
                 registerRowElement={registerRowElement}
-                onSelect={onSelect}
+                onRowClick={onRowClick}
+                onTitleClick={onTitleClick}
+                editingNodeId={editingNodeId}
+                draftName={draftName}
+                setDraftName={setDraftName}
+                onCommitRename={onCommitRename}
+                onCancelRename={onCancelRename}
                 disabled={disabled}
                 canDelete={canDelete}
+                canRename={canRename}
                 onDelete={onDelete}
                 onMoveNode={onMoveNode}
                 icons={icons}

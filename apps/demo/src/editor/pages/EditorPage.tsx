@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { exportToJSON } from '@yoga-canvas/core';
+import { exportToJSON, type NodeDescriptor } from '@yoga-canvas/core';
 import { EditorCanvas, ResizablePanels, useCanvasInteraction } from '@yoga-canvas/react';
 import { ArrowLeft, Crosshair } from 'lucide-react';
 import Toolbar from '../components/Toolbar';
@@ -7,6 +7,7 @@ import LeftPanel from '../components/LeftPanel';
 import PropertiesPanel from '../components/PropertiesPanel';
 import PreviewModal from '../components/PreviewModal';
 import LiveCodeEditorPanel from '../components/LiveCodeEditorPanel';
+import { buildDescriptorFromTree } from '../components/live-code-editor/descriptor';
 import { useNodeTree } from '../hooks/useNodeTree';
 import { getProject, saveProjectPayload } from '../workspace/projectStore';
 import { useDemoI18n } from '../../i18n';
@@ -42,6 +43,8 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     updateImageProps,
     updateCanvasContainer,
     replaceDescriptor,
+    updateNodeName,
+    insertNodeDescriptors,
   } = useNodeTree(
     initial?.kind === 'tree'
       ? { initialTreeJSON: initial.treeJSON }
@@ -73,6 +76,14 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
   const didInitViewRef = useRef(false);
   const [viewInitialized, setViewInitialized] = useState(false);
   const selectedNode = selection.selectedNodeId ? tree.nodes[selection.selectedNodeId] ?? null : null;
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([]);
+  const copyBufferRef = useRef<NodeDescriptor[] | null>(null);
+  const treeRef = useRef(tree);
+  treeRef.current = tree;
+  const selectedNodeIdsRef = useRef<string[]>([]);
+  selectedNodeIdsRef.current = selectedNodeIds;
+  const selectedPrimaryIdRef = useRef<string | null>(null);
+  selectedPrimaryIdRef.current = selection.selectedNodeId;
 
   const [saving, setSaving] = useState(false);
   const saveTimerRef = useRef<number | null>(null);
@@ -157,9 +168,135 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
       const parentId = tree.nodes[nodeId]?.parentId;
       deleteNode(nodeId);
       selectNode(parentId ?? null);
+      setSelectedNodeIds(parentId ? [parentId] : []);
     },
     [tree.nodes, deleteNode, selectNode],
   );
+
+  const handleSelectNodes = useCallback((nodeIds: string[]) => {
+    setSelectedNodeIds(nodeIds);
+  }, []);
+
+  const handleRenameNode = useCallback(
+    (nodeId: string, nextName: string) => {
+      updateNodeName(nodeId, nextName);
+    },
+    [updateNodeName],
+  );
+
+  useEffect(() => {
+    const id = selection.selectedNodeId;
+    setSelectedNodeIds((prev) => {
+      if (!id) return prev.length ? [] : prev;
+      if (prev.includes(id)) return prev;
+      return [id];
+    });
+  }, [selection.selectedNodeId]);
+
+  useEffect(() => {
+    const isEditable = (el: Element | null): boolean => {
+      if (!el) return false;
+      if (el instanceof HTMLElement && el.isContentEditable) return true;
+      const tag = el.tagName;
+      return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+    };
+
+    const getCopyIdsInOrder = (tree: typeof treeRef.current, selectedIds: string[]): string[] => {
+      const selectedSet = new Set(selectedIds);
+      selectedSet.delete(tree.rootId);
+      if (!selectedSet.size) return [];
+
+      const topLevelSet = new Set<string>();
+      for (const id of selectedSet) {
+        let parentId = tree.nodes[id]?.parentId ?? null;
+        let blocked = false;
+        while (parentId) {
+          if (selectedSet.has(parentId)) {
+            blocked = true;
+            break;
+          }
+          parentId = tree.nodes[parentId]?.parentId ?? null;
+        }
+        if (!blocked) topLevelSet.add(id);
+      }
+
+      const ordered: string[] = [];
+      const walk = (nodeId: string) => {
+        if (topLevelSet.has(nodeId)) ordered.push(nodeId);
+        const node = tree.nodes[nodeId];
+        if (!node) return;
+        for (const childId of node.children) walk(childId);
+      };
+      if (tree.nodes[tree.rootId]) walk(tree.rootId);
+      return ordered;
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.defaultPrevented) return;
+      if (!(e.metaKey || e.ctrlKey)) return;
+      if (e.altKey) return;
+      if (isEditable(document.activeElement)) return;
+
+      const key = e.key.toLowerCase();
+      if (key === 'c') {
+        const tree = treeRef.current;
+        const ids = getCopyIdsInOrder(tree, selectedNodeIdsRef.current);
+        if (!ids.length) return;
+        e.preventDefault();
+        const descriptors = ids.map((id) => buildDescriptorFromTree(tree, id));
+        copyBufferRef.current = descriptors;
+        const text = JSON.stringify({ kind: 'yoga-canvas/nodes', descriptors });
+        void navigator.clipboard?.writeText(text).catch(() => {});
+        return;
+      }
+
+      if (key === 'v') {
+        e.preventDefault();
+        const run = async () => {
+          let descriptors = copyBufferRef.current;
+          if (!descriptors) {
+            const text = await navigator.clipboard?.readText?.().catch(() => '');
+            if (text) {
+              try {
+                const parsed = JSON.parse(text) as unknown;
+                if (
+                  typeof parsed === 'object' &&
+                  parsed &&
+                  'descriptors' in parsed &&
+                  Array.isArray((parsed as { descriptors?: unknown }).descriptors)
+                ) {
+                  descriptors = (parsed as { descriptors: NodeDescriptor[] }).descriptors;
+                }
+              } catch {
+                // ignore
+              }
+            }
+          }
+          if (!descriptors?.length) return;
+
+          const tree = treeRef.current;
+          const primaryId = selectedPrimaryIdRef.current;
+          const primaryNode = primaryId ? tree.nodes[primaryId] ?? null : null;
+          const parentId = primaryNode?.parentId ?? tree.rootId;
+          const parent = tree.nodes[parentId] ?? null;
+          if (!parent || parent.type === 'text') return;
+          const insertIndex =
+            primaryNode && primaryNode.parentId === parentId
+              ? parent.children.indexOf(primaryNode.id) + 1
+              : undefined;
+
+          const childIds = insertNodeDescriptors(parentId, descriptors, insertIndex);
+          if (!childIds.length) return;
+          setSelectedNodeIds(childIds);
+          selectNode(childIds[childIds.length - 1] ?? null);
+        };
+        void run();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [insertNodeDescriptors, selectNode]);
 
   const handleScaleChange = useCallback(
     (nextScale: number) => {
@@ -175,9 +312,22 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
-    const next = resetView(rect.width, rect.height, { scale: 1, targetId: tree.rootId, animate: true, durationMs: 260 });
+    const root = tree.nodes[tree.rootId];
+    const rootW = root?.computedLayout.width ?? 0;
+    const rootH = root?.computedLayout.height ?? 0;
+    const pad = 60;
+    const scaleX = rootW > 0 ? (rect.width - pad * 2) / rootW : 1;
+    const scaleY = rootH > 0 ? (rect.height - pad * 2) / rootH : 1;
+    const fit = Math.min(scaleX, scaleY);
+    const nextScale = Math.min(1, Math.max(fit, 0.1));
+    const next = resetView(rect.width, rect.height, {
+      scale: Number.isFinite(nextScale) && nextScale > 0 ? nextScale : 1,
+      targetId: tree.rootId,
+      animate: true,
+      durationMs: 260,
+    });
     initialViewRef.current = next;
-  }, [resetView, tree.rootId]);
+  }, [resetView, tree.nodes, tree.rootId]);
 
   const canResetView = useMemo(() => {
     const initial = initialViewRef.current;
@@ -191,15 +341,28 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
 
   useEffect(() => {
     if (didInitViewRef.current) return;
+    if (!ready) return;
+    const root = tree.nodes[tree.rootId];
+    const rootW = root?.computedLayout.width ?? 0;
+    const rootH = root?.computedLayout.height ?? 0;
+    if (rootW <= 0 || rootH <= 0) return;
     const el = canvasContainerRef.current;
     if (!el) return;
     const rect = el.getBoundingClientRect();
     if (rect.width <= 0 || rect.height <= 0) return;
-    const next = resetView(rect.width, rect.height, { scale: 1, targetId: tree.rootId });
+    const pad = 60;
+    const scaleX = (rect.width - pad * 2) / rootW;
+    const scaleY = (rect.height - pad * 2) / rootH;
+    const fit = Math.min(scaleX, scaleY);
+    const nextScale = Math.min(1, Math.max(fit, 0.1));
+    const next = resetView(rect.width, rect.height, {
+      scale: Number.isFinite(nextScale) && nextScale > 0 ? nextScale : 1,
+      targetId: tree.rootId,
+    });
     initialViewRef.current = next;
     didInitViewRef.current = true;
     setViewInitialized(true);
-  }, [resetView, tree.rootId, ready]);
+  }, [ready, resetView, tree.nodes, tree.rootId]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -299,9 +462,12 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
           <LeftPanel
             tree={tree}
             selectedNodeId={selection.selectedNodeId}
+            selectedNodeIds={selectedNodeIds}
             onAddNode={addNodeByType}
             onUpdateContainer={updateCanvasContainer}
             onSelectNode={selectNode}
+            onSelectNodes={handleSelectNodes}
+            onRenameNode={handleRenameNode}
             onDeleteNode={handleDeleteNode}
             onMoveNode={moveNode}
           />

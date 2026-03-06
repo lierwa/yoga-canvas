@@ -295,6 +295,8 @@ function cssObjectToYogaStyle(css: Record<string, unknown>): Partial<StyleProps>
     else if (k === 'fontFamily' && typeof v === 'string') style.fontFamily = v;
     else if (k === 'textAlign' && typeof v === 'string') style.textAlign = v as StyleProps['textAlign'];
     else if (k === 'whiteSpace' && typeof v === 'string') style.whiteSpace = v as StyleProps['whiteSpace'];
+    else if (k === 'lineClamp') setN('lineClamp', v);
+    else if (k === 'WebkitLineClamp') setN('lineClamp', v);
     else if (k === 'flexDirection' && typeof v === 'string') style.flexDirection = v as StyleProps['flexDirection'];
     else if (k === 'justifyContent' && typeof v === 'string') style.justifyContent = v as StyleProps['justifyContent'];
     else if (k === 'alignItems' && typeof v === 'string') style.alignItems = v as StyleProps['alignItems'];

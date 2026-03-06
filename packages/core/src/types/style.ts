@@ -20,10 +20,21 @@ export interface LinearGradientStop {
 }
 
 export interface LinearGradientStyle {
+  type?: 'linear';
   start: { x: number; y: number };
   end: { x: number; y: number };
   colors: LinearGradientStop[];
+  angle?: number;
 }
+
+export interface RadialGradientStyle {
+  type: 'radial';
+  center: { x: number; y: number };
+  radius?: number;
+  colors: LinearGradientStop[];
+}
+
+export type GradientStyle = LinearGradientStyle | RadialGradientStyle | string;
 
 /**
  * Flex layout style properties (maps to yoga-layout).
@@ -77,7 +88,7 @@ export interface FlexStyle {
  */
 export interface VisualStyle {
   backgroundColor?: string;
-  linearGradient?: LinearGradientStyle | null;
+  linearGradient?: GradientStyle | null;
   borderColor?: string;
   borderWidth?: number;
   borderRadius?: number;

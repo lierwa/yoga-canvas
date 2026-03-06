@@ -798,6 +798,27 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     [refresh],
   );
 
+  const updateNodeName = useCallback(
+    (nodeId: string, name: string) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateNodeName(nodeId, name);
+      refresh();
+    },
+    [refresh],
+  );
+
+  const insertNodeDescriptors = useCallback(
+    (parentId: string, descriptors: NodeDescriptor[], insertIndex?: number): string[] => {
+      const manager = managerRef.current;
+      if (!manager) return [];
+      const result = manager.insertChildren(parentId, descriptors, insertIndex);
+      refresh();
+      return result.childIds;
+    },
+    [refresh],
+  );
+
   const commitLiveUpdate = useCallback(() => {
     const manager = managerRef.current;
     if (!manager) return;
@@ -1137,6 +1158,8 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     moveAbsoluteNodeLive,
     commitLiveUpdate,
     updateImageProps,
+    updateNodeName,
+    insertNodeDescriptors,
     updateCanvasContainer,
   };
 }

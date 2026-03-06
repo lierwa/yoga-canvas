@@ -4,15 +4,24 @@ import type { SelectionState } from './types';
 
 type ShadowStyle = { offsetX: number; offsetY: number; blur: number; color: string };
 type BoxShadowStyle = ShadowStyle & { spread?: number };
-type LinearGradientStop = { offset: number; color: string };
+type GradientStop = { offset: number; color: string };
 type LinearGradientStyle = {
+  type?: 'linear';
   start: { x: number; y: number };
   end: { x: number; y: number };
-  colors: LinearGradientStop[];
+  colors: GradientStop[];
+  angle?: number;
 };
+type RadialGradientStyle = {
+  type: 'radial';
+  center: { x: number; y: number };
+  radius?: number;
+  colors: GradientStop[];
+};
+type GradientStyle = LinearGradientStyle | RadialGradientStyle | string;
 type VisualStyleEx = {
   backgroundColor?: string;
-  linearGradient?: LinearGradientStyle | null;
+  linearGradient?: GradientStyle | null;
   borderColor?: string;
   borderWidth?: number;
   borderRadius?: number;
@@ -143,6 +152,8 @@ function renderNode(
   const borderRadius = vstyle.borderRadius ?? 0;
   const opacity = vstyle.opacity ?? 1;
   const boxShadow = vstyle.boxShadow ?? null;
+  const effectiveBoxShadow = node.type === 'text' ? null : boxShadow;
+  const effectiveGradient = node.type === 'text' ? null : linearGradient;
 
   ctx.save();
   ctx.globalAlpha = opacity;
@@ -156,17 +167,17 @@ function renderNode(
     ctx.translate(-cx, -cy);
   }
 
-  if (boxShadow) {
-    const spread = boxShadow.spread ?? 0;
+  if (effectiveBoxShadow) {
+    const spread = effectiveBoxShadow.spread ?? 0;
     const shadowLeft = left - spread;
     const shadowTop = top - spread;
     const shadowWidth = width + spread * 2;
     const shadowHeight = height + spread * 2;
     ctx.save();
-    ctx.shadowColor = boxShadow.color;
-    ctx.shadowBlur = boxShadow.blur;
-    ctx.shadowOffsetX = boxShadow.offsetX;
-    ctx.shadowOffsetY = boxShadow.offsetY;
+    ctx.shadowColor = effectiveBoxShadow.color;
+    ctx.shadowBlur = effectiveBoxShadow.blur;
+    ctx.shadowOffsetX = effectiveBoxShadow.offsetX;
+    ctx.shadowOffsetY = effectiveBoxShadow.offsetY;
     if (borderRadius > 0) {
       drawRoundedRect(ctx, shadowLeft, shadowTop, shadowWidth, shadowHeight, borderRadius + spread);
       ctx.fill();
@@ -176,9 +187,9 @@ function renderNode(
     ctx.restore();
   }
 
-  if ((backgroundColor && backgroundColor !== 'transparent') || linearGradient) {
-    const fillStyle = linearGradient
-      ? buildLinearGradient(ctx, left, top, width, height, linearGradient)
+  if ((backgroundColor && backgroundColor !== 'transparent') || effectiveGradient) {
+    const fillStyle = effectiveGradient
+      ? buildGradient(ctx, left, top, width, height, effectiveGradient)
       : backgroundColor;
     if (!fillStyle) return;
     ctx.fillStyle = fillStyle;
@@ -490,7 +501,7 @@ function buildClampedLastLineText(lines: string[], startIndex: number, joiner: s
 
 function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void {
   if (!node.textProps) return;
-  const { left, top, width } = node.computedLayout;
+  const { left, top, width, height } = node.computedLayout;
   const tp = node.textProps as TextPropsEx;
   const content = tp.content;
   const fontSize = tp.fontSize;
@@ -510,7 +521,10 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
   if (maxWidth <= 0) return;
 
   ctx.save();
-  ctx.fillStyle = color;
+  const vstyle = node.visualStyle as VisualStyleEx;
+  const gradient = vstyle.linearGradient ?? null;
+  const fillStyle = gradient ? buildGradient(ctx, left, top, width, height, gradient) : null;
+  ctx.fillStyle = fillStyle ?? color;
   const weightPart = typeof fontWeight === 'number' ? `${fontWeight} ` : fontWeight !== 'normal' ? `${fontWeight} ` : '';
   const stylePart = fontStyle && fontStyle !== 'normal' ? `${fontStyle} ` : '';
   ctx.font = `${stylePart}${weightPart}${fontSize}px ${fontFamily || 'Inter, sans-serif'}`;
@@ -695,17 +709,293 @@ function buildLinearGradient(
   y: number,
   w: number,
   h: number,
-  grad: LinearGradientStyle
+  grad: Exclude<GradientStyle, string>
 ): CanvasGradient | null {
-  const startX = x + grad.start.x * w;
-  const startY = y + grad.start.y * h;
-  const endX = x + grad.end.x * w;
-  const endY = y + grad.end.y * h;
-  const gradient = ctx.createLinearGradient(startX, startY, endX, endY);
-  for (const stop of grad.colors) {
+  const colors = grad.colors ?? [];
+  if (!colors.length) return null;
+
+  const angle = (grad as { angle?: number }).angle;
+  const start = (grad as { start?: { x: number; y: number } }).start ?? { x: 0, y: 0 };
+  const end = (grad as { end?: { x: number; y: number } }).end ?? { x: 1, y: 0 };
+
+  const p = angle === undefined || !Number.isFinite(angle)
+    ? {
+        x0: x + start.x * w,
+        y0: y + start.y * h,
+        x1: x + end.x * w,
+        y1: y + end.y * h,
+      }
+    : computeLinearGradientEndpoints(x, y, w, h, angle);
+
+  const gradient = ctx.createLinearGradient(p.x0, p.y0, p.x1, p.y1);
+  for (const stop of normalizeStops(colors)) {
     gradient.addColorStop(stop.offset, stop.color);
   }
   return gradient;
+}
+
+function buildGradient(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  input: GradientStyle
+): CanvasGradient | null {
+  const grad = typeof input === 'string' ? parseCSSGradient(input) : input;
+  if (!grad || typeof grad === 'string') return null;
+  if ((grad as { type?: string }).type === 'radial') {
+    return buildRadialGradient(ctx, x, y, w, h, grad as RadialGradientStyle);
+  }
+  return buildLinearGradient(ctx, x, y, w, h, grad);
+}
+
+function buildRadialGradient(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  grad: RadialGradientStyle
+): CanvasGradient | null {
+  const colors = grad.colors ?? [];
+  if (!colors.length) return null;
+  const center = grad.center ?? { x: 0.5, y: 0.5 };
+  const r = grad.radius;
+  const radiusPx = typeof r === 'number' && Number.isFinite(r)
+    ? (r <= 1 ? r * Math.max(w, h) : r)
+    : Math.max(w, h) / 2;
+  const cx = x + center.x * w;
+  const cy = y + center.y * h;
+  const gradient = ctx.createRadialGradient(cx, cy, 0, cx, cy, radiusPx);
+  for (const stop of normalizeStops(colors)) {
+    gradient.addColorStop(stop.offset, stop.color);
+  }
+  return gradient;
+}
+
+function normalizeStops(stops: GradientStop[]): GradientStop[] {
+  if (!stops.length) return [];
+  const out = stops
+    .map((s) => ({
+      color: s.color,
+      offset: Number.isFinite(s.offset) ? clamp01(s.offset) : Number.NaN,
+    }))
+    .sort((a, b) => {
+      if (Number.isNaN(a.offset) && Number.isNaN(b.offset)) return 0;
+      if (Number.isNaN(a.offset)) return 1;
+      if (Number.isNaN(b.offset)) return -1;
+      return a.offset - b.offset;
+    });
+
+  if (out.every((s) => Number.isNaN(s.offset))) {
+    const n = out.length;
+    return out.map((s, i) => ({ ...s, offset: n === 1 ? 0 : i / (n - 1) }));
+  }
+
+  if (Number.isNaN(out[0]!.offset)) out[0]!.offset = 0;
+  if (Number.isNaN(out[out.length - 1]!.offset)) out[out.length - 1]!.offset = 1;
+
+  let lastDefined = 0;
+  for (let i = 1; i < out.length; i += 1) {
+    if (!Number.isNaN(out[i]!.offset)) {
+      const start = out[lastDefined]!.offset;
+      const end = out[i]!.offset;
+      const span = i - lastDefined;
+      for (let j = 1; j < span; j += 1) {
+        if (Number.isNaN(out[lastDefined + j]!.offset)) {
+          out[lastDefined + j]!.offset = start + ((end - start) * j) / span;
+        }
+      }
+      lastDefined = i;
+    }
+  }
+
+  return out.map((s) => ({ ...s, offset: clamp01(s.offset) })) as GradientStop[];
+}
+
+function clamp01(n: number): number {
+  if (n < 0) return 0;
+  if (n > 1) return 1;
+  return n;
+}
+
+function computeLinearGradientEndpoints(
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  angleDeg: number
+): { x0: number; y0: number; x1: number; y1: number } {
+  const rad = ((angleDeg % 360) * Math.PI) / 180;
+  const vx = Math.sin(rad);
+  const vy = -Math.cos(rad);
+  const cx = x + w / 2;
+  const cy = y + h / 2;
+  const points: Array<{ x: number; y: number; t: number }> = [];
+
+  const pushIfValid = (t: number) => {
+    if (!Number.isFinite(t)) return;
+    const px = cx + t * vx;
+    const py = cy + t * vy;
+    if (px >= x - 1e-6 && px <= x + w + 1e-6 && py >= y - 1e-6 && py <= y + h + 1e-6) {
+      points.push({ x: px, y: py, t });
+    }
+  };
+
+  if (vx !== 0) {
+    pushIfValid((x - cx) / vx);
+    pushIfValid((x + w - cx) / vx);
+  }
+  if (vy !== 0) {
+    pushIfValid((y - cy) / vy);
+    pushIfValid((y + h - cy) / vy);
+  }
+
+  if (points.length < 2) {
+    return { x0: x, y0: y + h / 2, x1: x + w, y1: y + h / 2 };
+  }
+
+  points.sort((a, b) => a.t - b.t);
+  return { x0: points[0]!.x, y0: points[0]!.y, x1: points[points.length - 1]!.x, y1: points[points.length - 1]!.y };
+}
+
+function parseCSSGradient(input: string): Exclude<GradientStyle, string> | null {
+  const s = input.trim();
+  const open = s.indexOf('(');
+  const close = s.lastIndexOf(')');
+  if (open <= 0 || close <= open) return null;
+  const fn = s.slice(0, open).trim();
+  const body = s.slice(open + 1, close).trim();
+  const parts = splitTopLevel(body, ',').map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return null;
+  if (fn === 'linear-gradient') return parseLinearGradientParts(parts);
+  if (fn === 'radial-gradient') return parseRadialGradientParts(parts);
+  return null;
+}
+
+function parseLinearGradientParts(parts: string[]): LinearGradientStyle | null {
+  let i = 0;
+  let angle: number | undefined;
+  const first = parts[0]!;
+  const maybeAngle = parseAngle(first);
+  if (maybeAngle !== null) {
+    angle = maybeAngle;
+    i = 1;
+  } else if (first.startsWith('to ')) {
+    angle = directionToAngle(first);
+    i = 1;
+  }
+  const stops = parts.slice(i).map(parseColorStop).filter((x): x is { color: string; offset?: number } => !!x);
+  if (!stops.length) return null;
+  const norm = normalizeStops(stops.map((s) => ({ color: s.color, offset: s.offset ?? Number.NaN })) as GradientStop[]);
+  return {
+    type: 'linear',
+    start: { x: 0, y: 0 },
+    end: { x: 1, y: 0 },
+    colors: norm,
+    ...(angle === undefined ? {} : { angle }),
+  };
+}
+
+function parseRadialGradientParts(parts: string[]): RadialGradientStyle | null {
+  let i = 0;
+  let center: { x: number; y: number } | undefined;
+  const first = parts[0]!;
+  if (first.includes('at ')) {
+    const m = first.split(/\bat\s+/);
+    const at = m[1]?.trim();
+    if (at) {
+      center = parsePositionPair(at);
+      i = 1;
+    }
+  } else if (first === 'circle' || first === 'ellipse') {
+    i = 1;
+  }
+
+  const stops = parts.slice(i).map(parseColorStop).filter((x): x is { color: string; offset?: number } => !!x);
+  if (!stops.length) return null;
+  const norm = normalizeStops(stops.map((s) => ({ color: s.color, offset: s.offset ?? Number.NaN })) as GradientStop[]);
+  return { type: 'radial', center: center ?? { x: 0.5, y: 0.5 }, colors: norm };
+}
+
+function parseAngle(token: string): number | null {
+  const t = token.trim().toLowerCase();
+  const m = /^(-?\d+(?:\.\d+)?)deg$/.exec(t);
+  if (!m) return null;
+  const n = Number(m[1]);
+  return Number.isFinite(n) ? n : null;
+}
+
+function directionToAngle(dir: string): number {
+  const t = dir.trim().toLowerCase();
+  if (t === 'to top') return 0;
+  if (t === 'to right') return 90;
+  if (t === 'to bottom') return 180;
+  if (t === 'to left') return 270;
+  if (t === 'to top right' || t === 'to right top') return 45;
+  if (t === 'to bottom right' || t === 'to right bottom') return 135;
+  if (t === 'to bottom left' || t === 'to left bottom') return 225;
+  if (t === 'to top left' || t === 'to left top') return 315;
+  return 90;
+}
+
+function parseColorStop(token: string): { color: string; offset?: number } | null {
+  const t = token.trim();
+  if (!t) return null;
+  const m = /(.+?)\s+(-?\d+(?:\.\d+)?%)(?:\s+.*)?$/.exec(t);
+  if (m) {
+    const color = m[1]!.trim();
+    const pct = Number.parseFloat(m[2]!);
+    if (Number.isFinite(pct)) return { color, offset: pct / 100 };
+    return { color };
+  }
+  return { color: t };
+}
+
+function parsePositionPair(token: string): { x: number; y: number } | undefined {
+  const parts = token.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (!parts.length) return undefined;
+
+  const parsePos = (p: string, axis: 'x' | 'y'): number | undefined => {
+    if (p.endsWith('%')) {
+      const n = Number.parseFloat(p.slice(0, -1));
+      return Number.isFinite(n) ? clamp01(n / 100) : undefined;
+    }
+    if (p === 'center') return 0.5;
+    if (axis === 'x') {
+      if (p === 'left') return 0;
+      if (p === 'right') return 1;
+    } else {
+      if (p === 'top') return 0;
+      if (p === 'bottom') return 1;
+    }
+    return undefined;
+  };
+
+  const px = parsePos(parts[0]!, 'x');
+  const py = parts.length > 1 ? parsePos(parts[1]!, 'y') : undefined;
+  if (px === undefined && py === undefined) return undefined;
+  return { x: px ?? 0.5, y: py ?? 0.5 };
+}
+
+function splitTopLevel(input: string, sep: string): string[] {
+  const out: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (let i = 0; i < input.length; i += 1) {
+    const ch = input[i]!;
+    if (ch === '(') depth += 1;
+    if (ch === ')') depth = Math.max(0, depth - 1);
+    if (depth === 0 && ch === sep) {
+      out.push(current);
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current) out.push(current);
+  return out;
 }
 
 function drawRoundedRect(

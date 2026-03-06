@@ -115,12 +115,82 @@ export default function LiveCodeEditorPanel({
     [jsxPropsMode, snapshotDescriptor],
   );
 
-  const parseJSONToDescriptor = useCallback((json: string): NodeDescriptor => {
-      const parsed = JSON.parse(json) as unknown;
-      if (!isNodeDescriptor(parsed)) {
-        throw new Error('JSON 需要是 NodeDescriptor（包含 type/style/children 等字段）');
+  const parseJSONToDescriptor = useCallback((input: string): NodeDescriptor => {
+    const parseErrorToMessage = (e: unknown) => (e instanceof Error ? e.message : String(e));
+
+    const parseAsJSObject = (raw: string): unknown => {
+      const source = raw.trim().replace(/;+\s*$/, '');
+      if (!source) {
+        throw new Error('内容为空');
       }
-      return parsed;
+
+      const startsWithObject = source.startsWith('{');
+      const startsWithArray = source.startsWith('[');
+      if (startsWithObject || startsWithArray) {
+        const fn = new Function(`"use strict"; return (${source});`);
+        return fn();
+      }
+
+      const start = source.indexOf('{');
+      if (start < 0) {
+        throw new Error('未找到对象起始符号 "{"');
+      }
+
+      let depth = 0;
+      let inString: '"' | "'" | '`' | null = null;
+      let escaped = false;
+      for (let i = start; i < source.length; i += 1) {
+        const ch = source[i];
+        if (inString) {
+          if (escaped) {
+            escaped = false;
+            continue;
+          }
+          if (ch === '\\') {
+            escaped = true;
+            continue;
+          }
+          if (ch === inString) {
+            inString = null;
+          }
+          continue;
+        }
+
+        if (ch === '"' || ch === "'" || ch === '`') {
+          inString = ch;
+          continue;
+        }
+        if (ch === '{') depth += 1;
+        if (ch === '}') depth -= 1;
+        if (depth === 0 && ch === '}') {
+          const expr = source.slice(start, i + 1);
+          const fn = new Function(`"use strict"; return (${expr});`);
+          return fn();
+        }
+      }
+
+      throw new Error('对象括号不匹配：缺少 "}"');
+    };
+
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(input) as unknown;
+    } catch (e) {
+      try {
+        parsed = parseAsJSObject(input);
+      } catch (e2) {
+        const msg1 = parseErrorToMessage(e);
+        const msg2 = parseErrorToMessage(e2);
+        throw new Error(
+          `无法解析：请提供标准 JSON，或可执行的对象字面量（可直接粘贴 "const X: NodeDescriptor = { ... }"）。\nJSON.parse: ${msg1}\nObject literal: ${msg2}`,
+        );
+      }
+    }
+
+    if (!isNodeDescriptor(parsed)) {
+      throw new Error('内容需要是 NodeDescriptor（至少包含 type/style，children 为可选数组）');
+    }
+    return parsed;
   }, []);
 
   const schedule = useCallback(
@@ -203,6 +273,8 @@ export default function LiveCodeEditorPanel({
         showJsxPropsMode={activeTab === 'jsx'}
         showSync={!readOnly}
         onSyncFromCanvas={handleResetFromCanvas}
+        showApply={!readOnly}
+        onApplyToCanvas={commitFromEditor}
         onCopy={handleCopy}
         onClose={onClose}
       />

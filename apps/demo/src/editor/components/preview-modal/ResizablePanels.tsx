@@ -66,7 +66,7 @@ export function ResizablePanels({
         {left}
       </div>
       <div className="w-1 bg-gray-200 hover:bg-indigo-400 cursor-col-resize" onMouseDown={onMouseDown('left')} />
-      <div className="flex-1 min-w-0">{center}</div>
+      <div className="flex-1 min-w-0 min-h-0">{center}</div>
       <div className="w-1 bg-gray-200 hover:bg-indigo-400 cursor-col-resize" onMouseDown={onMouseDown('right')} />
       <div className="h-full" style={{ width: rightWidth }}>
         {right}

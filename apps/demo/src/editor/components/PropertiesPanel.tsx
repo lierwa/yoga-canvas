@@ -65,14 +65,28 @@ export default function PropertiesPanel({
   onUpdateTextProps,
   onUpdateImageProps,
 }: PropertiesPanelProps) {
-  const [textContent, setTextContent] = useState(node?.textProps?.content ?? "");
+  const [textContent, setTextContent] = useState(
+    node?.textProps?.content ?? "",
+  );
   const [textContentFocused, setTextContentFocused] = useState(false);
+  const [gradientCss, setGradientCss] = useState(() => {
+    const g = node?.visualStyle?.linearGradient;
+    return typeof g === "string" ? g : "";
+  });
+  const [gradientCssFocused, setGradientCssFocused] = useState(false);
 
   useEffect(() => {
     if (!textContentFocused) {
       setTextContent(node?.textProps?.content ?? "");
     }
   }, [node?.id, node?.textProps?.content, textContentFocused]);
+
+  useEffect(() => {
+    if (!gradientCssFocused) {
+      const g = node?.visualStyle?.linearGradient;
+      setGradientCss(typeof g === "string" ? g : "");
+    }
+  }, [node?.id, node?.visualStyle?.linearGradient, gradientCssFocused]);
 
   if (!node) {
     return (
@@ -87,13 +101,145 @@ export default function PropertiesPanel({
   const s = node.flexStyle;
   const v = node.visualStyle;
   const boxShadow = v.boxShadow ?? null;
-  const linearGradient = v.linearGradient ?? null;
+  const gradient = v.linearGradient ?? null;
   const textShadow = node.textProps?.textShadow ?? null;
-  const gradientStartColor = linearGradient?.colors?.[0]?.color ?? "#000000";
+
+  type GradientValue = NonNullable<VisualStyle["linearGradient"]>;
+  type RadialGradientValue = Extract<
+    Exclude<GradientValue, string>,
+    { type: "radial" }
+  >;
+  type LinearGradientValue = Exclude<Exclude<GradientValue, string>, { type: "radial" }>;
+
+  const isRadialGradientValue = (
+    g: GradientValue,
+  ): g is RadialGradientValue =>
+    typeof g === "object" && g !== null && (g as { type?: string }).type === "radial";
+
+  const gradientKind =
+    gradient === null
+      ? ("none" as const)
+      : typeof gradient === "string"
+        ? ("css" as const)
+        : isRadialGradientValue(gradient)
+          ? ("radial" as const)
+          : ("linear" as const);
+
+  const linearGradient =
+    gradientKind === "linear" && gradient && typeof gradient === "object"
+      ? (gradient as LinearGradientValue)
+      : null;
+
+  const radialGradient =
+    gradientKind === "radial" && gradient && typeof gradient === "object"
+      ? (gradient as RadialGradientValue)
+      : null;
+
+  const gradientStops =
+    gradient && typeof gradient === "object"
+      ? (gradient as { colors: Array<{ offset: number; color: string }> }).colors
+      : [];
+  const gradientStartColor = gradientStops[0]?.color ?? "#000000";
   const gradientEndColor =
-    linearGradient?.colors?.[linearGradient.colors.length - 1]?.color ?? "#ffffff";
-  const gradientStart = linearGradient?.start ?? { x: 0, y: 0 };
-  const gradientEnd = linearGradient?.end ?? { x: 1, y: 0 };
+    gradientStops[gradientStops.length - 1]?.color ?? "#ffffff";
+
+  const linearStart = linearGradient?.start ?? { x: 0, y: 0 };
+  const linearEnd = linearGradient?.end ?? { x: 1, y: 0 };
+  const linearMode =
+    typeof linearGradient?.angle === "number" &&
+    Number.isFinite(linearGradient.angle)
+      ? ("angle" as const)
+      : ("points" as const);
+
+  const radialCenter = radialGradient?.center ?? { x: 0.5, y: 0.5 };
+  const radialRadius = radialGradient?.radius ?? 0.5;
+
+  const linearPresetOptions = [
+    "custom",
+    "to top",
+    "to right",
+    "to bottom",
+    "to left",
+    "to top right",
+    "to bottom right",
+    "to bottom left",
+    "to top left",
+  ] as const;
+
+  const linearPointsPreset = (() => {
+    if (linearMode !== "points") return "custom";
+    const eps = 1e-6;
+    const eq = (a: number, b: number) => Math.abs(a - b) <= eps;
+    const match = (
+      start: { x: number; y: number },
+      end: { x: number; y: number },
+    ) =>
+      eq(linearStart.x, start.x) &&
+      eq(linearStart.y, start.y) &&
+      eq(linearEnd.x, end.x) &&
+      eq(linearEnd.y, end.y);
+
+    if (match({ x: 0.5, y: 1 }, { x: 0.5, y: 0 })) return "to top";
+    if (match({ x: 0, y: 0.5 }, { x: 1, y: 0.5 })) return "to right";
+    if (match({ x: 0.5, y: 0 }, { x: 0.5, y: 1 })) return "to bottom";
+    if (match({ x: 1, y: 0.5 }, { x: 0, y: 0.5 })) return "to left";
+    if (match({ x: 0, y: 1 }, { x: 1, y: 0 })) return "to top right";
+    if (match({ x: 0, y: 0 }, { x: 1, y: 1 })) return "to bottom right";
+    if (match({ x: 1, y: 0 }, { x: 0, y: 1 })) return "to bottom left";
+    if (match({ x: 1, y: 1 }, { x: 0, y: 0 })) return "to top left";
+    return "custom";
+  })();
+
+  const linearAnglePreset = (() => {
+    if (linearMode !== "angle") return "custom";
+    const raw = linearGradient?.angle;
+    if (typeof raw !== "number" || !Number.isFinite(raw)) return "custom";
+    const a = ((raw % 360) + 360) % 360;
+    const diff = (x: number, y: number) => Math.abs(((x - y + 540) % 360) - 180);
+    const eps = 1e-3;
+    if (diff(a, 0) <= eps) return "to top";
+    if (diff(a, 90) <= eps) return "to right";
+    if (diff(a, 180) <= eps) return "to bottom";
+    if (diff(a, 270) <= eps) return "to left";
+    if (diff(a, 45) <= eps) return "to top right";
+    if (diff(a, 135) <= eps) return "to bottom right";
+    if (diff(a, 225) <= eps) return "to bottom left";
+    if (diff(a, 315) <= eps) return "to top left";
+    return "custom";
+  })();
+
+  const setLinearAnglePreset = (preset: string) => {
+    const nextAngle =
+      preset === "to top"
+        ? 0
+        : preset === "to right"
+          ? 90
+          : preset === "to bottom"
+            ? 180
+            : preset === "to left"
+              ? 270
+              : preset === "to top right"
+                ? 45
+                : preset === "to bottom right"
+                  ? 135
+                  : preset === "to bottom left"
+                    ? 225
+                    : preset === "to top left"
+                      ? 315
+                      : 90;
+    updateVisual({
+      linearGradient: {
+        type: "linear",
+        start: linearStart,
+        end: linearEnd,
+        colors: [
+          { offset: 0, color: gradientStartColor },
+          { offset: 1, color: gradientEndColor },
+        ],
+        angle: nextAngle,
+      },
+    });
+  };
 
   const update = (updates: Partial<FlexStyle>) => {
     onUpdateFlexStyle(node.id, updates);
@@ -156,7 +302,9 @@ export default function PropertiesPanel({
                 options={FONT_WEIGHT_OPTIONS}
                 onChange={(val) =>
                   updateText({
-                    fontWeight: /^-?\d+(\.\d+)?$/.test(val) ? Number(val) : (val as TextProps["fontWeight"]),
+                    fontWeight: /^-?\d+(\.\d+)?$/.test(val)
+                      ? Number(val)
+                      : (val as TextProps["fontWeight"]),
                   })
                 }
               />
@@ -192,15 +340,28 @@ export default function PropertiesPanel({
                 }
               />
             </FieldGrid>
-            <SelectField
-              inline
-              label="Wrap"
-              value={node.textProps.whiteSpace === "nowrap" ? "nowrap" : "wrap"}
-              options={TEXT_WRAP_OPTIONS}
-              onChange={(val) =>
-                updateText({ whiteSpace: val === "nowrap" ? "nowrap" : "normal" })
-              }
-            />
+            <FieldGrid cols={2}>
+              <SelectField
+                label="Wrap"
+                value={
+                  node.textProps.whiteSpace === "nowrap" ? "nowrap" : "wrap"
+                }
+                options={TEXT_WRAP_OPTIONS}
+                onChange={(val) =>
+                  updateText({
+                    whiteSpace: val === "nowrap" ? "nowrap" : "normal",
+                  })
+                }
+              />
+              <NumberField
+                label="Line Clamp"
+                value={node.textProps.lineClamp}
+                onChange={(val) => {
+                  const n = val === undefined ? undefined : Math.floor(val);
+                  updateText({ lineClamp: n && n > 0 ? n : undefined });
+                }}
+              />
+            </FieldGrid>
             <div className="pt-1">
               <SubHeader
                 title="Text Shadow"
@@ -580,116 +741,407 @@ export default function PropertiesPanel({
           <SelectField
             inline
             label="Gradient"
-            value={linearGradient ? "linear" : "none"}
-            options={["none", "linear"] as const}
-            onChange={(val) =>
+            value={gradientKind}
+            options={["none", "linear", "radial", "css"] as const}
+            onChange={(val) => {
+              if (val === "none") {
+                updateVisual({ linearGradient: null });
+                return;
+              }
+              if (val === "css") {
+                const fallback = `linear-gradient(to right, ${gradientStartColor}, ${gradientEndColor})`;
+                const next = typeof gradient === "string" ? gradient : fallback;
+                setGradientCss(next);
+                updateVisual({ linearGradient: next });
+                return;
+              }
+              if (val === "radial") {
+                updateVisual({
+                  linearGradient: {
+                    type: "radial",
+                    center: radialCenter,
+                    radius: radialRadius,
+                    colors: [
+                      { offset: 0, color: gradientStartColor },
+                      { offset: 1, color: gradientEndColor },
+                    ],
+                  },
+                });
+                return;
+              }
               updateVisual({
-                linearGradient:
-                  val === "linear"
-                    ? {
-                        start: { x: gradientStart.x, y: gradientStart.y },
-                        end: { x: gradientEnd.x, y: gradientEnd.y },
-                        colors: [
-                          { offset: 0, color: gradientStartColor },
-                          {
-                            offset: 1,
-                            color: gradientEndColor,
-                          },
-                        ],
-                      }
-                    : null,
-              })
-            }
+                linearGradient: {
+                  type: "linear",
+                  start: linearStart,
+                  end: linearEnd,
+                  colors: [
+                    { offset: 0, color: gradientStartColor },
+                    { offset: 1, color: gradientEndColor },
+                  ],
+                  angle:
+                    typeof linearGradient?.angle === "number" &&
+                    Number.isFinite(linearGradient.angle)
+                      ? linearGradient.angle
+                      : undefined,
+                },
+              });
+            }}
           />
-          {linearGradient && (
+          {gradientKind === "css" && (
+            <TextAreaField
+              label="CSS"
+              value={gradientCss}
+              rows={3}
+              onFocus={() => setGradientCssFocused(true)}
+              onBlur={() => setGradientCssFocused(false)}
+              onChange={(val) => {
+                setGradientCss(val);
+                updateVisual({ linearGradient: val.trim() ? val : null });
+              }}
+            />
+          )}
+          {gradientKind === "linear" && linearGradient && (
             <div className="space-y-2">
               <FieldGrid cols={2}>
+                <SelectField
+                  label="Mode"
+                  value={linearMode}
+                  options={["points", "angle"] as const}
+                  onChange={(val) => {
+                    if (val === "points") {
+                      updateVisual({
+                        linearGradient: {
+                          type: "linear",
+                          start: linearStart,
+                          end: linearEnd,
+                          colors: [
+                            { offset: 0, color: gradientStartColor },
+                            { offset: 1, color: gradientEndColor },
+                          ],
+                          angle: undefined,
+                        },
+                      });
+                      return;
+                    }
+
+                    const dx = linearEnd.x - linearStart.x;
+                    const dy = linearEnd.y - linearStart.y;
+                    const a =
+                      dx === 0 && dy === 0
+                        ? 90
+                        : ((Math.atan2(dx, -dy) * 180) / Math.PI + 360) % 360;
+                    updateVisual({
+                      linearGradient: {
+                        type: "linear",
+                        start: linearStart,
+                        end: linearEnd,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: a,
+                      },
+                    });
+                  }}
+                />
+                {linearMode === "angle" ? (
+                  <SelectField
+                    label="Preset"
+                    value={linearAnglePreset}
+                    options={linearPresetOptions}
+                    onChange={(val) => {
+                      if (val === "custom") return;
+                      setLinearAnglePreset(val);
+                    }}
+                  />
+                ) : (
+                  <SelectField
+                    label="Preset"
+                    value={linearPointsPreset}
+                    options={linearPresetOptions}
+                    onChange={(val) => {
+                      if (val === "custom") return;
+                      const nextStartEnd =
+                        val === "to top"
+                          ? { start: { x: 0.5, y: 1 }, end: { x: 0.5, y: 0 } }
+                          : val === "to right"
+                            ? {
+                                start: { x: 0, y: 0.5 },
+                                end: { x: 1, y: 0.5 },
+                              }
+                            : val === "to bottom"
+                              ? {
+                                  start: { x: 0.5, y: 0 },
+                                  end: { x: 0.5, y: 1 },
+                                }
+                              : val === "to left"
+                                ? {
+                                    start: { x: 1, y: 0.5 },
+                                    end: { x: 0, y: 0.5 },
+                                  }
+                                : val === "to top right"
+                                  ? {
+                                      start: { x: 0, y: 1 },
+                                      end: { x: 1, y: 0 },
+                                    }
+                                  : val === "to bottom right"
+                                    ? {
+                                        start: { x: 0, y: 0 },
+                                        end: { x: 1, y: 1 },
+                                      }
+                                    : val === "to bottom left"
+                                      ? {
+                                          start: { x: 1, y: 0 },
+                                          end: { x: 0, y: 1 },
+                                        }
+                                      : {
+                                          start: { x: 1, y: 1 },
+                                          end: { x: 0, y: 0 },
+                                        };
+                      updateVisual({
+                        linearGradient: {
+                          type: "linear",
+                          ...nextStartEnd,
+                          colors: [
+                            { offset: 0, color: gradientStartColor },
+                            { offset: 1, color: gradientEndColor },
+                          ],
+                          angle: undefined,
+                        },
+                      });
+                    }}
+                  />
+                )}
+              </FieldGrid>
+              {linearMode === "angle" ? (
                 <NumberField
-                  label="Start X"
-                  value={linearGradient.start.x}
+                  label="Angle"
+                  value={linearGradient.angle ?? 90}
                   onChange={(val) =>
                     updateVisual({
                       linearGradient: {
-                        ...linearGradient,
-                        start: { x: val ?? 0, y: linearGradient.start.y },
+                        type: "linear",
+                        start: linearStart,
+                        end: linearEnd,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: val ?? 90,
+                      },
+                    })
+                  }
+                />
+              ) : null}
+              <FieldGrid cols={2}>
+                <NumberField
+                  label="Start X"
+                  value={linearStart.x}
+                  onChange={(val) =>
+                    updateVisual({
+                      linearGradient: {
+                        type: "linear",
+                        start: { x: val ?? 0, y: linearStart.y },
+                        end: linearEnd,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: undefined,
                       },
                     })
                   }
                 />
                 <NumberField
                   label="Start Y"
-                  value={linearGradient.start.y}
+                  value={linearStart.y}
                   onChange={(val) =>
                     updateVisual({
                       linearGradient: {
-                        ...linearGradient,
-                        start: { x: linearGradient.start.x, y: val ?? 0 },
+                        type: "linear",
+                        start: { x: linearStart.x, y: val ?? 0 },
+                        end: linearEnd,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: undefined,
                       },
                     })
                   }
                 />
                 <NumberField
                   label="End X"
-                  value={linearGradient.end.x}
+                  value={linearEnd.x}
                   onChange={(val) =>
                     updateVisual({
                       linearGradient: {
-                        ...linearGradient,
-                        end: { x: val ?? 1, y: linearGradient.end.y },
+                        type: "linear",
+                        start: linearStart,
+                        end: { x: val ?? 1, y: linearEnd.y },
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: undefined,
                       },
                     })
                   }
                 />
                 <NumberField
                   label="End Y"
-                  value={linearGradient.end.y}
+                  value={linearEnd.y}
                   onChange={(val) =>
                     updateVisual({
                       linearGradient: {
-                        ...linearGradient,
-                        end: { x: linearGradient.end.x, y: val ?? 0 },
+                        type: "linear",
+                        start: linearStart,
+                        end: { x: linearEnd.x, y: val ?? 0 },
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                        angle: undefined,
                       },
                     })
                   }
                 />
               </FieldGrid>
-                <ColorField
-                  key={`${node.id}-gradient-start-color`}
-                  label="Start"
-                  value={linearGradient.colors[0]?.color ?? "#000000"}
-                  clearValue="#000000"
-                  onChange={(c) =>
+              <ColorField
+                key={`${node.id}-gradient-start-color`}
+                label="Start"
+                value={linearGradient.colors[0]?.color ?? "#000000"}
+                clearValue="#000000"
+                onChange={(c) =>
+                  updateVisual({
+                    linearGradient: {
+                      ...linearGradient,
+                      colors: [
+                        { offset: 0, color: c },
+                        {
+                          offset: 1,
+                          color: gradientEndColor,
+                        },
+                      ],
+                    },
+                  })
+                }
+              />
+              <ColorField
+                key={`${node.id}-gradient-end-color`}
+                label="End"
+                value={
+                  linearGradient.colors[linearGradient.colors.length - 1]
+                    ?.color ?? "#ffffff"
+                }
+                clearValue="#ffffff"
+                onChange={(c) =>
+                  updateVisual({
+                    linearGradient: {
+                      ...linearGradient,
+                      colors: [
+                        { offset: 0, color: gradientStartColor },
+                        { offset: 1, color: c },
+                      ],
+                    },
+                  })
+                }
+              />
+            </div>
+          )}
+          {gradientKind === "radial" && radialGradient && (
+            <div className="space-y-2">
+              <FieldGrid cols={3}>
+                <NumberField
+                  label="Center X"
+                  value={radialCenter.x}
+                  onChange={(val) =>
                     updateVisual({
                       linearGradient: {
-                        ...linearGradient,
-                        colors: [
-                          { offset: 0, color: c },
-                          {
-                            offset: 1,
-                            color: gradientEndColor,
-                          },
-                        ],
-                      },
-                    })
-                  }
-                />
-                <ColorField
-                  key={`${node.id}-gradient-end-color`}
-                  label="End"
-                  value={linearGradient.colors[linearGradient.colors.length - 1]?.color ?? "#ffffff"}
-                  clearValue="#ffffff"
-                  onChange={(c) =>
-                    updateVisual({
-                      linearGradient: {
-                        ...linearGradient,
+                        type: "radial",
+                        center: { x: val ?? 0.5, y: radialCenter.y },
+                        radius: radialRadius,
                         colors: [
                           { offset: 0, color: gradientStartColor },
-                          { offset: 1, color: c },
+                          { offset: 1, color: gradientEndColor },
                         ],
                       },
                     })
                   }
                 />
+                <NumberField
+                  label="Center Y"
+                  value={radialCenter.y}
+                  onChange={(val) =>
+                    updateVisual({
+                      linearGradient: {
+                        type: "radial",
+                        center: { x: radialCenter.x, y: val ?? 0.5 },
+                        radius: radialRadius,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                      },
+                    })
+                  }
+                />
+                <NumberField
+                  label="Radius"
+                  value={radialRadius}
+                  onChange={(val) =>
+                    updateVisual({
+                      linearGradient: {
+                        type: "radial",
+                        center: radialCenter,
+                        radius: val ?? 0.5,
+                        colors: [
+                          { offset: 0, color: gradientStartColor },
+                          { offset: 1, color: gradientEndColor },
+                        ],
+                      },
+                    })
+                  }
+                />
+              </FieldGrid>
+              <ColorField
+                key={`${node.id}-gradient-start-color`}
+                label="Start"
+                value={gradientStartColor}
+                clearValue="#000000"
+                onChange={(c) =>
+                  updateVisual({
+                    linearGradient: {
+                      type: "radial",
+                      center: radialCenter,
+                      radius: radialRadius,
+                      colors: [
+                        { offset: 0, color: c },
+                        { offset: 1, color: gradientEndColor },
+                      ],
+                    },
+                  })
+                }
+              />
+              <ColorField
+                key={`${node.id}-gradient-end-color`}
+                label="End"
+                value={gradientEndColor}
+                clearValue="#ffffff"
+                onChange={(c) =>
+                  updateVisual({
+                    linearGradient: {
+                      type: "radial",
+                      center: radialCenter,
+                      radius: radialRadius,
+                      colors: [
+                        { offset: 0, color: gradientStartColor },
+                        { offset: 1, color: c },
+                      ],
+                    },
+                  })
+                }
+              />
             </div>
           )}
           <ColorField
@@ -723,45 +1175,30 @@ export default function PropertiesPanel({
               onChange={(val) => updateVisual({ rotate: val ?? 0 })}
             />
           </FieldGrid>
-          <div className="pt-1">
-            <SubHeader
-              title="Box Shadow"
-              actions={
-                <IconButton
-                  onClick={() => updateVisual({ boxShadow: null })}
-                  disabled={!boxShadow}
-                  title="Clear shadow"
-                >
-                  <Trash2 size={14} />
-                </IconButton>
-              }
-            />
-            <ColorField
-              key={`${node.id}-shadow-color`}
-              label="Color"
-              value={boxShadow?.color ?? "#000000"}
-              clearValue="#000000"
-              onChange={(c) =>
-                updateVisual({
-                  boxShadow: {
-                    color: c,
-                    blur: boxShadow?.blur ?? 0,
-                    offsetX: boxShadow?.offsetX ?? 0,
-                    offsetY: boxShadow?.offsetY ?? 0,
-                    spread: boxShadow?.spread ?? 0,
-                  },
-                })
-              }
-            />
-            <FieldGrid cols={2}>
-              <NumberField
-                label="Blur"
-                value={boxShadow?.blur ?? 0}
-                onChange={(val) =>
+          {node.type !== "text" && (
+            <div className="pt-1">
+              <SubHeader
+                title="Box Shadow"
+                actions={
+                  <IconButton
+                    onClick={() => updateVisual({ boxShadow: null })}
+                    disabled={!boxShadow}
+                    title="Clear shadow"
+                  >
+                    <Trash2 size={14} />
+                  </IconButton>
+                }
+              />
+              <ColorField
+                key={`${node.id}-shadow-color`}
+                label="Color"
+                value={boxShadow?.color ?? "#000000"}
+                clearValue="#000000"
+                onChange={(c) =>
                   updateVisual({
                     boxShadow: {
-                      color: boxShadow?.color ?? "#000000",
-                      blur: val ?? 0,
+                      color: c,
+                      blur: boxShadow?.blur ?? 0,
                       offsetX: boxShadow?.offsetX ?? 0,
                       offsetY: boxShadow?.offsetY ?? 0,
                       spread: boxShadow?.spread ?? 0,
@@ -769,53 +1206,70 @@ export default function PropertiesPanel({
                   })
                 }
               />
-              <NumberField
-                label="Offset X"
-                value={boxShadow?.offsetX ?? 0}
-                onChange={(val) =>
-                  updateVisual({
-                    boxShadow: {
-                      color: boxShadow?.color ?? "#000000",
-                      blur: boxShadow?.blur ?? 0,
-                      offsetX: val ?? 0,
-                      offsetY: boxShadow?.offsetY ?? 0,
-                      spread: boxShadow?.spread ?? 0,
-                    },
-                  })
-                }
-              />
-              <NumberField
-                label="Offset Y"
-                value={boxShadow?.offsetY ?? 0}
-                onChange={(val) =>
-                  updateVisual({
-                    boxShadow: {
-                      color: boxShadow?.color ?? "#000000",
-                      blur: boxShadow?.blur ?? 0,
-                      offsetX: boxShadow?.offsetX ?? 0,
-                      offsetY: val ?? 0,
-                      spread: boxShadow?.spread ?? 0,
-                    },
-                  })
-                }
-              />
-              <NumberField
-                label="Spread"
-                value={boxShadow?.spread ?? 0}
-                onChange={(val) =>
-                  updateVisual({
-                    boxShadow: {
-                      color: boxShadow?.color ?? "#000000",
-                      blur: boxShadow?.blur ?? 0,
-                      offsetX: boxShadow?.offsetX ?? 0,
-                      offsetY: boxShadow?.offsetY ?? 0,
-                      spread: val ?? 0,
-                    },
-                  })
-                }
-              />
-            </FieldGrid>
-          </div>
+              <FieldGrid cols={2}>
+                <NumberField
+                  label="Blur"
+                  value={boxShadow?.blur ?? 0}
+                  onChange={(val) =>
+                    updateVisual({
+                      boxShadow: {
+                        color: boxShadow?.color ?? "#000000",
+                        blur: val ?? 0,
+                        offsetX: boxShadow?.offsetX ?? 0,
+                        offsetY: boxShadow?.offsetY ?? 0,
+                        spread: boxShadow?.spread ?? 0,
+                      },
+                    })
+                  }
+                />
+                <NumberField
+                  label="Offset X"
+                  value={boxShadow?.offsetX ?? 0}
+                  onChange={(val) =>
+                    updateVisual({
+                      boxShadow: {
+                        color: boxShadow?.color ?? "#000000",
+                        blur: boxShadow?.blur ?? 0,
+                        offsetX: val ?? 0,
+                        offsetY: boxShadow?.offsetY ?? 0,
+                        spread: boxShadow?.spread ?? 0,
+                      },
+                    })
+                  }
+                />
+                <NumberField
+                  label="Offset Y"
+                  value={boxShadow?.offsetY ?? 0}
+                  onChange={(val) =>
+                    updateVisual({
+                      boxShadow: {
+                        color: boxShadow?.color ?? "#000000",
+                        blur: boxShadow?.blur ?? 0,
+                        offsetX: boxShadow?.offsetX ?? 0,
+                        offsetY: val ?? 0,
+                        spread: boxShadow?.spread ?? 0,
+                      },
+                    })
+                  }
+                />
+                <NumberField
+                  label="Spread"
+                  value={boxShadow?.spread ?? 0}
+                  onChange={(val) =>
+                    updateVisual({
+                      boxShadow: {
+                        color: boxShadow?.color ?? "#000000",
+                        blur: boxShadow?.blur ?? 0,
+                        offsetX: boxShadow?.offsetX ?? 0,
+                        offsetY: boxShadow?.offsetY ?? 0,
+                        spread: val ?? 0,
+                      },
+                    })
+                  }
+                />
+              </FieldGrid>
+            </div>
+          )}
         </div>
       </Section>
 

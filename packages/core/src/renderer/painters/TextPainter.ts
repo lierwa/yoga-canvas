@@ -1,5 +1,6 @@
 import type { CanvasNode, CanvasContextLike, FlexValue } from '../../types';
 import { clampWrappedLines, ellipsizeToWidth, normalizeLineClamp, wrapText } from '../../text/textLayout';
+import { buildGradient } from './BoxPainter';
 
 function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
   if (value === undefined || value === 'auto') return fallback;
@@ -10,7 +11,7 @@ function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
 export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (!node.textProps) return;
 
-  const { left, top, width } = node.computedLayout;
+  const { left, top, width, height } = node.computedLayout;
   const { content, fontSize, fontWeight, fontStyle, fontFamily, color, lineHeight, textAlign, whiteSpace, lineClamp, textShadow } = node.textProps;
 
   const pad = flexValueToPx(node.flexStyle.paddingLeft);
@@ -20,7 +21,9 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (maxWidth <= 0) return;
 
   ctx.save();
-  ctx.setFillStyle(color);
+  const gradient = node.visualStyle.linearGradient;
+  const fillStyle = gradient ? buildGradient(ctx, left, top, width, height, gradient) : null;
+  ctx.setFillStyle(fillStyle ?? color);
   const weightPart = typeof fontWeight === 'number' ? `${fontWeight} ` : fontWeight !== 'normal' ? `${fontWeight} ` : '';
   const stylePart = fontStyle && fontStyle !== 'normal' ? `${fontStyle} ` : '';
   ctx.setFont(`${stylePart}${weightPart}${fontSize}px ${fontFamily || 'sans-serif'}`);

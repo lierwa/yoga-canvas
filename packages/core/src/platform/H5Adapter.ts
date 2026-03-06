@@ -56,6 +56,9 @@ class H5CanvasContext implements CanvasContextLike {
   createLinearGradient(x0: number, y0: number, x1: number, y1: number): CanvasGradientLike {
     return this.ctx.createLinearGradient(x0, y0, x1, y1);
   }
+  createRadialGradient(x0: number, y0: number, r0: number, x1: number, y1: number, r1: number): CanvasGradientLike {
+    return this.ctx.createRadialGradient(x0, y0, r0, x1, y1, r1);
+  }
 
   setFont(font: string): void { this.ctx.font = font; }
   setTextAlign(align: 'left' | 'center' | 'right'): void { this.ctx.textAlign = align; }

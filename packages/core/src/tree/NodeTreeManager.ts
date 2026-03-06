@@ -84,8 +84,8 @@ export class NodeTreeManager {
   loadFromTree(tree: NodeTree): void {
     this.history.clear();
     this.liveUpdateBase = null;
-    this.tree = tree;
-    syncIdCounterFromTree(tree);
+    this.tree = this.normalizeTree(tree);
+    syncIdCounterFromTree(this.tree);
     this.computeLayout();
   }
 
@@ -273,11 +273,13 @@ export class NodeTreeManager {
     return this.commit((tree) => {
       const node = tree.nodes[nodeId];
       if (!node) return null;
+      const nextVisualStyle = { ...node.visualStyle, ...updates };
+      if (node.type === 'text') nextVisualStyle.boxShadow = null;
       return {
         ...tree,
         nodes: {
           ...tree.nodes,
-          [nodeId]: { ...node, visualStyle: { ...node.visualStyle, ...updates } },
+          [nodeId]: { ...node, visualStyle: nextVisualStyle },
         },
       };
     });
@@ -286,12 +288,13 @@ export class NodeTreeManager {
   updateTextProps(nodeId: string, updates: Partial<TextProps>): NodeTree {
     return this.commit((tree) => {
       const node = tree.nodes[nodeId];
-      if (!node || !node.textProps) return null;
+      if (!node || node.type !== 'text') return null;
+      const nextTextProps = { ...(node.textProps ?? DEFAULT_TEXT_PROPS), ...updates };
       return {
         ...tree,
         nodes: {
           ...tree.nodes,
-          [nodeId]: { ...node, textProps: { ...node.textProps, ...updates } },
+          [nodeId]: { ...node, textProps: nextTextProps },
         },
       };
     });
@@ -306,6 +309,23 @@ export class NodeTreeManager {
         nodes: {
           ...tree.nodes,
           [nodeId]: { ...node, imageProps: { ...node.imageProps, ...updates } },
+        },
+      };
+    });
+  }
+
+  updateNodeName(nodeId: string, name: string): NodeTree {
+    return this.commit((tree) => {
+      const node = tree.nodes[nodeId];
+      if (!node) return null;
+      const nextName = name.trim();
+      if (!nextName) return null;
+      if (nextName === node.name) return null;
+      return {
+        ...tree,
+        nodes: {
+          ...tree.nodes,
+          [nodeId]: { ...node, name: nextName },
         },
       };
     });
@@ -328,6 +348,44 @@ export class NodeTreeManager {
         },
       };
     });
+  }
+
+  insertChildren(
+    parentId: string,
+    descriptors: NodeDescriptor[],
+    insertIndex?: number,
+  ): { tree: NodeTree; childIds: string[] } {
+    const insertedIds: string[] = [];
+    const nextTree = this.commit((tree) => {
+      const parent = tree.nodes[parentId];
+      if (!parent || parent.type === 'text') return null;
+      if (!Array.isArray(descriptors) || descriptors.length === 0) return null;
+
+      const childNodes: Record<string, CanvasNode> = {};
+      const childIds: string[] = [];
+      for (const desc of descriptors) {
+        const childId = this.buildSingleNode(desc, parentId, childNodes);
+        childIds.push(childId);
+      }
+
+      const nextChildren = [...parent.children];
+      const index =
+        insertIndex === undefined ? nextChildren.length : Math.min(Math.max(0, insertIndex), nextChildren.length);
+      nextChildren.splice(index, 0, ...childIds);
+
+      insertedIds.push(...childIds);
+
+      return {
+        ...tree,
+        nodes: {
+          ...tree.nodes,
+          ...childNodes,
+          [parentId]: { ...parent, children: nextChildren },
+        },
+      };
+    });
+
+    return { tree: nextTree, childIds: insertedIds };
   }
 
   deleteNode(nodeId: string): NodeTree {
@@ -407,6 +465,65 @@ export class NodeTreeManager {
   }
 
   // --- Private helpers ---
+
+  private normalizeTree(tree: NodeTree): NodeTree {
+    const normalizedNodes: Record<string, CanvasNode> = {};
+    for (const [id, rawNode] of Object.entries(tree.nodes)) {
+      if (!rawNode) continue;
+      const visualStyle = { ...DEFAULT_VISUAL_STYLE, ...(rawNode.visualStyle ?? {}) };
+      const base: CanvasNode = {
+        ...rawNode,
+        id: rawNode.id ?? id,
+        flexStyle: rawNode.flexStyle ?? ({} as CanvasNode['flexStyle']),
+        visualStyle,
+        children: Array.isArray(rawNode.children) ? rawNode.children : [],
+        computedLayout: rawNode.computedLayout ?? { left: 0, top: 0, width: 0, height: 0 },
+        parentId: rawNode.parentId ?? null,
+      };
+
+      if (base.type === 'text') {
+        const nextVisual = { ...base.visualStyle, boxShadow: null };
+        normalizedNodes[id] = {
+          ...base,
+          visualStyle: nextVisual,
+          textProps: { ...DEFAULT_TEXT_PROPS, ...(base.textProps ?? {}) },
+          imageProps: undefined,
+          scrollViewProps: undefined,
+        };
+        continue;
+      }
+
+      if (base.type === 'image') {
+        normalizedNodes[id] = {
+          ...base,
+          textProps: undefined,
+          imageProps: {
+            src: base.imageProps?.src ?? '',
+            objectFit: base.imageProps?.objectFit ?? 'cover',
+          },
+          scrollViewProps: undefined,
+        };
+        continue;
+      }
+
+      if (base.type === 'scrollview') {
+        normalizedNodes[id] = {
+          ...base,
+          textProps: undefined,
+          imageProps: undefined,
+          scrollViewProps: {
+            scrollDirection: base.scrollViewProps?.scrollDirection ?? 'vertical',
+            scrollBarVisibility: base.scrollViewProps?.scrollBarVisibility ?? 'auto',
+          },
+        };
+        continue;
+      }
+
+      normalizedNodes[id] = { ...base, textProps: undefined, imageProps: undefined, scrollViewProps: undefined };
+    }
+
+    return { ...tree, nodes: normalizedNodes };
+  }
 
   private buildSingleNode(
     desc: NodeDescriptor,

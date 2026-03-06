@@ -11,6 +11,8 @@ export function LiveCodeEditorHeader({
   showJsxPropsMode,
   showSync = true,
   onSyncFromCanvas,
+  showApply = true,
+  onApplyToCanvas,
   onCopy,
   onClose,
 }: {
@@ -21,6 +23,8 @@ export function LiveCodeEditorHeader({
   showJsxPropsMode: boolean;
   showSync?: boolean;
   onSyncFromCanvas: () => void;
+  showApply?: boolean;
+  onApplyToCanvas: () => void;
   onCopy: () => void;
   onClose: () => void;
 }) {
@@ -72,6 +76,16 @@ export function LiveCodeEditorHeader({
           title="从当前画布同步到编辑器（覆盖当前编辑器内容）"
         >
           Sync
+        </button>
+      )}
+      {showApply && (
+        <button
+          type="button"
+          onClick={onApplyToCanvas}
+          className="px-2 py-1 rounded text-xs text-gray-600 hover:bg-gray-100"
+          title="把编辑器内容应用到画布（覆盖当前画布结构）"
+        >
+          Apply
         </button>
       )}
       <button type="button" onClick={onCopy} className="p-2 rounded hover:bg-gray-100 text-gray-600" title="复制当前代码">

@@ -4,6 +4,10 @@ export type {
   VisualStyle,
   TextStyle,
   StyleProps,
+  LinearGradientStop,
+  LinearGradientStyle,
+  RadialGradientStyle,
+  GradientStyle,
 } from './style';
 export { expandShorthand, splitStyle } from './style';
 

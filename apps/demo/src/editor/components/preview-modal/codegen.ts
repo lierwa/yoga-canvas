@@ -136,12 +136,13 @@ function buildJSXProps(node: CanvasNode, mode: 'style' | 'className'): string[] 
 
   if (node.name) props.push(`name=${JSON.stringify(node.name)}`);
 
-  const style = buildCombinedStyle(node);
-  const { className } = styleToTailwind(style);
+  const style = stripDefaultStyleForExport(node, buildCombinedStyle(node));
+  const { className, restStyle } = styleToTailwind(style);
   if (mode === 'style') {
     if (Object.keys(style).length) props.push(`style={${JSON.stringify(style, null, 2)}}`);
   } else {
     if (className) props.push(`className=${JSON.stringify(className)}`);
+    if (Object.keys(restStyle).length) props.push(`style={${JSON.stringify(restStyle, null, 2)}}`);
   }
 
   if (node.type === 'image') {
@@ -177,6 +178,40 @@ function buildCombinedStyle(node: CanvasNode): Record<string, unknown> {
     }
   }
   return style;
+}
+
+function stripDefaultStyleForExport(node: CanvasNode, style: Record<string, unknown>): Record<string, unknown> {
+  const DEFAULT_VISUAL: Record<string, unknown> = {
+    backgroundColor: 'transparent',
+    linearGradient: null,
+    borderColor: 'transparent',
+    borderWidth: 0,
+    borderRadius: 0,
+    opacity: 1,
+    rotate: 0,
+    boxShadow: null,
+    zIndex: 0,
+  };
+  const DEFAULT_TEXT: Record<string, unknown> = {
+    fontSize: 14,
+    fontWeight: 'normal',
+    fontStyle: 'normal',
+    fontFamily: 'sans-serif',
+    color: '#000000',
+    lineHeight: 1.4,
+    textAlign: 'left',
+    whiteSpace: 'normal',
+    lineClamp: undefined,
+    textShadow: null,
+  };
+
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(style)) {
+    if (k in DEFAULT_VISUAL && Object.is(v, DEFAULT_VISUAL[k])) continue;
+    if (node.type === 'text' && k in DEFAULT_TEXT && Object.is(v, DEFAULT_TEXT[k])) continue;
+    out[k] = v;
+  }
+  return out;
 }
 
 function styleToTailwind(style: Record<string, unknown>): { className: string; restStyle: Record<string, unknown> } {
@@ -254,6 +289,12 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   const flexWrap = style.flexWrap;
   if (flexWrap === 'wrap') add('flex-wrap', ['flexWrap']);
   else if (flexWrap === 'nowrap') add('flex-nowrap', ['flexWrap']);
+
+  const flex = style.flex;
+  if (typeof flex === 'number' && Number.isFinite(flex)) {
+    if (flex === 1) add('flex-1', ['flex']);
+    else add(`flex-[${flex}]`, ['flex']);
+  }
 
   const alignItems = style.alignItems;
   if (alignItems === 'flex-start') add('items-start', ['alignItems']);
@@ -361,6 +402,27 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   const borderColor = style.borderColor;
   if (typeof borderColor === 'string' && borderColor && borderColor !== 'transparent') add(`border-[${escapeArbitrary(borderColor)}]`, ['borderColor']);
 
+  const boxShadow = style.boxShadow;
+  if (boxShadow && typeof boxShadow === 'object') {
+    const b = boxShadow as Record<string, unknown>;
+    const color = b.color;
+    const blur = b.blur;
+    const offsetX = b.offsetX;
+    const offsetY = b.offsetY;
+    const spread = b.spread;
+    if (
+      typeof color === 'string' &&
+      typeof blur === 'number' &&
+      typeof offsetX === 'number' &&
+      typeof offsetY === 'number' &&
+      typeof spread === 'number' &&
+      [blur, offsetX, offsetY, spread].every((n) => Number.isFinite(n))
+    ) {
+      const css = `${offsetX}px ${offsetY}px ${blur}px ${spread}px ${color}`;
+      add(`shadow-[${escapeArbitrary(css)}]`, ['boxShadow']);
+    }
+  }
+
   const opacity = style.opacity;
   if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
   const rotate = style.rotate;
@@ -393,4 +455,3 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     restStyle: rest,
   };
 }
-
