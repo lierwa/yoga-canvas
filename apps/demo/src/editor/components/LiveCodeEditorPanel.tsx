@@ -127,7 +127,7 @@ export default function LiveCodeEditorPanel({
       const startsWithObject = source.startsWith('{');
       const startsWithArray = source.startsWith('[');
       if (startsWithObject || startsWithArray) {
-        const fn = new Function(`"use strict"; return (${source});`);
+        const fn = new Function(`return (${source});`);
         return fn();
       }
 
@@ -164,7 +164,7 @@ export default function LiveCodeEditorPanel({
         if (ch === '}') depth -= 1;
         if (depth === 0 && ch === '}') {
           const expr = source.slice(start, i + 1);
-          const fn = new Function(`"use strict"; return (${expr});`);
+          const fn = new Function(`return (${expr});`);
           return fn();
         }
       }

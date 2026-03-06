@@ -2951,7 +2951,7 @@ export const COMPONENTS_CANVAS_CONTENT: NodeDescriptor = {
                         whiteSpace: "normal",
                         textShadow: null,
                       },
-                      content: "lineClamp: 3",
+                      content: "lineClamp: 4",
                     },
                     {
                       type: "text",

@@ -134,6 +134,12 @@ declare const wx: {
   canvasToTempFilePath(options: Record<string, unknown>): void;
 };
 
+function resolveLineHeightPx(fontSize: number, lineHeight: number): number {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return 0;
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) return fontSize * 1.2;
+  return lineHeight < 4 ? fontSize * lineHeight : lineHeight;
+}
+
 /**
  * WeChat mini-program platform adapter.
  */
@@ -164,7 +170,7 @@ export class WxAdapter implements PlatformAdapter {
     const fontWeight = typeof options.fontWeight === 'number' ? options.fontWeight : options.fontWeight;
     const fontStyle = options.fontStyle && options.fontStyle !== 'normal' ? `${options.fontStyle} ` : '';
     ctx.font = `${fontStyle}${fontWeight !== 'normal' ? `${fontWeight} ` : ''}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
-    const lineH = options.fontSize * options.lineHeight;
+    const lineH = resolveLineHeightPx(options.fontSize, options.lineHeight);
     const lineClamp = normalizeLineClamp(options.lineClamp);
 
     if (options.whiteSpace === 'nowrap') {
@@ -263,17 +269,17 @@ export class WxAdapter implements PlatformAdapter {
 function estimateTextSize(options: TextMeasureOptions): { width: number; height: number } {
   const avgCharWidth = options.fontSize * 0.6;
   const lineClamp = normalizeLineClamp(options.lineClamp);
+  const lineH = resolveLineHeightPx(options.fontSize, options.lineHeight);
   if (options.whiteSpace === 'nowrap') {
     const width = options.content.replace(/\n/g, ' ').length * avgCharWidth;
     if (lineClamp) {
-      return { width: Math.min(width, options.availableWidth), height: options.fontSize * options.lineHeight };
+      return { width: Math.min(width, options.availableWidth), height: lineH };
     }
-    return { width, height: options.fontSize * options.lineHeight };
+    return { width, height: lineH };
   }
   const charsPerLine = Math.max(1, Math.floor(options.availableWidth / avgCharWidth));
   const lineCount = Math.ceil(options.content.length / charsPerLine);
   const displayedLineCount = lineClamp ? Math.min(lineCount, lineClamp) : lineCount;
-  const lineH = options.fontSize * options.lineHeight;
   return {
     width: Math.min(options.content.length * avgCharWidth, options.availableWidth),
     height: displayedLineCount * lineH,

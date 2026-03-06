@@ -46,6 +46,11 @@ function flexValueToCSS(v: FlexValue | undefined): string | null {
   return `${v}px`;
 }
 
+function lineHeightToCSS(lineHeight: number): string {
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) return 'normal';
+  return lineHeight < 4 ? String(lineHeight) : `${lineHeight}px`;
+}
+
 function buildCSSString(node: CanvasNode): string {
   const s = node.flexStyle;
   const v = node.visualStyle;
@@ -120,7 +125,7 @@ function buildTextCSSString(node: CanvasNode): string {
     `font-size:${t.fontSize}px;`,
     `font-weight:${t.fontWeight};`,
     `color:${t.color};`,
-    `line-height:${t.lineHeight};`,
+    `line-height:${lineHeightToCSS(t.lineHeight)};`,
     `text-align:${t.textAlign};`,
     `white-space:${t.whiteSpace === 'nowrap' ? 'nowrap' : 'pre-wrap'};`,
     t.whiteSpace === 'nowrap' ? 'word-break:normal;' : 'word-break:break-word;',

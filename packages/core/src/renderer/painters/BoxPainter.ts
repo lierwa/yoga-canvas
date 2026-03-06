@@ -8,7 +8,7 @@ export function drawBox(ctx: CanvasContextLike, node: CanvasNode): void {
   if (effectiveBoxShadow) {
     const spread = effectiveBoxShadow.spread ?? 0;
     ctx.save();
-    // ctx.setFillStyle("rgba(0, 0, 0, 0)");
+    ctx.setFillStyle('rgba(0,0,0,0)');
     ctx.setShadow(effectiveBoxShadow.color, effectiveBoxShadow.blur, effectiveBoxShadow.offsetX, effectiveBoxShadow.offsetY);
     const shadowLeft = left - spread;
     const shadowTop = top - spread;

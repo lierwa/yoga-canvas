@@ -174,6 +174,7 @@ function renderNode(
     const shadowWidth = width + spread * 2;
     const shadowHeight = height + spread * 2;
     ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0)';
     ctx.shadowColor = effectiveBoxShadow.color;
     ctx.shadowBlur = effectiveBoxShadow.blur;
     ctx.shadowOffsetX = effectiveBoxShadow.offsetX;
@@ -463,6 +464,12 @@ function normalizeLineClamp(lineClamp: number | undefined): number | null {
   return n;
 }
 
+function resolveLineHeightPx(fontSize: number, lineHeight: number): number {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return 0;
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) return fontSize * 1.2;
+  return lineHeight < 4 ? fontSize * lineHeight : lineHeight;
+}
+
 function ellipsizeToWidth(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
   const ellipsis = '…';
   if (maxWidth <= 0) return '';
@@ -537,7 +544,7 @@ function drawTextContent(ctx: CanvasRenderingContext2D, node: CanvasNode): void 
     ctx.shadowOffsetY = textShadow.offsetY;
   }
 
-  const computedLineHeight = fontSize * lineHeight;
+  const computedLineHeight = resolveLineHeightPx(fontSize, lineHeight);
   const halfLeading = (computedLineHeight - fontSize) / 2;
 
   ctx.beginPath();

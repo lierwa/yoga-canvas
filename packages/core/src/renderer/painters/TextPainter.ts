@@ -8,6 +8,12 @@ function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
   return fallback;
 }
 
+function resolveLineHeightPx(fontSize: number, lineHeight: number): number {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return 0;
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) return fontSize * 1.2;
+  return lineHeight < 4 ? fontSize * lineHeight : lineHeight;
+}
+
 export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   if (!node.textProps) return;
 
@@ -37,7 +43,7 @@ export function drawText(ctx: CanvasContextLike, node: CanvasNode): void {
   ctx.rect(left, top, width, node.computedLayout.height);
   ctx.clip();
 
-  const lineH = fontSize * lineHeight;
+  const lineH = resolveLineHeightPx(fontSize, lineHeight);
   const halfLeading = (lineH - fontSize) / 2;
   let y = top + padTop + halfLeading;
 

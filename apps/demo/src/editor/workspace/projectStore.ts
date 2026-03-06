@@ -52,6 +52,52 @@ function writeStore(store: ProjectStoreV1): void {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(store));
 }
 
+function normalizeProjectRecord(input: unknown): { record: ProjectRecord; changed: boolean } | null {
+  if (!input || typeof input !== 'object') return null;
+  const raw = input as Partial<ProjectRecord> & { payload?: unknown };
+
+  const nextId =
+    typeof raw.id === 'string' && raw.id.trim() ? raw.id : generateId();
+  const nextName =
+    typeof raw.name === 'string' && raw.name.trim() ? raw.name : '未命名项目';
+  const nextCreatedAt =
+    typeof raw.createdAt === 'number' && Number.isFinite(raw.createdAt) ? raw.createdAt : now();
+  const nextUpdatedAt =
+    typeof raw.updatedAt === 'number' && Number.isFinite(raw.updatedAt) ? raw.updatedAt : nextCreatedAt;
+  const nextReadonly = typeof raw.readonly === 'boolean' ? raw.readonly : undefined;
+
+  const payload = raw.payload as unknown as Partial<ProjectPayload> | undefined;
+  const nextPayload: ProjectPayload | null =
+    payload && typeof payload === 'object' && 'kind' in payload
+      ? payload.kind === 'descriptor' && 'descriptor' in payload
+        ? { kind: 'descriptor', descriptor: (payload as { descriptor: NodeDescriptor }).descriptor }
+        : payload.kind === 'tree' && 'treeJSON' in payload && typeof (payload as { treeJSON: unknown }).treeJSON === 'string'
+          ? { kind: 'tree', treeJSON: (payload as { treeJSON: string }).treeJSON }
+          : null
+      : null;
+  if (!nextPayload) return null;
+
+  const changed =
+    nextId !== raw.id
+    || nextName !== raw.name
+    || nextCreatedAt !== raw.createdAt
+    || nextUpdatedAt !== raw.updatedAt
+    || (nextReadonly ?? null) !== (raw.readonly ?? null)
+    || (raw.payload as unknown) !== (nextPayload as unknown);
+
+  return {
+    record: {
+      id: nextId,
+      name: nextName,
+      createdAt: nextCreatedAt,
+      updatedAt: nextUpdatedAt,
+      payload: nextPayload,
+      ...(nextReadonly !== undefined ? { readonly: nextReadonly } : null),
+    },
+    changed,
+  };
+}
+
 const BROKEN_IMAGE_SRCS = new Set<string>([
   'https://images.unsplash.com/photo-1526481280695-3c687fd643ed?auto=format&fit=crop&w=1200&q=80',
 ]);
@@ -106,9 +152,13 @@ function buildWorkspaceDefaultPanelRecord(): ProjectRecord {
 function ensureSeeded(): ProjectStoreV1 {
   const existing = safeParseStore(localStorage.getItem(STORAGE_KEY));
   if (existing) {
+    const normalizedResults = existing.projects.map((p) => normalizeProjectRecord(p));
+    const normalizedProjects = normalizedResults.flatMap((r) => (r ? [r.record] : []));
+    const anyNormalized = normalizedResults.some((r) => !r || r.changed);
+
     const seedTemplateById = new Map(seedTemplates.map((t) => [t.id, t] as const));
     const allowedSeedIds = new Set(seedTemplateById.keys());
-    const filteredProjects = existing.projects.filter(
+    const filteredProjects = normalizedProjects.filter(
       (p) => !p.id.startsWith('seed_') || allowedSeedIds.has(p.id),
     );
 
@@ -159,7 +209,7 @@ function ensureSeeded(): ProjectStoreV1 {
         readonly: false,
       }));
 
-    const removedDeprecatedSeeds = filteredProjects.length !== existing.projects.length;
+    const removedDeprecatedSeeds = filteredProjects.length !== normalizedProjects.length;
     const refreshedSeeds = migratedProjects.some((p, idx) => p !== filteredProjects[idx]);
     const defaultPanelDescriptor = getWorkspaceDefaultPanelDescriptor();
     const defaultPanelDescriptorJSON = JSON.stringify(defaultPanelDescriptor);
@@ -181,7 +231,14 @@ function ensureSeeded(): ProjectStoreV1 {
     })();
 
     const defaultPanelChanged = nextProjectsWithDefault !== sanitizedProjects;
-    if (missing.length === 0 && !removedDeprecatedSeeds && !refreshedSeeds && !anySanitized && !defaultPanelChanged) {
+    if (
+      missing.length === 0
+      && !removedDeprecatedSeeds
+      && !refreshedSeeds
+      && !anySanitized
+      && !defaultPanelChanged
+      && !anyNormalized
+    ) {
       return existing;
     }
 

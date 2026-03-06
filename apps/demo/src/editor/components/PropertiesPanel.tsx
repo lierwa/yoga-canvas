@@ -103,6 +103,22 @@ export default function PropertiesPanel({
   const boxShadow = v.boxShadow ?? null;
   const gradient = v.linearGradient ?? null;
   const textShadow = node.textProps?.textShadow ?? null;
+  const round1 = (n: number) => Math.round(n * 10) / 10;
+  const textFontSizeRaw = node.textProps?.fontSize ?? 14;
+  const textFontSize = Number.isFinite(textFontSizeRaw) && textFontSizeRaw > 0 ? textFontSizeRaw : 14;
+  const rawLineHeight = node.textProps?.lineHeight ?? 1.4;
+  const lineHeightPx =
+    Number.isFinite(rawLineHeight) && rawLineHeight > 0
+      ? rawLineHeight < 4
+        ? rawLineHeight * textFontSize
+        : rawLineHeight
+      : textFontSize * 1.4;
+  const lineHeightMultiplier =
+    Number.isFinite(rawLineHeight) && rawLineHeight > 0
+      ? rawLineHeight < 4
+        ? rawLineHeight
+        : rawLineHeight / textFontSize
+      : 1.4;
 
   type GradientValue = NonNullable<VisualStyle["linearGradient"]>;
   type RadialGradientValue = Extract<
@@ -325,10 +341,19 @@ export default function PropertiesPanel({
               clearValue="#000000"
               onChange={(c) => updateText({ color: c })}
             />
-            <FieldGrid cols={2}>
+            <FieldGrid cols={3}>
               <NumberField
-                label="Line H"
-                value={node.textProps.lineHeight}
+                label="Line H(px)"
+                value={round1(lineHeightPx)}
+                onChange={(val) =>
+                  updateText({
+                    lineHeight: val ?? round1(textFontSize * 1.4),
+                  })
+                }
+              />
+              <NumberField
+                label="Line H(×)"
+                value={round1(lineHeightMultiplier)}
                 onChange={(val) => updateText({ lineHeight: val ?? 1.4 })}
               />
               <SelectField

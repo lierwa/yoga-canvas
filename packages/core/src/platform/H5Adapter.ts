@@ -107,6 +107,12 @@ function setMeasureFont(ctx: CanvasRenderingContext2D, options: TextMeasureOptio
   ctx.font = `${stylePart}${weightPart}${options.fontSize}px ${options.fontFamily || 'sans-serif'}`;
 }
 
+function resolveLineHeightPx(fontSize: number, lineHeight: number): number {
+  if (!Number.isFinite(fontSize) || fontSize <= 0) return 0;
+  if (!Number.isFinite(lineHeight) || lineHeight <= 0) return fontSize * 1.2;
+  return lineHeight < 4 ? fontSize * lineHeight : lineHeight;
+}
+
 /**
  * H5 (browser) platform adapter.
  */
@@ -126,7 +132,7 @@ export class H5Adapter implements PlatformAdapter {
     const ctx = getMeasureCanvasContext();
     setMeasureFont(ctx, options);
     const lineClamp = normalizeLineClamp(options.lineClamp);
-    const lineH = options.fontSize * options.lineHeight;
+    const lineH = resolveLineHeightPx(options.fontSize, options.lineHeight);
 
     if (options.whiteSpace === 'nowrap') {
       const singleLine = options.content.replace(/\n/g, ' ');
