@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-type DemoTopNavVariant = "static" | "sticky" | "overlay";
+type DemoTopNavVariant = "static" | "sticky" | "overlay" | "overlayDark";
 
 export function DemoTopNav({
   variant = "static",
@@ -17,14 +17,16 @@ export function DemoTopNav({
 }) {
   const outerClassName =
     variant === "sticky"
-      ? "sticky top-0 z-20 border-b border-white/70 bg-white/75 backdrop-blur"
+      ? "sticky top-0 z-20"
       : variant === "overlay"
-        ? "absolute top-0 left-0 right-0 z-10 bg-white/85 backdrop-blur border-b border-white/35"
-        : "bg-white/90 backdrop-blur border-b border-gray-200";
+      ? "absolute top-0 left-0 right-0 z-10 bg-white/85 backdrop-blur border-b border-white/35"
+      : variant === "overlayDark"
+      ? "absolute top-0 left-0 right-0 z-10"
+      : "bg-white/90 backdrop-blur border-b border-gray-200";
 
   const innerClassName = constrainWidth
-    ? "mx-auto max-w-6xl relative px-6 py-3 flex items-center gap-4"
-    : "relative px-6 py-3 flex items-center gap-4";
+    ? "mx-auto max-w-6xl relative px-6 pt-6 flex items-center gap-4"
+    : "relative px-6 pt-6 flex items-center gap-4";
 
   return (
     <div className={outerClassName}>
@@ -37,4 +39,3 @@ export function DemoTopNav({
     </div>
   );
 }
-

@@ -16,6 +16,7 @@ type MessageKey =
   | 'home.stats.export'
   | 'lang.switchToEn'
   | 'lang.switchToZh'
+  | 'nav.docs'
   | 'nav.back'
   | 'nav.backHome'
   | 'nav.locate'
@@ -96,8 +97,9 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'home.stats.renderTarget': '渲染输出',
     'home.stats.editor': '编辑交互',
     'home.stats.export': '导出格式',
-    'lang.switchToEn': '切换至英文',
+    'lang.switchToEn': 'Switch to English',
     'lang.switchToZh': '切换至中文',
+    'nav.docs': '文档',
     'nav.back': '返回',
     'nav.backHome': '返回首页',
     'nav.locate': '聚焦画布',
@@ -175,8 +177,9 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'home.stats.renderTarget': 'Render output',
     'home.stats.editor': 'Editor tools',
     'home.stats.export': 'Export formats',
-    'lang.switchToEn': 'Switch to English',
+    'lang.switchToEn': '切换至英文',
     'lang.switchToZh': '切换中文',
+    'nav.docs': 'Docs',
     'nav.back': 'Back',
     'nav.backHome': 'Back to Home',
     'nav.locate': 'Locate',

@@ -1,36 +1,38 @@
-import { useEffect, useMemo, useState } from 'react';
+import { Suspense, lazy } from 'react';
 import { DemoI18nProvider } from './i18n';
-import EditorAppPage from './pages/EditorAppPage';
-import HomePage from './pages/HomePage';
+import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 
-type DemoRoute = 'home' | 'editor';
+const HomePage = lazy(() => import('./pages/HomePage'));
+const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
+const WorkspacePage = lazy(() => import('./editor/pages/WorkspacePage'));
+const EditorPage = lazy(() => import('./editor/pages/EditorPage'));
 
-function normalizeHash(hash: string): string {
-  const raw = hash.startsWith('#') ? hash.slice(1) : hash;
-  return raw.startsWith('/') ? raw : `/${raw}`;
+function WorkspaceRoute() {
+  const navigate = useNavigate();
+  return <WorkspacePage onOpenProject={(projectId: string) => navigate(`/editor/${encodeURIComponent(projectId)}`)} />;
 }
 
-function parseDemoRoute(hash: string): DemoRoute {
-  const path = normalizeHash(hash || '#/');
-  if (path === '/') return 'home';
-  if (path === '/workspace') return 'editor';
-  if (path.startsWith('/editor/')) return 'editor';
-  return 'home';
+function EditorRoute() {
+  const navigate = useNavigate();
+  const { projectId } = useParams<{ projectId: string }>();
+  if (!projectId) return <Navigate to="/workspace" replace />;
+  return <EditorPage projectId={projectId} onExit={() => navigate('/workspace')} />;
 }
 
 export default function App() {
-  const [hash, setHash] = useState(() => window.location.hash);
-
-  useEffect(() => {
-    const onChange = () => setHash(window.location.hash);
-    window.addEventListener('hashchange', onChange);
-    if (!window.location.hash) window.location.hash = '#/';
-    return () => window.removeEventListener('hashchange', onChange);
-  }, []);
-
-  const route = useMemo(() => parseDemoRoute(hash), [hash]);
-
-  const page = route === 'editor' ? <EditorAppPage /> : <HomePage />;
-
-  return <DemoI18nProvider>{page}</DemoI18nProvider>;
+  return (
+    <DemoI18nProvider>
+      <BrowserRouter>
+        <Suspense fallback={null}>
+          <Routes>
+            <Route path="/" element={<HomePage />} />
+            <Route path="/docs/:slug?" element={<DocsPage />} />
+            <Route path="/workspace" element={<WorkspaceRoute />} />
+            <Route path="/editor/:projectId" element={<EditorRoute />} />
+            <Route path="*" element={<Navigate to="/" replace />} />
+          </Routes>
+        </Suspense>
+      </BrowserRouter>
+    </DemoI18nProvider>
+  );
 }

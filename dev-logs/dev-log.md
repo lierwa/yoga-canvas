@@ -1,8 +1,8 @@
 ```yaml
 DEV_LOG_META:
-  LastLogId: 2026-03-06/01
-  LastAnchorCommit: 9f22aa6
-  LastAnchorDate: 2026-03-06
+  LastLogId: 2026-03-07/01
+  LastAnchorCommit: 3d84bf2
+  LastAnchorDate: 2026-03-07
 ```
 
 ## Log Entry: BOOTSTRAP-2026-03-02/01
@@ -62,6 +62,61 @@ DEV_LOG_META:
 - 明确并补齐根目录与各包的开发/构建/发布工作流（pnpm 口径）
 - 将仓库规则与关键入口同步到根 README（或迁移到 project.md 并在 README 引用）
 - 梳理 H5/WX adapter 的差异清单并补充回归样例（文本测量、图片导出、触摸坐标）
+
+---
+
+## Log Entry: 2026-03-07/01
+- Date: 2026-03-07
+- Range: 9f22aa6.. 3d84bf2
+- Focus: 渐变/事件/文本能力增强，并修复行高与阴影渲染问题
+
+### Summary
+- Core：引入 retained-mode 指针事件系统（capture/bubble/stopPropagation），并把派发入口接入 YogaCanvas
+- Core：增强视觉能力，支持径向渐变与文本渐变，并补齐文本 lineClamp 的排版与渲染链路
+- Core：统一 lineHeight 的“倍数/px”双语义，并修复 boxShadow 透明度绘制与 DOM 导出行高单位
+- Demo：移除 Playground/ComponentsCanvas 路由，重构 HomePage 展示；新增 demo 顶部导航与更完整的 ComponentsCanvasContent 数据
+- Editor：修复 Tailwind 扫描范围导致的选中高亮失效；增强项目存储的脏数据容错；属性面板增加 lineHeight 的 px/倍数双输入
+
+### Changes By Area
+- Core (@yoga-canvas/core):
+  - 事件：新增 retained-mode 派发器并导出，YogaCanvas 接入 dispatch 与监听（packages/core/src/events/*、packages/core/src/YogaCanvas.ts、packages/core/src/index.ts）
+  - 文本：新增 lineClamp 支持与抽取 textLayout 工具；lineHeight 同时支持倍数/px（packages/core/src/text/textLayout.ts、packages/core/src/renderer/painters/TextPainter.ts、packages/core/src/platform/H5Adapter.ts、packages/core/src/platform/WxAdapter.ts）
+  - 渲染：修复 boxShadow 绘制时 fillStyle 默认黑色导致透明背景发黑；DOM 导出在 px 行高时输出 px 单位（packages/core/src/renderer/painters/BoxPainter.ts、packages/core/src/export/exportDOMTree.ts）
+  - 类型与构建：补齐类型导出与声明产物生成脚本（packages/core/src/types/*、packages/core/package.json）
+- React (@yoga-canvas/react):
+  - Editor：CanvasRenderer 文本渲染支持 lineHeight(px/倍数) 并与 core 语义对齐（packages/react/src/editor/CanvasRenderer.ts）
+  - 交互：EditorCanvas/useCanvasInteraction 适配 retained-mode 指针事件链路（packages/react/src/editor/EditorCanvas.tsx、packages/react/src/editor/useCanvasInteraction.ts）
+  - UI：NodeTreePanel 选中态展示调整（packages/react/src/components/NodeTreePanel.tsx）
+- Editor (apps/demo/src/editor):
+  - 属性面板：新增 lineHeight 的 px/倍数双输入，并在 seed 模板里将长小数行高统一四舍五入到 1 位（apps/demo/src/editor/components/PropertiesPanel.tsx、apps/demo/src/editor/templates/seedDescriptors.ts）
+  - 项目存储：增强 localStorage 脏数据的归一化，避免读取时崩溃（apps/demo/src/editor/workspace/projectStore.ts）
+  - LiveCodeEditor：增强输入解析与错误提示（apps/demo/src/editor/components/LiveCodeEditorPanel.tsx）
+  - 样式：补齐 Tailwind 扫描源文件范围，修复选中高亮类名不生效（apps/demo/src/index.css）
+- Demo / Taro:
+  - Demo：重构 HomePage，新增 DemoTopNav 与更完整的 ComponentsCanvasContent 资源；移除 Playground/ComponentsCanvas 页面（apps/demo/src/pages/HomePage.tsx、apps/demo/src/components/DemoTopNav.tsx、apps/demo/src/pages/components/ComponentsCanvasContent.ts）
+  - i18n：补齐 demo 侧文案资源（apps/demo/src/i18n.tsx）
+  - Taro demo：新增多页示例结构与配置（apps/taro-demo/src/pages/*、apps/taro-demo/src/app.*）
+
+### Notable API / Data Model Changes
+- @yoga-canvas/core：新增 PointerEventDispatcher 事件体系，并通过 YogaCanvas 暴露节点级 add/removeEventListener 与 dispatchPointerEvent（packages/core/src/events/*、packages/core/src/YogaCanvas.ts）
+- @yoga-canvas/core：lineHeight 行为变化——`lineHeight < 4` 视为倍数，`lineHeight >= 4` 视为 px；影响文本测量/布局/渲染与 DOM 导出（packages/core/src/platform/*、packages/core/src/renderer/painters/TextPainter.ts、packages/core/src/export/exportDOMTree.ts）
+- @yoga-canvas/core：新增文本 lineClamp 支持与共享的 textLayout 工具（packages/core/src/text/textLayout.ts）
+
+### Notes & Gotchas
+- 仓库规则：不要执行 npm run dev:h5
+- CSS 的 line-height 数字默认是“倍数”；当使用 px 行高时需要输出 `${n}px`（本批次已在 DOM 导出修复）
+- lineHeight 的 px/倍数通过阈值 4 进行区分：如确实需要非常大的倍数行高，应避免使用 >=4 的值
+- Demo 的 Tailwind 通过 @source 扩展扫描路径，避免 workspace 组件类名不被收集（apps/demo/src/index.css）
+
+### Open Issues
+- lineHeight 双语义目前靠阈值区分，后续可考虑引入显式单位字段（例如 lineHeightUnit）以避免歧义
+- resolveLineHeightPx 逻辑在多处重复实现，后续可集中到 core 的单一工具函数并复用
+- demo build 仍有 chunk 体积告警（>500kB），后续需要按路由或面板动态拆分
+
+### Next
+- 为 lineHeight(px/倍数) 与 lineClamp 增加最小回归用例（测量高度、渲染基线、DOM 导出）
+- 抽取并统一 resolveLineHeightPx 到 core 工具层，React/editor 直接复用
+- 评估 retained-mode 事件系统在 ScrollView 嵌套场景的回归覆盖（capture/bubble/wheel）
 
 ---
 

@@ -3,6 +3,8 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
 import { useYogaCanvas } from "@yoga-canvas/react";
 import type { NodeDescriptor } from "@yoga-canvas/core";
+import { useNavigate } from "react-router-dom";
+import { DemoHeaderActions } from "../../components/DemoHeaderActions";
 import { DemoTopNav } from "../../components/DemoTopNav";
 import { useDemoI18n } from "../../i18n";
 import { seedTemplates } from "../templates/seedDescriptors";
@@ -302,7 +304,8 @@ function resolvePresetName(size: {
 
 export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const [tick, setTick] = useState(0);
-  const { locale, toggleLocale, t } = useDemoI18n();
+  const { t } = useDemoI18n();
+  const navigate = useNavigate();
   const { defaultPanelProject, projects } = useMemo(() => {
     void tick;
     const all = listProjects().filter((p) => !p.id.startsWith("seed_"));
@@ -338,7 +341,11 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
   const createScale = useSpringValue(createHover ? 1.02 : 1);
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+    <div className="h-screen relative overflow-hidden bg-gradient-to-br from-slate-50 via-white to-indigo-50">
+      <div className="absolute inset-0">
+        <div className="absolute -inset-[35%] bg-[radial-gradient(circle_at_20%_15%,rgba(168,85,247,0.32),transparent_55%),radial-gradient(circle_at_72%_30%,rgba(59,130,246,0.26),transparent_58%),radial-gradient(circle_at_60%_80%,rgba(34,197,94,0.18),transparent_62%)]" />
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05),transparent_30%,rgba(255,255,255,0.03))]" />
+      </div>
       <div className="h-full overflow-auto">
         <DemoTopNav
           variant="sticky"
@@ -348,7 +355,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               type="button"
               className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               onClick={() => {
-                window.location.hash = "#/";
+                navigate("/");
               }}
               title={t("nav.backHome")}
             >
@@ -356,20 +363,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               {t("nav.back")}
             </button>
           }
-          rightSlot={
-            <button
-              type="button"
-              onClick={toggleLocale}
-              className="cursor-pointer px-3 py-2 rounded-2xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white transition-colors"
-              title={
-                locale === "zh" ? t("lang.switchToZh") : t("lang.switchToEn")
-              }
-            >
-              {locale === "zh" ? "中文" : "EN"}
-            </button>
-          }
+          rightSlot={<DemoHeaderActions variant="light" showDocs />}
         />
-        <div className="mx-auto max-w-6xl px-6 py-10">
+        <div className="mx-auto max-w-6xl px-6 py-10 relative z-10">
           <div className="flex items-end justify-between gap-6">
             <div className="min-w-0">
               <div className="text-[13px] font-medium text-indigo-600 tracking-wide">
@@ -385,7 +381,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
             <div className="flex items-center gap-3">
               <button
                 type="button"
-                className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.28)] hover:bg-indigo-500 active:bg-indigo-700 transition-colors"
+                className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-black/80 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.28)] hover:bg-black/70 active:bg-black/60 transition-colors"
                 onClick={() => {
                   const container = getTemplateDefaultContainer(
                     defaultCreateTemplateId,

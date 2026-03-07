@@ -1,12 +1,15 @@
 import { useCallback } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { DemoHeaderActions } from "../components/DemoHeaderActions";
 import { useDemoI18n } from "../i18n";
 
 export default function HomePage() {
-  const { locale, toggleLocale, t } = useDemoI18n();
+  const { t } = useDemoI18n();
+  const navigate = useNavigate();
   const goToWorkspace = useCallback(() => {
-    window.location.hash = "#/workspace";
-  }, []);
+    navigate("/workspace");
+  }, [navigate]);
 
   return (
     <div className="h-screen w-screen overflow-hidden bg-[#050816] text-white">
@@ -17,9 +20,9 @@ export default function HomePage() {
 
       <div className="relative h-full">
         <div className="mx-auto max-w-6xl h-full px-6">
-          <div className="pt-10 flex items-center justify-between">
+          <div className="pt-6 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="w-9 h-9 rounded-2xl bg-white/10 border border-white/15 backdrop-blur flex items-center justify-center">
+              <div className="w-9 h-9 rounded-2xl border border-white/15 backdrop-blur flex items-center justify-center">
                 <Sparkles size={18} className="text-white/90" />
               </div>
               <div className="leading-tight">
@@ -31,14 +34,7 @@ export default function HomePage() {
                 </div>
               </div>
             </div>
-            <button
-              type="button"
-              onClick={toggleLocale}
-              className="cursor-pointer px-3 py-2 rounded-2xl bg-white/7 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/75 hover:bg-white/10 transition-colors"
-              title={locale === "zh" ? "切换中文" : "Switch to English"}
-            >
-              {locale === "zh" ? "中文" : "EN"}
-            </button>
+            <DemoHeaderActions variant="dark" showDocs />
           </div>
 
           <div className="mt-14 grid grid-cols-1 gap-10 items-start">
