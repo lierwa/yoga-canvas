@@ -488,7 +488,11 @@ export default function EditorPage({ projectId, onExit }: EditorPageProps) {
                 onWheel={handleCanvasWheel}
                 onDoubleClick={handleCanvasDoubleClick}
                 onFocusNode={handleFocusNode}
-                renderFocusAction={(onFocus) => (
+                onSelectNode={(nodeId) => {
+                  selectNode(nodeId);
+                  setSelectedNodeIds(nodeId ? [nodeId] : []);
+                }}
+                renderTopOverlay={(onFocus) => (
                   <button
                     onClick={onFocus}
                     className="absolute bottom-3 left-3 flex items-center gap-1.5 px-2.5 py-1.5

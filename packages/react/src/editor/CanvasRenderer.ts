@@ -1,6 +1,7 @@
 import type { CanvasNode, NodeTree, FlexValue } from '@yoga-canvas/core';
 import type { ScrollManager } from '@yoga-canvas/core';
 import type { SelectionState } from './types';
+import { drawSelectionIndicator } from './SelectionIndicator';
 
 type ShadowStyle = { offsetX: number; offsetY: number; blur: number; color: string };
 type BoxShadowStyle = ShadowStyle & { spread?: number };
@@ -43,10 +44,6 @@ type TextPropsEx = {
   lineClamp?: number;
   textShadow?: ShadowStyle | null;
 };
-
-const HANDLE_SIZE = 8;
-const ROTATION_HANDLE_OFFSET = 24;
-const ROTATION_HANDLE_RADIUS = 6;
 
 const imageCache = new Map<string, HTMLImageElement>();
 const renderCallbacks = new Set<() => void>();
@@ -101,7 +98,7 @@ export function renderCanvas(
   ctx.scale(scale, scale);
   const scrollManager = options?.scrollManager ?? null;
   renderNode(ctx, tree, tree.rootId, selection, scrollManager);
-  drawOverlays(ctx, tree, selection, scrollManager);
+  drawOverlays(ctx, tree, selection, scrollManager, scale);
   ctx.restore();
 }
 
@@ -291,7 +288,8 @@ function drawOverlays(
   ctx: CanvasRenderingContext2D,
   tree: NodeTree,
   selection: SelectionState,
-  scrollManager: ScrollManager | null
+  scrollManager: ScrollManager | null,
+  scale: number
 ): void {
   const getOffset = (nodeId: string) => {
     if (!scrollManager) return { x: 0, y: 0 };
@@ -307,7 +305,7 @@ function drawOverlays(
     const y = ind.y + dy;
     ctx.save();
     ctx.strokeStyle = '#22c55e';
-    ctx.lineWidth = 3;
+    ctx.lineWidth = 3 / scale;
     ctx.beginPath();
     if (ind.isHorizontal) {
       ctx.moveTo(x, y);
@@ -320,17 +318,17 @@ function drawOverlays(
     ctx.fillStyle = '#22c55e';
     if (ind.isHorizontal) {
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 3 / scale, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x + ind.length, y, 3, 0, Math.PI * 2);
+      ctx.arc(x + ind.length, y, 3 / scale, 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.beginPath();
-      ctx.arc(x, y, 3, 0, Math.PI * 2);
+      ctx.arc(x, y, 3 / scale, 0, Math.PI * 2);
       ctx.fill();
       ctx.beginPath();
-      ctx.arc(x, y + ind.length, 3, 0, Math.PI * 2);
+      ctx.arc(x, y + ind.length, 3 / scale, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.restore();
@@ -345,8 +343,8 @@ function drawOverlays(
       const { left, top, width, height } = node.computedLayout;
       ctx.save();
       ctx.strokeStyle = '#22c55e';
-      ctx.lineWidth = 2.5;
-      ctx.setLineDash([6, 4]);
+      ctx.lineWidth = 2.5 / scale;
+      ctx.setLineDash([6 / scale, 4 / scale]);
       ctx.strokeRect(left + dx, top + dy, width, height);
       ctx.setLineDash([]);
       ctx.fillStyle = 'rgba(34, 197, 94, 0.08)';
@@ -364,8 +362,8 @@ function drawOverlays(
       const { left, top, width, height } = node.computedLayout;
       ctx.save();
       ctx.strokeStyle = '#60a5fa';
-      ctx.lineWidth = 1.5;
-      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.5 / scale;
+      ctx.setLineDash([4 / scale, 4 / scale]);
       ctx.strokeRect(left + dx, top + dy, width, height);
       ctx.setLineDash([]);
       ctx.restore();
@@ -376,79 +374,9 @@ function drawOverlays(
     const node = tree.nodes[selection.selectedNodeId];
     if (node) {
       const off = getOffset(selection.selectedNodeId);
-      drawSelection(ctx, node, -off.x, -off.y);
+      drawSelectionIndicator(ctx, node, { dx: -off.x, dy: -off.y, scale });
     }
   }
-}
-
-function drawSelection(ctx: CanvasRenderingContext2D, node: CanvasNode, dx = 0, dy = 0): void {
-  const { left, top, width, height } = node.computedLayout;
-  ctx.save();
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 2;
-  ctx.strokeRect(left + dx, top + dy, width, height);
-  const handles = getResizeHandlePositions(node);
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 1.5;
-  for (const handle of handles) {
-    const isMid = handle.position.startsWith('mid-');
-    const size = isMid ? HANDLE_SIZE - 2 : HANDLE_SIZE;
-    ctx.beginPath();
-    if (isMid) {
-      ctx.arc(handle.x + dx, handle.y + dy, size / 2, 0, Math.PI * 2);
-    } else {
-      ctx.rect(handle.x + dx - size / 2, handle.y + dy - size / 2, size, size);
-    }
-    ctx.fill();
-    ctx.stroke();
-  }
-
-  const rotHandleY = top + dy - ROTATION_HANDLE_OFFSET;
-  const rotHandleX = left + dx + width / 2;
-  ctx.beginPath();
-  ctx.moveTo(rotHandleX, top + dy);
-  ctx.lineTo(rotHandleX, rotHandleY);
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 1;
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(rotHandleX, rotHandleY, ROTATION_HANDLE_RADIUS, 0, Math.PI * 2);
-  ctx.fillStyle = '#ffffff';
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 1.5;
-  ctx.fill();
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(rotHandleX, rotHandleY, 3, -Math.PI * 0.8, Math.PI * 0.5);
-  ctx.strokeStyle = '#3b82f6';
-  ctx.lineWidth = 1.2;
-  ctx.stroke();
-
-  const dimLabel = `${Math.round(width)} × ${Math.round(height)}`;
-  ctx.fillStyle = '#3b82f6';
-  ctx.font = 'bold 10px Inter, sans-serif';
-  ctx.textBaseline = 'bottom';
-  ctx.textAlign = 'center';
-  ctx.fillText(dimLabel, left + dx + width / 2, top + dy - ROTATION_HANDLE_OFFSET - ROTATION_HANDLE_RADIUS - 4);
-
-  ctx.restore();
-}
-
-export function getResizeHandlePositions(node: CanvasNode) {
-  const { left, top, width, height } = node.computedLayout;
-  return [
-    { position: 'top-left' as const, x: left, y: top },
-    { position: 'top-right' as const, x: left + width, y: top },
-    { position: 'bottom-left' as const, x: left, y: top + height },
-    { position: 'bottom-right' as const, x: left + width, y: top + height },
-    { position: 'mid-top' as const, x: left + width / 2, y: top },
-    { position: 'mid-right' as const, x: left + width, y: top + height / 2 },
-    { position: 'mid-bottom' as const, x: left + width / 2, y: top + height },
-    { position: 'mid-left' as const, x: left, y: top + height / 2 },
-  ];
 }
 
 function flexValueToPx(value: FlexValue | undefined, fallback = 0): number {
@@ -1073,10 +1001,4 @@ function drawScrollViewScrollbar(
   ctx.restore();
 }
 
-export function getRotationHandlePosition(node: CanvasNode) {
-  const { left, top, width } = node.computedLayout;
-  return {
-    x: left + width / 2,
-    y: top - ROTATION_HANDLE_OFFSET,
-  };
-}
+export { getResizeHandlePositions, getRotationHandlePosition, getSelectionIndicatorMetrics } from './SelectionIndicator';

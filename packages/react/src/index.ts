@@ -13,6 +13,8 @@ export type {
   ScrollViewJSXProps,
 } from './components';
 export { SelectionOverlay, NodeTreePanel, ResizablePanels } from './components';
+export { InfiniteCanvas } from './infinite-canvas';
+export type { InfiniteCanvasApi, InfiniteCanvasPlugin, InfiniteCanvasView, InfiniteCanvasViewport, Point } from './infinite-canvas';
 export { EditorCanvas } from './editor/EditorCanvas';
 export { useCanvasInteraction } from './editor/useCanvasInteraction';
 export type { SelectionState, DropIndicator } from './editor/types';
