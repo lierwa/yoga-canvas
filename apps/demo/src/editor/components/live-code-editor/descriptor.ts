@@ -81,6 +81,39 @@ export function buildDescriptorFromTree(tree: NodeTree, nodeId: string, options?
 
 export function renderJSXFromDescriptor(desc: NodeDescriptor, depth: number, mode: JSXPropsMode): string {
   const indent = '  '.repeat(depth);
+  const button = extractButtonInfoFromDescriptor(desc);
+  if (button) {
+    const props: string[] = [];
+    if (desc.id) props.push(`id=${JSON.stringify(desc.id)}`);
+    if (desc.name) props.push(`name=${JSON.stringify(desc.name)}`);
+    props.push(`label=${JSON.stringify(button.label)}`);
+
+    const style = stripDefaultStyleForExport(desc, (desc.style ?? {}) as Record<string, unknown>);
+    const { className, restStyle } = styleToTailwind(style);
+    if (mode === 'style') {
+      if (Object.keys(style).length) props.push(`style={${JSON.stringify(style, null, 2)}}`);
+    } else {
+      if (className) props.push(`className=${JSON.stringify(className)}`);
+      if (Object.keys(restStyle).length) props.push(`style={${JSON.stringify(restStyle, null, 2)}}`);
+    }
+
+    if (Object.keys(button.textStyle).length) {
+      props.push(`textStyle={${JSON.stringify(button.textStyle, null, 2)}}`);
+    }
+
+    if (desc.motion && typeof desc.motion === 'object' && Object.keys(desc.motion).length) {
+      props.push(`motion={${JSON.stringify(desc.motion, null, 2)}}`);
+    }
+
+    const sanitizedEvents = sanitizeEventsForCodegen(desc.events);
+    if (sanitizedEvents && typeof sanitizedEvents === 'object' && Object.keys(sanitizedEvents).length) {
+      props.push(`events={${JSON.stringify(sanitizedEvents, null, 2)}}`);
+    }
+
+    const propsString = props.length ? ` ${props.join(' ')}` : '';
+    return `${indent}<Button${propsString} />`;
+  }
+
   const tag = toJSXTag(desc.type);
 
   const props = buildJSXPropsFromDescriptor(desc, mode);
@@ -103,6 +136,36 @@ export function renderJSXFromDescriptor(desc: NodeDescriptor, depth: number, mod
   }
 
   return `${indent}<${tag}${propsString}>\n${children.join('\n')}\n${indent}</${tag}>`;
+}
+
+function extractButtonInfoFromDescriptor(
+  desc: NodeDescriptor,
+): { label: string; textStyle: Record<string, unknown> } | null {
+  if (desc.type !== 'view') return null;
+  if (!desc.children || desc.children.length !== 1) return null;
+  const child = desc.children[0];
+  if (!child || child.type !== 'text') return null;
+  if (child.name !== 'ButtonLabel') return null;
+
+  const label = child.content ?? '';
+  const rawTextStyle = (child.style ?? {}) as Record<string, unknown>;
+
+  const BUTTON_DEFAULT_TEXT_STYLE: Record<string, unknown> = {
+    fontSize: 14,
+    fontWeight: 600,
+    lineHeight: 1.2,
+    textAlign: 'center',
+    whiteSpace: 'nowrap',
+  };
+
+  const textStyle: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(rawTextStyle)) {
+    if (v === undefined || v === null) continue;
+    if (k in BUTTON_DEFAULT_TEXT_STYLE && Object.is(v, BUTTON_DEFAULT_TEXT_STYLE[k])) continue;
+    textStyle[k] = v;
+  }
+
+  return { label, textStyle };
 }
 
 function toJSXTag(type: CanvasNode['type']): string {

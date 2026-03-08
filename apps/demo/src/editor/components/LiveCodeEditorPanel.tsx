@@ -19,6 +19,38 @@ type Tab = 'jsx' | 'json';
 
 const OMIT_HELPER_NODE_PREFIXES = ['CodeBtn_', 'CodeBtnText_'];
 
+type LiveButtonProps = {
+  id?: string;
+  name?: string;
+  label: string;
+  className?: string;
+  tw?: string;
+  style?: NodeDescriptor['style'];
+  textStyle?: NodeDescriptor['style'];
+  motion?: NodeDescriptor['motion'];
+  events?: NodeDescriptor['events'];
+};
+
+function Button({ id, name, label, className, tw, style, textStyle, motion, events }: LiveButtonProps) {
+  return (
+    <View id={id} name={name} className={className} tw={tw} style={style} motion={motion} events={events}>
+      <Text
+        name="ButtonLabel"
+        style={{
+          fontSize: 14,
+          fontWeight: 600,
+          lineHeight: 1.2,
+          textAlign: 'center',
+          whiteSpace: 'nowrap',
+          ...(textStyle ?? {}),
+        }}
+      >
+        {label}
+      </Text>
+    </View>
+  );
+}
+
 type MonacoEditorLike = {
   getValue: () => string;
   onDidBlurEditorText: (cb: () => void) => { dispose: () => void };
@@ -99,8 +131,8 @@ export default function LiveCodeEditorPanel({
         jsxRuntime: 'classic',
         production: true,
       });
-      const fn = new Function('React', 'View', 'Text', 'Image', 'ScrollView', result.code);
-      const element = fn(React, View, Text, Image, ScrollView);
+      const fn = new Function('React', 'View', 'Text', 'Image', 'ScrollView', 'Button', result.code);
+      const element = fn(React, View, Text, Image, ScrollView, Button);
       if (!React.isValidElement(element)) {
         throw new Error('JSX 必须返回单个元素');
       }

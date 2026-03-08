@@ -34,6 +34,7 @@ export function PreviewCanvasPanel({
   const lastReportedScaleRef = useRef<number | null>(null);
   const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
   const lastHoverIdRef = useRef<string | null>(null);
+  const [cursor, setCursor] = useState<'default' | 'pointer'>('default');
 
   useEffect(() => {
     if (pickMode) return;
@@ -84,11 +85,12 @@ export function PreviewCanvasPanel({
       <div
         ref={canvasFrameRef}
         className="relative rounded shadow-2xl overflow-hidden border border-gray-300 bg-white"
-        style={{ width: frameWidth, height: frameHeight }}
+        style={{ width: frameWidth, height: frameHeight, cursor }}
         onClick={onCanvasClick}
         onMouseLeave={() => {
           lastHoverIdRef.current = null;
           setHoveredNodeId(null);
+          setCursor('default');
         }}
         onMouseMove={(e) => {
           const inst = eventSource;
@@ -98,9 +100,15 @@ export function PreviewCanvasPanel({
           const x = (e.clientX - rect.left) / scale;
           const y = (e.clientY - rect.top) / scale;
           const hit = inst.dispatchPointerEvent({ type: 'pointermove', x, y, timeStamp: e.timeStamp });
+
+          const nextHitId =
+            hit.targetId && hit.targetId !== previewTree.rootId && previewTree.nodes[hit.targetId] ? hit.targetId : null;
+          const isPointer = !!(nextHitId && previewTree.nodes[nextHitId]?.events?.click?.length);
+          setCursor((prev) => (prev === (isPointer ? 'pointer' : 'default') ? prev : isPointer ? 'pointer' : 'default'));
+
           if (!pickMode) return;
           const next =
-            hit.targetId && hit.targetId !== previewTree.rootId && previewTree.nodes[hit.targetId] ? hit.targetId : null;
+            nextHitId;
           if (next === lastHoverIdRef.current) return;
           lastHoverIdRef.current = next;
           setHoveredNodeId(next);
