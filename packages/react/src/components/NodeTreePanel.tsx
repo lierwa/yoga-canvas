@@ -512,7 +512,8 @@ function NodeTreeItem({
       >
         {hasChildren ? (
           <button
-            className="p-0.5 shrink-0"
+            type="button"
+            className="p-0.5 shrink-0 rounded"
             onClick={(e) => {
               e.stopPropagation();
               if (!isRoot) onToggleCollapse(node.id);
@@ -569,7 +570,8 @@ function NodeTreeItem({
 
         {Boolean(onDelete) && !isRoot && (
           <button
-            className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-red-500 shrink-0 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+            type="button"
+            className="p-0.5 opacity-0 group-hover:opacity-100 hover:text-red-500 shrink-0 transition-opacity rounded disabled:opacity-40 disabled:cursor-not-allowed"
             onClick={(e) => {
               e.stopPropagation();
               if (disabled || !canDelete) return;

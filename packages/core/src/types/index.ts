@@ -21,6 +21,14 @@ export type {
   CanvasNode,
   NodeTree,
   NodeDescriptor,
+  MotionEasing,
+  MotionTransition,
+  MotionSpec,
+  NodeActionTargetRef,
+  NodeAnimateOptions,
+  NodeAction,
+  NodeEventType,
+  NodeEventBindings,
 } from './node';
 
 export type {

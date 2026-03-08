@@ -1,10 +1,13 @@
-import type { StyleProps } from '@yoga-canvas/core';
+import type { NodeDescriptor, StyleProps } from '@yoga-canvas/core';
 
 export interface ImageJSXProps {
+  id?: string;
   name?: string;
   className?: string;
   tw?: string;
   style?: StyleProps;
+  motion?: NodeDescriptor['motion'];
+  events?: NodeDescriptor['events'];
   src: string;
   objectFit?: 'cover' | 'contain' | 'fill';
 }

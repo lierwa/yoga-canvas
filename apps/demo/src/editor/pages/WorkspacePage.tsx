@@ -4,6 +4,7 @@ import type { RefObject } from "react";
 import { useYogaCanvas } from "@yoga-canvas/react";
 import type { NodeDescriptor } from "@yoga-canvas/core";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../../components/Button";
 import { DemoHeaderActions } from "../../components/DemoHeaderActions";
 import { DemoTopNav } from "../../components/DemoTopNav";
 import { useDemoI18n } from "../../i18n";
@@ -351,8 +352,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
           variant="sticky"
           constrainWidth
           leftSlot={
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-slate-600 hover:text-slate-900 hover:bg-slate-100 transition-colors"
               onClick={() => {
                 navigate("/");
@@ -361,7 +363,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
             >
               <ArrowLeft size={14} />
               {t("nav.back")}
-            </button>
+            </Button>
           }
           rightSlot={<DemoHeaderActions variant="light" showDocs />}
         />
@@ -379,9 +381,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               </div>
             </div>
             <div className="flex items-center gap-3">
-              <button
-                type="button"
-                className="cursor-pointer inline-flex items-center gap-2 rounded-xl bg-black/80 px-4 py-2 text-sm font-semibold text-white shadow-[0_12px_30px_rgba(79,70,229,0.28)] hover:bg-black/70 active:bg-black/60 transition-colors"
+              <Button
+                variant="primary"
+                className="inline-flex items-center gap-2 rounded-xl px-4 py-2 text-sm font-semibold"
                 onClick={() => {
                   const container = getTemplateDefaultContainer(
                     defaultCreateTemplateId,
@@ -396,7 +398,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               >
                 <Plus size={16} />
                 {t("workspace.newProject")}
-              </button>
+              </Button>
             </div>
           </div>
 
@@ -407,9 +409,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               onMouseEnter={() => setCreateHover(true)}
               onMouseLeave={() => setCreateHover(false)}
             >
-              <button
-                type="button"
-                className="w-full h-full p-4 text-left cursor-pointer"
+              <Button
+                variant="ghost"
+                className="w-full h-full p-4 text-left cursor-pointer flex flex-col items-stretch justify-start"
                 onClick={() => {
                   const container = getTemplateDefaultContainer(
                     defaultCreateTemplateId,
@@ -436,7 +438,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 <div className="mt-1 text-[11px] text-slate-500">
                   {t("workspace.addProjectDesc")}
                 </div>
-              </button>
+              </Button>
             </div>
             {defaultPanelProject ? (
               <div
@@ -458,8 +460,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                         title={t("workspace.action.rename")}
                         onClick={(e) => {
@@ -470,9 +473,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                         title={t("workspace.action.duplicate")}
                         onClick={(e) => {
@@ -485,9 +489,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Copy size={16} />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title={t("workspace.action.delete")}
                         onClick={(e) => {
@@ -497,7 +502,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -523,8 +528,9 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <button
-                        type="button"
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                         title={t("workspace.action.rename")}
                         onClick={(e) => {
@@ -535,9 +541,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Pencil size={16} />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition-colors"
                         title={t("workspace.action.duplicate")}
                         onClick={(e) => {
@@ -548,9 +555,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Copy size={16} />
-                      </button>
-                      <button
-                        type="button"
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
                         className="p-2 rounded-xl text-slate-500 hover:text-red-600 hover:bg-red-50 transition-colors"
                         title={t("workspace.action.delete")}
                         onClick={(e) => {
@@ -560,7 +568,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                         }}
                       >
                         <Trash2 size={16} />
-                      </button>
+                      </Button>
                     </div>
                   </div>
                 </div>
@@ -577,15 +585,15 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
         width={920}
         footer={
           <>
-            <button
-              type="button"
+            <Button
+              variant="default"
               className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
               onClick={() => setCreateOpen(false)}
             >
               {t("workspace.modal.create.cancel")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               className="px-3 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
               onClick={() => {
                 const nextWidth = Number(containerWidth);
@@ -609,7 +617,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               }}
             >
               {t("workspace.modal.create.createAndOpen")}
-            </button>
+            </Button>
           </>
         }
       >
@@ -715,10 +723,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {seedTemplates.map((tpl) => (
                 <button
-                  key={tpl.id}
                   type="button"
+                  key={tpl.id}
                   className={[
-                    "rounded-2xl border p-3 text-left transition-colors w-full mx-auto min-w-[240px] max-w-[360px]",
+                    "block rounded-2xl border p-3 text-left transition-colors w-full mx-auto min-w-[240px] max-w-[360px]",
                     newTemplateId === tpl.id
                       ? "border-indigo-300 bg-indigo-50"
                       : "border-slate-200 bg-white hover:bg-slate-50",
@@ -763,15 +771,15 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
         onClose={() => setRenameOpen(false)}
         footer={
           <>
-            <button
-              type="button"
+            <Button
+              variant="default"
               className="px-3 py-2 text-sm font-medium rounded-xl border border-slate-200 text-slate-700 hover:bg-slate-50 transition-colors"
               onClick={() => setRenameOpen(false)}
             >
               {t("workspace.modal.rename.cancel")}
-            </button>
-            <button
-              type="button"
+            </Button>
+            <Button
+              variant="primary"
               className="px-3 py-2 text-sm font-semibold rounded-xl bg-indigo-600 text-white hover:bg-indigo-500 transition-colors"
               onClick={() => {
                 if (!pendingId) return;
@@ -781,7 +789,7 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
               }}
             >
               {t("workspace.modal.rename.save")}
-            </button>
+            </Button>
           </>
         }
       >

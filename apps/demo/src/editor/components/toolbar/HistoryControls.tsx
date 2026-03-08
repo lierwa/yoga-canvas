@@ -1,4 +1,5 @@
 import { Redo2, Undo2 } from "lucide-react";
+import { Button } from "../../../components/Button";
 
 export function HistoryControls({
   canUndo,
@@ -13,7 +14,9 @@ export function HistoryControls({
 }) {
   return (
     <>
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onUndo}
         disabled={!canUndo}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
@@ -24,9 +27,11 @@ export function HistoryControls({
       >
         <Undo2 size={14} />
         <span>Undo</span>
-      </button>
+      </Button>
 
-      <button
+      <Button
+        variant="ghost"
+        size="sm"
         onClick={onRedo}
         disabled={!canRedo}
         className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs font-medium rounded-md
@@ -37,7 +42,7 @@ export function HistoryControls({
       >
         <Redo2 size={14} />
         <span>Redo</span>
-      </button>
+      </Button>
     </>
   );
 }

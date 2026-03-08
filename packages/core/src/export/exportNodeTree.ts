@@ -12,6 +12,8 @@ export interface SerializedNode {
   textProps?: Record<string, unknown>;
   imageProps?: Record<string, unknown>;
   scrollViewProps?: Record<string, unknown>;
+  motion?: CanvasNode['motion'];
+  events?: CanvasNode['events'];
   computedLayout: { left: number; top: number; width: number; height: number };
   children: SerializedNode[];
 }
@@ -46,6 +48,8 @@ function serializeNode(node: CanvasNode, tree: NodeTree): SerializedNode {
     ...(node.textProps && { textProps: { ...node.textProps } }),
     ...(node.imageProps && { imageProps: { ...node.imageProps } }),
     ...(node.scrollViewProps && { scrollViewProps: { ...node.scrollViewProps } }),
+    ...(node.motion && { motion: node.motion }),
+    ...(node.events && { events: node.events }),
     computedLayout: { ...node.computedLayout },
     children: node.children
       .map((childId) => tree.nodes[childId])
@@ -68,6 +72,8 @@ function deserializeNode(
     textProps: serialized.textProps as CanvasNode['textProps'],
     imageProps: serialized.imageProps as CanvasNode['imageProps'],
     scrollViewProps: serialized.scrollViewProps as CanvasNode['scrollViewProps'],
+    motion: serialized.motion as CanvasNode['motion'],
+    events: serialized.events as CanvasNode['events'],
     computedLayout: serialized.computedLayout,
     children: serialized.children.map((c) => c.id),
     parentId,

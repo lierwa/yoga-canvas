@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FlexValue } from "../../types";
+import { Button } from "../../../components/Button";
 import { INPUT_BASE_CLASS, LABEL_BLOCK_CLASS } from "./styles";
 
 type DimUnit = "px" | "%" | "auto";
@@ -102,14 +103,15 @@ export function DimensionField({
           className={`${INPUT_BASE_CLASS} flex-1 min-w-0 rounded-l rounded-r-none disabled:bg-gray-100 disabled:text-gray-400
             [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none`}
         />
-        <button
-          type="button"
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={cycleUnit}
           className="shrink-0 text-[9px] font-semibold px-1.5 py-1 border border-l-0 border-gray-200 rounded-r bg-gray-100 hover:bg-gray-200 text-gray-500 transition-colors min-w-7"
           title="Toggle unit"
         >
           {localUnit}
-        </button>
+        </Button>
       </div>
     </div>
   );

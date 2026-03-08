@@ -17,7 +17,8 @@ import {
   computeScrollContentSizes,
   importFromJSON,
 } from "@yoga-canvas/core";
-import type { NodeDescriptor } from "@yoga-canvas/core";
+import type { NodeDescriptor, MotionSpec } from "@yoga-canvas/core";
+import type { NodeEventBindings } from "@yoga-canvas/core";
 
 const COLORS = [
   "#ef4444",
@@ -808,6 +809,26 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     [refresh],
   );
 
+  const updateMotion = useCallback(
+    (nodeId: string, motion: MotionSpec | undefined) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateMotion(nodeId, motion);
+      refresh();
+    },
+    [refresh],
+  );
+
+  const updateEvents = useCallback(
+    (nodeId: string, events: NodeEventBindings | undefined) => {
+      const manager = managerRef.current;
+      if (!manager) return;
+      manager.updateEvents(nodeId, events);
+      refresh();
+    },
+    [refresh],
+  );
+
   const insertNodeDescriptors = useCallback(
     (parentId: string, descriptors: NodeDescriptor[], insertIndex?: number): string[] => {
       const manager = managerRef.current;
@@ -1159,6 +1180,8 @@ export function useNodeTree(options?: UseNodeTreeOptions) {
     commitLiveUpdate,
     updateImageProps,
     updateNodeName,
+    updateMotion,
+    updateEvents,
     insertNodeDescriptors,
     updateCanvasContainer,
   };

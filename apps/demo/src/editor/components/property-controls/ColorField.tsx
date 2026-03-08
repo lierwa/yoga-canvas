@@ -3,6 +3,7 @@ import { RgbaColorPicker } from "react-colorful";
 import { X } from "lucide-react";
 import { IconButton } from "./IconButton";
 import { LABEL_INLINE_CLASS, TEXT_INPUT_WHITE_CLASS } from "./styles";
+import { Button } from "../../../components/Button";
 
 type ColorParse = {
   r: number;
@@ -274,8 +275,9 @@ export function ColorField({
       <label className={`${LABEL_INLINE_CLASS} pt-1`}>{label}</label>
       <div ref={popoverRef} className="relative min-w-0">
         <div className="flex items-center gap-2 min-w-0">
-          <button
-            type="button"
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={() => setOpen((v) => !v)}
             className={`w-6 h-6 rounded border border-gray-200 shrink-0 cursor-pointer ${
               isTransparent
@@ -337,9 +339,10 @@ export function ColorField({
           <div className="absolute right-0 z-50 mt-2 w-60 rounded-lg border border-gray-200 bg-white p-2 shadow-lg">
             <div className="flex items-center gap-1 mb-2">
               {(["hex", "rgb", "rgba", "hsl", "hsla"] as const).map((f) => (
-                <button
+                <Button
+                  variant="ghost"
+                  size="sm"
                   key={f}
-                  type="button"
                   onClick={() => setFormat(f)}
                   className={`px-2 py-1 rounded text-[11px] border ${
                     format === f
@@ -348,7 +351,7 @@ export function ColorField({
                   }`}
                 >
                   {f.toUpperCase()}
-                </button>
+                </Button>
               ))}
             </div>
             <RgbaColorPicker

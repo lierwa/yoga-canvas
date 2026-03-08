@@ -1,4 +1,5 @@
 import { RotateCcw } from "lucide-react";
+import { Button } from "../../../components/Button";
 
 export function ZoomControls({
   scale,
@@ -48,9 +49,9 @@ export function ZoomControls({
           />
         </div>
       </div>
-      <button
-        type="button"
-        className="cursor-pointer p-1 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 disabled:opacity-40 disabled:cursor-not-allowed"
+      <Button
+        variant="icon"
+        className="w-7 h-7 border-transparent rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700"
         onClick={() => {
           if (onResetView) onResetView();
           else onScaleChange(clampedInitial);
@@ -59,7 +60,7 @@ export function ZoomControls({
         title="Reset view"
       >
         <RotateCcw size={14} />
-      </button>
+      </Button>
     </div>
   );
 }

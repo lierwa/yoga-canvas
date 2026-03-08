@@ -1,4 +1,4 @@
-import type { NodeDescriptor } from "@yoga-canvas/core";
+import { Button, type NodeDescriptor } from "@yoga-canvas/core";
 import { getLegacyDemoDescriptor } from "../hooks/useNodeTree";
 
 export type SeedTemplate = {
@@ -66,6 +66,299 @@ export const seedTemplates: SeedTemplate[] = [
     name: "展示 Layout",
     description: "包含常用节点与样式示例",
     descriptor: getLegacyDemoDescriptor(),
+  },
+  {
+    id: "seed_animation_basic",
+    name: "动画示例",
+    description: "使用 motion 做数值动画（平移/缩放/旋转/透明度）",
+    descriptor: {
+      type: "view",
+      id: "root",
+      name: "Root",
+      style: {
+        width: 375,
+        height: 667,
+        flexDirection: "column",
+        justifyContent: "center",
+        alignItems: "center",
+        backgroundColor: "#0b1220",
+        padding: 16,
+        gap: 12,
+      },
+      children: [
+        {
+          type: "view",
+          name: "Card",
+          style: {
+            width: 343,
+            borderRadius: 18,
+            backgroundColor: "#0f172a",
+            borderWidth: 1,
+            borderColor: "rgba(148,163,184,0.18)",
+            padding: 16,
+            gap: 12,
+            boxShadow: {
+              color: "rgba(2,6,23,0.55)",
+              blur: 18,
+              offsetX: 0,
+              offsetY: 10,
+            },
+          },
+          children: [
+            {
+              type: "text",
+              id: "title",
+              name: "Title",
+              content: "Motion / Tween",
+              style: {
+                fontSize: 16,
+                fontWeight: 800,
+                color: "#e2e8f0",
+                whiteSpace: "nowrap",
+              },
+              motion: {
+                initial: { textProps: { fontSize: 14 } },
+                animate: { textProps: { fontSize: 18 } },
+                transition: {
+                  duration: 700,
+                  easing: "sinInOut",
+                  repeat: -1,
+                  yoyo: true,
+                  autoStart: true,
+                },
+              },
+            },
+            {
+              type: "text",
+              name: "Desc",
+              content: "Animation Auto Start / Yoyo / Repeat， In preview mode",
+              style: {
+                fontSize: 12,
+                color: "rgba(226,232,240,0.70)",
+                lineHeight: 1.5,
+                whiteSpace: "normal",
+              },
+            },
+            {
+              type: "view",
+              name: "Track",
+              style: {
+                height: 140,
+                borderRadius: 16,
+                backgroundColor: "rgba(255,255,255,0.04)",
+                borderWidth: 1,
+                borderColor: "rgba(148,163,184,0.14)",
+                overflow: "hidden",
+              },
+              children: [
+                {
+                  type: "view",
+                  id: "box",
+                  name: "Box",
+                  style: {
+                    width: 64,
+                    height: 64,
+                    borderRadius: 18,
+                    backgroundColor: "#60a5fa",
+                    position: "absolute",
+                    left: 120,
+                    top: 38,
+                    boxShadow: {
+                      color: "rgba(96,165,250,0.35)",
+                      blur: 22,
+                      offsetX: 0,
+                      offsetY: 8,
+                    },
+                  },
+                  motion: {
+                    initial: {
+                      visualStyle: {
+                        translateX: -120,
+                        rotate: -10,
+                        scaleX: 0.9,
+                        scaleY: 0.9,
+                        opacity: 0.75,
+                      },
+                    },
+                    animate: {
+                      visualStyle: {
+                        translateX: 120,
+                        rotate: 10,
+                        scaleX: 1,
+                        scaleY: 1,
+                        opacity: 1,
+                      },
+                    },
+                    transition: {
+                      duration: 900,
+                      easing: "sinInOut",
+                      repeat: -1,
+                      yoyo: true,
+                      autoStart: true,
+                    },
+                  },
+                },
+                {
+                  type: "view",
+                  name: "DotLeft",
+                  style: {
+                    position: "absolute",
+                    left: 18,
+                    top: 67,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: "rgba(148,163,184,0.55)",
+                  },
+                },
+                {
+                  type: "view",
+                  name: "DotRight",
+                  style: {
+                    position: "absolute",
+                    right: 18,
+                    top: 67,
+                    width: 6,
+                    height: 6,
+                    borderRadius: 999,
+                    backgroundColor: "rgba(148,163,184,0.55)",
+                  },
+                },
+              ],
+            },
+            {
+              type: "text",
+              name: "Hint",
+              content:
+                "Trigger animation on click via node event binding in preview mode",
+              style: {
+                fontSize: 11,
+                color: "rgba(226,232,240,0.62)",
+                lineHeight: 1.5,
+                whiteSpace: "normal",
+              },
+            },
+            {
+              type: "view",
+              name: "ManualTriggerArea",
+              style: {
+                gap: 10,
+                marginTop: 2,
+              },
+              children: [
+                Button({
+                  id: "manual_trigger_button",
+                  name: "RunAnimButton",
+                  label: "Run Start In Preview Mode",
+                  style: {
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 8,
+                    paddingLeft: 12,
+                    paddingRight: 12,
+                    paddingTop: 10,
+                    paddingBottom: 10,
+                    borderRadius: 14,
+                    backgroundColor: "rgba(96,165,250,0.12)",
+                    borderWidth: 1,
+                    borderColor: "rgba(96,165,250,0.35)",
+                  },
+                  textStyle: {
+                    fontSize: 12,
+                    fontWeight: 700,
+                    color: "#93c5fd",
+                    whiteSpace: "nowrap",
+                  },
+                  events: {
+                    click: [
+                      {
+                        type: "playMotion",
+                        target: { id: "manual_target_box" },
+                      },
+                    ],
+                  },
+                }),
+                {
+                  type: "view",
+                  name: "ManualTrack",
+                  style: {
+                    height: 100,
+                    borderRadius: 16,
+                    backgroundColor: "rgba(255,255,255,0.04)",
+                    borderWidth: 1,
+                    borderColor: "rgba(148,163,184,0.14)",
+                    overflow: "hidden",
+                  },
+                  children: [
+                    {
+                      type: "view",
+                      name: "ManualBox",
+                      id: "manual_target_box",
+                      style: {
+                        width: 56,
+                        height: 56,
+                        borderRadius: 16,
+                        backgroundColor: "#34d399",
+                        position: "absolute",
+                        left: 18,
+                        top: 20,
+                        boxShadow: {
+                          color: "rgba(52,211,153,0.35)",
+                          blur: 20,
+                          offsetX: 0,
+                          offsetY: 8,
+                        },
+                      },
+                      motion: {
+                        initial: {
+                          visualStyle: {
+                            translateX: 0,
+                            rotate: 0,
+                            scaleX: 1,
+                            scaleY: 1,
+                            opacity: 1,
+                          },
+                        },
+                        animate: {
+                          visualStyle: {
+                            translateX: 250,
+                            rotate: 18,
+                            scaleX: 1.15,
+                            scaleY: 1.15,
+                            opacity: 1,
+                          },
+                        },
+                        transition: {
+                          duration: 650,
+                          easing: "cubicInOut",
+                          repeat: 1,
+                          yoyo: true,
+                          restoreOnFinish: true,
+                          autoStart: false,
+                        },
+                      },
+                    },
+                  ],
+                },
+                {
+                  type: "text",
+                  name: "ManualTrackHint",
+                  content:
+                    "Implementation: Bind Action (playMotion) to Button.events.click, automatically effective after loadJSON in Preview",
+                  style: {
+                    fontSize: 10,
+                    color: "rgba(226,232,240,0.55)",
+                    lineHeight: 1.3,
+                    whiteSpace: "normal",
+                  },
+                },
+              ],
+            },
+          ],
+        },
+      ],
+    },
   },
   {
     id: "seed_share_poster",

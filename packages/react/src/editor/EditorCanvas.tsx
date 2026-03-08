@@ -44,6 +44,7 @@ export function EditorCanvas({
   const [imageLoadTick, setImageLoadTick] = useState(0);
   const [contextMenu, setContextMenu] = useState<null | { x: number; y: number; ids: string[] }>(null);
 
+
   useEffect(() => {
     const unsubscribe = setRenderCallback(() => setImageLoadTick((t) => t + 1));
     return unsubscribe;
@@ -115,9 +116,9 @@ export function EditorCanvas({
                   const selected = selection.selectedNodeId === id;
                   return (
                     <button
-                      key={id}
                       type="button"
-                      className={`w-full text-left px-2.5 py-1.5 hover:bg-slate-100 ${selected ? 'bg-slate-100' : ''}`}
+                      key={id}
+                      className={`w-full inline-flex items-center justify-center gap-2 transition-colors cursor-pointer select-none justify-start text-left px-2.5 py-1.5 hover:bg-slate-100 rounded-none text-slate-700 ${selected ? 'bg-slate-100' : ''}`}
                       onClick={() => {
                         onSelectNode?.(id);
                         setContextMenu(null);
@@ -136,7 +137,7 @@ export function EditorCanvas({
               <div className="my-1 h-px bg-slate-200" />
               <button
                 type="button"
-                className="w-full text-left px-2.5 py-1.5 hover:bg-slate-100"
+                className="w-full inline-flex items-center justify-center gap-2 transition-colors cursor-pointer select-none justify-start text-left px-2.5 py-1.5 hover:bg-slate-100 rounded-none text-slate-700"
                 onClick={() => {
                   onSelectNode?.(null);
                   setContextMenu(null);

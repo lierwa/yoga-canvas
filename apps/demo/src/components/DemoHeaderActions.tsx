@@ -1,5 +1,6 @@
 import { BookOpen, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { Button } from './Button';
 import { useDemoI18n } from '../i18n';
 
 type DemoHeaderActionsVariant = 'dark' | 'light';
@@ -26,8 +27,8 @@ export function DemoHeaderActions({
   return (
     <div className="flex items-center gap-2">
       {showDocs ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => {
             navigate('/docs');
           }}
@@ -35,12 +36,12 @@ export function DemoHeaderActions({
         >
           <BookOpen size={14} className={iconClassName} />
           {t('nav.docs')}
-        </button>
+        </Button>
       ) : null}
 
       {showWorkspace ? (
-        <button
-          type="button"
+        <Button
+          variant="ghost"
           onClick={() => {
             navigate('/workspace');
           }}
@@ -48,17 +49,17 @@ export function DemoHeaderActions({
         >
           <LayoutGrid size={14} className={iconClassName} />
           Workspace
-        </button>
+        </Button>
       ) : null}
 
-      <button
-        type="button"
+      <Button
+        variant="ghost"
         onClick={toggleLocale}
         className={buttonClassName}
         title={locale === 'zh' ? t('lang.switchToEn') : t('lang.switchToZh')}
       >
         {locale !== 'zh' ? 'EN' : '中文'}
-      </button>
+      </Button>
     </div>
   );
 }

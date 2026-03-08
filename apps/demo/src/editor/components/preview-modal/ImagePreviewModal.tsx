@@ -1,4 +1,5 @@
 import { Download } from 'lucide-react';
+import { Button } from '../../../components/Button';
 
 export function ImagePreviewModal({ url, onClose }: { url: string; onClose: () => void }) {
   return (
@@ -17,9 +18,14 @@ export function ImagePreviewModal({ url, onClose }: { url: string; onClose: () =
           >
             <Download size={12} /> Download
           </a>
-          <button className="text-xs text-gray-500 hover:text-gray-800 cursor-pointer px-3 py-1.5" onClick={onClose}>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="text-xs text-gray-500 hover:text-gray-800 px-3 py-1.5"
+            onClick={onClose}
+          >
             Close
-          </button>
+          </Button>
         </div>
       </div>
     </div>

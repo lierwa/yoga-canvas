@@ -1,6 +1,7 @@
 import { useCallback } from "react";
 import { ArrowRight, Sparkles } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { Button } from "../components/Button";
 import { DemoHeaderActions } from "../components/DemoHeaderActions";
 import { useDemoI18n } from "../i18n";
 
@@ -51,8 +52,8 @@ export default function HomePage() {
               </p>
 
               <div className="mt-8 flex flex-wrap items-center gap-3">
-                <button
-                  type="button"
+                <Button
+                  variant="ghost"
                   className="group cursor-pointer inline-flex items-center gap-2 px-4 py-3 rounded-2xl bg-white text-slate-900 text-sm font-semibold shadow-[0_18px_60px_rgba(0,0,0,0.35)] hover:shadow-[0_22px_80px_rgba(0,0,0,0.45)] transition-shadow"
                   onClick={goToWorkspace}
                 >
@@ -61,7 +62,7 @@ export default function HomePage() {
                     size={16}
                     className="transition-transform group-hover:translate-x-0.5"
                   />
-                </button>
+                </Button>
               </div>
 
               <div className="mt-10 grid grid-cols-2 gap-3 max-w-[560px]">

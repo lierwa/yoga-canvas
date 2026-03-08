@@ -23,6 +23,7 @@
   },
   "dependencies": {
     "@yoga-canvas/core": "workspace:*",
+    "@tweenjs/tween.js": "^23.1.1",
     "tw-to-css": "^0.0.12"
   },
   "peerDependencies": {

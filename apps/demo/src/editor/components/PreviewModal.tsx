@@ -34,8 +34,10 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
   const [engineReady, setEngineReady] = useState(false);
   const [previewTree, setPreviewTree] = useState<NodeTree>(tree);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
+  const [pickMode, setPickMode] = useState(true);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [previewScale, setPreviewScale] = useState(1);
+  const [exportScale, setExportScale] = useState<1 | 2 | 3>(2);
 
   const [activeTab, setActiveTab] = useState<'typescript' | 'json' | 'html'>('typescript');
   const [jsxPropsMode, setJsxPropsMode] = useState<'style' | 'className'>('style');
@@ -44,8 +46,6 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     (inst: YogaCanvas) => {
       const json = exportToJSON(tree);
       inst.loadJSON(json);
-      computeScrollContentSizes(inst.getNodeTree(), inst.getScrollManager());
-      inst.render();
     },
     [tree],
   );
@@ -85,21 +85,12 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     };
   }, [rootWidth, rootHeight, loadTreeIntoEngine]);
 
-  useEffect(() => {
-    if (!engineReady) return;
-    const inst = instanceRef.current;
-    if (!inst) return;
-    loadTreeIntoEngine(inst);
-    setPreviewTree(inst.getNodeTree());
-    setSelectedNodeId(null);
-  }, [engineReady, loadTreeIntoEngine]);
-
   const handleExportImage = useCallback(async () => {
     const inst = instanceRef.current;
     if (!inst) return;
-    const url = await inst.toDataURL();
+    const url = await inst.toDataURL('image/png', 1, { scale: exportScale });
     setPreviewImage(url);
-  }, []);
+  }, [exportScale]);
 
   const root = previewTree.nodes[previewTree.rootId] ?? null;
 
@@ -113,6 +104,11 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     void navigator.clipboard.writeText(codeContent);
   }, [codeContent]);
 
+  useEffect(() => {
+    if (pickMode) return;
+    setSelectedNodeId(null);
+  }, [pickMode]);
+
   const handleCanvasClick = useCallback((e: ReactMouseEvent<HTMLDivElement>) => {
     const inst = instanceRef.current;
     if (!inst) return;
@@ -122,8 +118,14 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
     const x = (e.clientX - rect.left) / previewScale;
     const y = (e.clientY - rect.top) / previewScale;
     const dispatched = inst.dispatchPointerEvent({ type: 'click', x, y, timeStamp: e.timeStamp });
-    setSelectedNodeId(dispatched.targetId);
-  }, [previewScale]);
+    if (!pickMode) return;
+    const treeNow = inst.getNodeTree();
+    const next =
+      dispatched.targetId && dispatched.targetId !== treeNow.rootId && treeNow.nodes[dispatched.targetId]
+        ? dispatched.targetId
+        : null;
+    setSelectedNodeId(next);
+  }, [pickMode, previewScale]);
 
   const locateNode = useCallback((nodeId: string | null) => {
     if (!nodeId) return;
@@ -192,7 +194,11 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
         rootLabel={`${root.name} · ${rootWidth}×${rootHeight}`}
         onBack={onClose}
         onExportImage={handleExportImage}
+        exportScale={exportScale}
+        onExportScaleChange={setExportScale}
         exportDisabled={!engineReady}
+        pickMode={pickMode}
+        onPickModeChange={setPickMode}
       />
 
       <ResizablePanels
@@ -220,6 +226,7 @@ export default function PreviewModal({ tree, onClose }: PreviewModalProps) {
             onScaleChange={setPreviewScale}
             previewTree={previewTree}
             selectedNodeId={selectedNodeId}
+            pickMode={pickMode}
             scrollManager={instanceRef.current?.getScrollManager() ?? null}
             eventSource={instanceRef.current}
           />

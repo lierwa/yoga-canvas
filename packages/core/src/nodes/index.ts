@@ -1,6 +1,9 @@
 export { View } from './View';
 export type { ViewProps } from './View';
 
+export { Button } from './Button';
+export type { ButtonNodeProps } from './Button';
+
 export { Text } from './Text';
 export type { TextNodeProps } from './Text';
 

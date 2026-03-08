@@ -13,6 +13,7 @@ export function PreviewCanvasPanel({
   onScaleChange,
   previewTree,
   selectedNodeId,
+  pickMode,
   scrollManager,
   eventSource,
 }: {
@@ -25,11 +26,20 @@ export function PreviewCanvasPanel({
   onScaleChange: (scale: number) => void;
   previewTree: NodeTree;
   selectedNodeId: string | null;
+  pickMode: boolean;
   scrollManager: ScrollManager | null;
   eventSource: YogaCanvas | null;
 }) {
   const [containerSize, setContainerSize] = useState<{ width: number; height: number }>({ width: 0, height: 0 });
   const lastReportedScaleRef = useRef<number | null>(null);
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
+  const lastHoverIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (pickMode) return;
+    lastHoverIdRef.current = null;
+    setHoveredNodeId(null);
+  }, [pickMode]);
 
   useEffect(() => {
     const el = canvasScrollRef.current;
@@ -73,15 +83,44 @@ export function PreviewCanvasPanel({
     <div ref={canvasScrollRef} className="h-full w-full flex items-center justify-center bg-gray-100 overflow-hidden">
       <div
         ref={canvasFrameRef}
-        className="relative rounded-xl shadow-2xl overflow-hidden border border-gray-300 bg-white"
-        style={{ width: frameWidth, height: frameHeight, borderRadius: 4 }}
+        className="relative rounded shadow-2xl overflow-hidden border border-gray-300 bg-white"
+        style={{ width: frameWidth, height: frameHeight }}
         onClick={onCanvasClick}
+        onMouseLeave={() => {
+          lastHoverIdRef.current = null;
+          setHoveredNodeId(null);
+        }}
+        onMouseMove={(e) => {
+          const inst = eventSource;
+          const canvasEl = canvasRef.current;
+          if (!inst || !canvasEl) return;
+          const rect = canvasEl.getBoundingClientRect();
+          const x = (e.clientX - rect.left) / scale;
+          const y = (e.clientY - rect.top) / scale;
+          const hit = inst.dispatchPointerEvent({ type: 'pointermove', x, y, timeStamp: e.timeStamp });
+          if (!pickMode) return;
+          const next =
+            hit.targetId && hit.targetId !== previewTree.rootId && previewTree.nodes[hit.targetId] ? hit.targetId : null;
+          if (next === lastHoverIdRef.current) return;
+          lastHoverIdRef.current = next;
+          setHoveredNodeId(next);
+        }}
       >
         <div
           className="relative"
           style={{ width: rootWidth, height: rootHeight, transform: `scale(${scale})`, transformOrigin: 'top left' }}
         >
-          <canvas ref={canvasRef} style={{ background: '#ffffff', borderRadius: 20 }} className="block" />
+          <canvas ref={canvasRef} style={{ background: '#ffffff' }} className="block" />
+          {pickMode && hoveredNodeId && hoveredNodeId !== selectedNodeId && (
+            <SelectionOverlay
+              tree={previewTree}
+              nodeId={hoveredNodeId}
+              scrollManager={scrollManager}
+              eventSource={eventSource}
+              showLabel={false}
+              className="opacity-60"
+            />
+          )}
           {selectedNodeId && (
             <SelectionOverlay
               tree={previewTree}

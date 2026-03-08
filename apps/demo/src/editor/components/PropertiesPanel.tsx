@@ -7,6 +7,8 @@ import type {
   TextProps,
   ImageProps,
 } from "../types";
+import type { MotionSpec } from "@yoga-canvas/core";
+import type { NodeEventBindings } from "@yoga-canvas/core";
 import {
   ColorField,
   DimensionField,
@@ -19,6 +21,9 @@ import {
   SubHeader,
   TextAreaField,
 } from "./property-controls";
+import MotionPanel from "./MotionPanel";
+import EventsPanel from "./EventsPanel";
+import { Button } from "../../components/Button";
 
 interface PropertiesPanelProps {
   node: CanvasNode | null;
@@ -26,6 +31,8 @@ interface PropertiesPanelProps {
   onUpdateVisualStyle: (nodeId: string, updates: Partial<VisualStyle>) => void;
   onUpdateTextProps: (nodeId: string, updates: Partial<TextProps>) => void;
   onUpdateImageProps: (nodeId: string, updates: Partial<ImageProps>) => void;
+  onUpdateMotion?: (nodeId: string, motion: MotionSpec | undefined) => void;
+  onUpdateEvents?: (nodeId: string, events: NodeEventBindings | undefined) => void;
 }
 
 const FLEX_DIRECTIONS = [
@@ -57,13 +64,14 @@ const FONT_WEIGHT_OPTIONS = [
   "600",
   "700",
 ] as const;
-
 export default function PropertiesPanel({
   node,
   onUpdateFlexStyle,
   onUpdateVisualStyle,
   onUpdateTextProps,
   onUpdateImageProps,
+  onUpdateMotion,
+  onUpdateEvents,
 }: PropertiesPanelProps) {
   const [textContent, setTextContent] = useState(
     node?.textProps?.content ?? "",
@@ -74,6 +82,9 @@ export default function PropertiesPanel({
     return typeof g === "string" ? g : "";
   });
   const [gradientCssFocused, setGradientCssFocused] = useState(false);
+  const [panelTab, setPanelTab] = useState<"properties" | "animation" | "events">(
+    "properties",
+  );
 
   useEffect(() => {
     if (!textContentFocused) {
@@ -97,6 +108,15 @@ export default function PropertiesPanel({
       </div>
     );
   }
+
+  const hasAnimationPanel = !!onUpdateMotion;
+  const hasEventsPanel = !!onUpdateEvents;
+  const activeTab =
+    panelTab === "animation" && !hasAnimationPanel
+      ? "properties"
+      : panelTab === "events" && !hasEventsPanel
+        ? "properties"
+        : panelTab;
 
   const s = node.flexStyle;
   const v = node.visualStyle;
@@ -273,6 +293,10 @@ export default function PropertiesPanel({
     onUpdateImageProps(node.id, updates);
   };
 
+  const updateEvents = (events: NodeEventBindings | undefined) => {
+    onUpdateEvents?.(node.id, events);
+  };
+
   const handleImageFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -286,13 +310,63 @@ export default function PropertiesPanel({
   };
 
   return (
-    <div className="h-full w-full border-l border-gray-200 bg-white overflow-y-auto overflow-x-hidden min-w-0">
+    <div
+      className="h-full w-full border-l border-gray-200 bg-white overflow-y-auto overflow-x-hidden min-w-0"
+      style={{ scrollbarGutter: "stable" }}
+    >
       <Section noBorder>
         <h3 className="text-sm font-semibold text-gray-800">{node.name}</h3>
         <p className="text-xs text-gray-400 mt-0.5">ID: {node.id}</p>
       </Section>
 
-      {node.textProps && (
+      <div className="px-4 pb-2">
+        <div className="flex items-center gap-2">
+          <div className="flex flex-1 rounded-md bg-gray-50 p-1 border border-gray-100">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPanelTab("properties")}
+              className={`flex-1 rounded transition-colors ${
+                activeTab === "properties"
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-500 hover:text-gray-800"
+              }`}
+            >
+              Properties
+            </Button>
+            {hasAnimationPanel ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPanelTab("animation")}
+                className={`flex-1 rounded transition-colors ${
+                  activeTab === "animation"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Animation
+              </Button>
+            ) : null}
+            {hasEventsPanel ? (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setPanelTab("events")}
+                className={`flex-1 rounded transition-colors ${
+                  activeTab === "events"
+                    ? "bg-white text-gray-900 shadow-sm"
+                    : "text-gray-500 hover:text-gray-800"
+                }`}
+              >
+                Events
+              </Button>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {activeTab === "properties" && node.textProps && (
         <Section title="Text">
           <div className="space-y-2">
             <TextAreaField
@@ -465,7 +539,7 @@ export default function PropertiesPanel({
         </Section>
       )}
 
-      {node.imageProps && (
+      {activeTab === "properties" && node.imageProps && (
         <Section
           title="Image"
           actions={
@@ -510,7 +584,8 @@ export default function PropertiesPanel({
         </Section>
       )}
 
-      <Section title="Layout">
+      {activeTab === "properties" && (
+        <Section title="Layout">
         <div className="space-y-3">
           {node.type !== "text" && (
             <div className="space-y-2.5">
@@ -693,8 +768,10 @@ export default function PropertiesPanel({
           )}
         </div>
       </Section>
+      )}
 
-      <Section title="Spacing">
+      {activeTab === "properties" && (
+        <Section title="Spacing">
         <div className="space-y-3">
           <div>
             <SubHeader title="Padding" />
@@ -753,8 +830,10 @@ export default function PropertiesPanel({
           </div>
         </div>
       </Section>
+      )}
 
-      <Section title="Appearance">
+      {activeTab === "properties" && (
+        <Section title="Appearance">
         <div className="space-y-2">
           <ColorField
             key={`${node.id}-bg-color`}
@@ -1188,18 +1267,11 @@ export default function PropertiesPanel({
               onChange={(val) => updateVisual({ borderRadius: val ?? 0 })}
             />
           </FieldGrid>
-          <FieldGrid cols={2}>
-            <NumberField
-              label="Opacity"
-              value={v.opacity}
-              onChange={(val) => updateVisual({ opacity: val ?? 1 })}
-            />
-            <NumberField
-              label="Rotation"
-              value={v.rotate}
-              onChange={(val) => updateVisual({ rotate: val ?? 0 })}
-            />
-          </FieldGrid>
+          <NumberField
+            label="Opacity"
+            value={v.opacity}
+            onChange={(val) => updateVisual({ opacity: val ?? 1 })}
+          />
           {node.type !== "text" && (
             <div className="pt-1">
               <SubHeader
@@ -1297,8 +1369,46 @@ export default function PropertiesPanel({
           )}
         </div>
       </Section>
+      )}
 
-      <Section title="Computed Layout" isLast>
+      {activeTab === "properties" && (
+        <Section title="Transform">
+          <div className="space-y-2">
+            <FieldGrid cols={2}>
+              <NumberField
+                label="Translate X"
+                value={v.translateX}
+                onChange={(val) => updateVisual({ translateX: val ?? 0 })}
+              />
+              <NumberField
+                label="Translate Y"
+                value={v.translateY}
+                onChange={(val) => updateVisual({ translateY: val ?? 0 })}
+              />
+            </FieldGrid>
+            <FieldGrid cols={2}>
+              <NumberField
+                label="Scale X"
+                value={v.scaleX}
+                onChange={(val) => updateVisual({ scaleX: val ?? 1 })}
+              />
+              <NumberField
+                label="Scale Y"
+                value={v.scaleY}
+                onChange={(val) => updateVisual({ scaleY: val ?? 1 })}
+              />
+            </FieldGrid>
+            <NumberField
+              label="Rotate (deg)"
+              value={v.rotate}
+              onChange={(val) => updateVisual({ rotate: val ?? 0 })}
+            />
+          </div>
+        </Section>
+      )}
+
+      {activeTab === "properties" && (
+        <Section title="Computed Layout">
         <FieldGrid cols={2} gap="gap-1">
           <span className="text-xs text-gray-500">
             x: {Math.round(node.computedLayout.left)}
@@ -1314,6 +1424,19 @@ export default function PropertiesPanel({
           </span>
         </FieldGrid>
       </Section>
+      )}
+
+      {activeTab === "events" && onUpdateEvents && (
+        <EventsPanel events={node.events} onEventsChange={updateEvents} />
+      )}
+
+      {activeTab === "animation" && onUpdateMotion && (
+        <MotionPanel
+          motion={node.motion}
+          nodeType={node.type}
+          onMotionChange={(motion) => onUpdateMotion(node.id, motion)}
+        />
+      )}
     </div>
   );
 }

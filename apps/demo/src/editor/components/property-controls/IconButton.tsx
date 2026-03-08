@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { Button } from "../../../components/Button";
 
 export function IconButton({
   title,
@@ -16,16 +17,16 @@ export function IconButton({
   className?: string;
 }) {
   return (
-    <button
-      type="button"
+    <Button
+      variant="icon"
       onClick={onClick}
       disabled={disabled}
       title={title}
       aria-label={ariaLabel ?? title}
-      className={`w-6 h-6 inline-flex items-center justify-center rounded-full border border-gray-200 text-gray-500 hover:bg-gray-50 disabled:opacity-40 cursor-pointer disabled:cursor-not-allowed ${className}`}
+      className={className}
     >
       {children}
-    </button>
+    </Button>
   );
 }
 

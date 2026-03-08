@@ -1,6 +1,7 @@
 import { ArrowLeft, BookOpen, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
+import { Button } from '../../components/Button';
 import { DemoHeaderActions } from '../../components/DemoHeaderActions';
 import { DemoTopNav } from '../../components/DemoTopNav';
 import { useDemoI18n } from '../../i18n';
@@ -39,8 +40,9 @@ export default function DocsPage() {
             variant="overlayDark"
             constrainWidth
             leftSlot={
-              <button
-                type="button"
+              <Button
+                variant="ghost"
+                size="sm"
                 className="cursor-pointer flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-semibold text-white/75 hover:text-white hover:bg-white/10 transition-colors"
                 onClick={() => {
                   navigate('/');
@@ -49,7 +51,7 @@ export default function DocsPage() {
               >
                 <ArrowLeft size={14} />
                 {t('nav.back')}
-              </button>
+              </Button>
             }
             centerSlot={
               <div className="hidden sm:flex items-center gap-2 text-sm font-semibold text-white/85">
@@ -83,9 +85,10 @@ export default function DocsPage() {
                     {filteredDocs.map((x) => {
                       const isActive = x.slug === active?.slug;
                       return (
-                        <button
+                        <Button
+                          variant="ghost"
+                          size="sm"
                           key={x.slug}
-                          type="button"
                           onClick={() => {
                             navigate(`/docs/${encodeURIComponent(x.slug)}`);
                           }}
@@ -97,7 +100,7 @@ export default function DocsPage() {
                         >
                           <div className="text-sm font-semibold">{x.title}</div>
                           {x.description ? <div className="text-[11px] text-white/45 mt-0.5">{x.description}</div> : null}
-                        </button>
+                        </Button>
                       );
                     })}
                     {filteredDocs.length === 0 ? (

@@ -21,29 +21,34 @@ export function buildDescriptorFromTree(tree: NodeTree, nodeId: string, options?
     return false;
   };
 
-  const style: Record<string, unknown> = {
+  const rawStyle: Record<string, unknown> = {
     ...(node.flexStyle ?? {}),
     ...(node.visualStyle ?? {}),
   };
 
   if (node.type === 'text' && node.textProps) {
     const t = node.textProps;
-    style.fontSize = t.fontSize;
-    style.fontWeight = t.fontWeight;
-    style.fontStyle = t.fontStyle;
-    style.fontFamily = t.fontFamily;
-    style.color = t.color;
-    style.lineHeight = t.lineHeight;
-    style.textAlign = t.textAlign;
-    style.whiteSpace = t.whiteSpace;
-    style.lineClamp = t.lineClamp;
-    style.textShadow = t.textShadow;
+    rawStyle.fontSize = t.fontSize;
+    rawStyle.fontWeight = t.fontWeight;
+    rawStyle.fontStyle = t.fontStyle;
+    rawStyle.fontFamily = t.fontFamily;
+    rawStyle.color = t.color;
+    rawStyle.lineHeight = t.lineHeight;
+    rawStyle.textAlign = t.textAlign;
+    rawStyle.whiteSpace = t.whiteSpace;
+    rawStyle.lineClamp = t.lineClamp;
+    rawStyle.textShadow = t.textShadow;
   }
+
+  const style = stripDefaultStyleForExport({ type: node.type, style: {} as NodeDescriptor['style'] }, rawStyle);
 
   const base: NodeDescriptor = {
     type: node.type,
+    id: node.id,
     name: node.name,
     style: style as NodeDescriptor['style'],
+    motion: (node as CanvasNode).motion,
+    events: (node as CanvasNode).events,
   };
 
   if (node.type === 'text') {
@@ -61,14 +66,14 @@ export function buildDescriptorFromTree(tree: NodeTree, nodeId: string, options?
       ...base,
       scrollDirection: node.scrollViewProps?.scrollDirection ?? 'vertical',
       scrollBarVisibility: node.scrollViewProps?.scrollBarVisibility ?? 'auto',
-      children: node.children
+      children: (node.children ?? [])
         .filter((id) => !shouldOmit(tree.nodes[id]?.name))
         .map((id) => buildDescriptorFromTree(tree, id, options)),
     };
   }
   return {
     ...base,
-    children: node.children
+    children: (node.children ?? [])
       .filter((id) => !shouldOmit(tree.nodes[id]?.name))
       .map((id) => buildDescriptorFromTree(tree, id, options)),
   };
@@ -118,6 +123,7 @@ function toJSXTag(type: CanvasNode['type']): string {
 function buildJSXPropsFromDescriptor(desc: NodeDescriptor, mode: JSXPropsMode): string[] {
   const props: string[] = [];
 
+  if (desc.id) props.push(`id=${JSON.stringify(desc.id)}`);
   if (desc.name) props.push(`name=${JSON.stringify(desc.name)}`);
 
   const style = stripDefaultStyleForExport(desc, (desc.style ?? {}) as Record<string, unknown>);
@@ -128,6 +134,15 @@ function buildJSXPropsFromDescriptor(desc: NodeDescriptor, mode: JSXPropsMode): 
   } else {
     if (className) props.push(`className=${JSON.stringify(className)}`);
     if (Object.keys(restStyle).length) props.push(`style={${JSON.stringify(restStyle, null, 2)}}`);
+  }
+
+  if (desc.motion && typeof desc.motion === 'object' && Object.keys(desc.motion).length) {
+    props.push(`motion={${JSON.stringify(desc.motion, null, 2)}}`);
+  }
+
+  const sanitizedEvents = sanitizeEventsForCodegen(desc.events);
+  if (sanitizedEvents && typeof sanitizedEvents === 'object' && Object.keys(sanitizedEvents).length) {
+    props.push(`events={${JSON.stringify(sanitizedEvents, null, 2)}}`);
   }
 
   if (desc.type === 'image') {
@@ -142,6 +157,28 @@ function buildJSXPropsFromDescriptor(desc: NodeDescriptor, mode: JSXPropsMode): 
   return props;
 }
 
+function sanitizeEventsForCodegen(events: unknown): unknown {
+  if (!events || typeof events !== 'object') return null;
+  const out: Record<string, unknown> = {};
+  for (const [type, actionsRaw] of Object.entries(events as Record<string, unknown>)) {
+    if (!Array.isArray(actionsRaw)) continue;
+    const nextActions = actionsRaw
+      .filter((a) => a && typeof a === 'object')
+      .map((a) => {
+        const action = a as Record<string, unknown>;
+        if (action.type === 'playMotion' && 'options' in action) {
+          const { options: _options, ...rest } = action;
+          return rest;
+        }
+        return action;
+      })
+      .filter(Boolean);
+    if (nextActions.length === 0) continue;
+    out[type] = nextActions;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
 function stripDefaultStyleForExport(desc: NodeDescriptor, style: Record<string, unknown>): Record<string, unknown> {
   const DEFAULT_VISUAL: Record<string, unknown> = {
     backgroundColor: 'transparent',
@@ -150,6 +187,10 @@ function stripDefaultStyleForExport(desc: NodeDescriptor, style: Record<string, 
     borderWidth: 0,
     borderRadius: 0,
     opacity: 1,
+    translateX: 0,
+    translateY: 0,
+    scaleX: 1,
+    scaleY: 1,
     rotate: 0,
     boxShadow: null,
     zIndex: 0,
@@ -169,6 +210,7 @@ function stripDefaultStyleForExport(desc: NodeDescriptor, style: Record<string, 
 
   const out: Record<string, unknown> = {};
   for (const [k, v] of Object.entries(style)) {
+    if (v === undefined || v === null) continue;
     if (k in DEFAULT_VISUAL && Object.is(v, DEFAULT_VISUAL[k])) continue;
     if (desc.type === 'text' && k in DEFAULT_TEXT && Object.is(v, DEFAULT_TEXT[k])) continue;
     out[k] = v;
@@ -371,7 +413,7 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     const blur = b.blur;
     const offsetX = b.offsetX;
     const offsetY = b.offsetY;
-    const spread = b.spread;
+    const spread = b.spread ?? 0;
     if (
       typeof color === 'string' &&
       typeof blur === 'number' &&
@@ -385,8 +427,35 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     }
   }
 
+  const textShadow = style.textShadow;
+  if (textShadow && typeof textShadow === 'object') {
+    const t = textShadow as Record<string, unknown>;
+    const color = t.color;
+    const blur = t.blur;
+    const offsetX = t.offsetX;
+    const offsetY = t.offsetY;
+    if (
+      typeof color === 'string' &&
+      typeof blur === 'number' &&
+      typeof offsetX === 'number' &&
+      typeof offsetY === 'number' &&
+      [blur, offsetX, offsetY].every((n) => Number.isFinite(n))
+    ) {
+      const css = `${offsetX}px ${offsetY}px ${blur}px ${color}`;
+      add(`[text-shadow:${escapeArbitrary(css)}]`, ['textShadow']);
+    }
+  }
+
   const opacity = style.opacity;
   if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
+  const translateX = (style as Record<string, unknown>).translateX;
+  if (typeof translateX === 'number' && translateX !== 0) add(`translate-x-[${translateX}px]`, ['translateX']);
+  const translateY = (style as Record<string, unknown>).translateY;
+  if (typeof translateY === 'number' && translateY !== 0) add(`translate-y-[${translateY}px]`, ['translateY']);
+  const scaleX = (style as Record<string, unknown>).scaleX;
+  if (typeof scaleX === 'number' && scaleX !== 1) add(`scale-x-[${scaleX}]`, ['scaleX']);
+  const scaleY = (style as Record<string, unknown>).scaleY;
+  if (typeof scaleY === 'number' && scaleY !== 1) add(`scale-y-[${scaleY}]`, ['scaleY']);
   const rotate = style.rotate;
   if (typeof rotate === 'number' && rotate !== 0) add(`rotate-[${rotate}deg]`, ['rotate']);
   const zIndex = style.zIndex;
@@ -440,11 +509,13 @@ export function mergeRestStylesByStructure(base: NodeDescriptor, next: NodeDescr
     Object.assign(nextStyle, restStyle);
   }
 
+  const nextMotion = next.motion === undefined ? base.motion : next.motion;
+
   const baseChildren = base.children ?? [];
   const nextChildren = next.children ?? [];
 
   if (nextChildren.length === 0) {
-    return { ...next, style: nextStyle };
+    return { ...next, style: nextStyle, motion: nextMotion };
   }
 
   const mergedChildren = nextChildren.map((child, i) => {
@@ -454,5 +525,5 @@ export function mergeRestStylesByStructure(base: NodeDescriptor, next: NodeDescr
     return mergeRestStylesByStructure(baseChild, child);
   });
 
-  return { ...next, style: nextStyle, children: mergedChildren };
+  return { ...next, style: nextStyle, motion: nextMotion, children: mergedChildren };
 }

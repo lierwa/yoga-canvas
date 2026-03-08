@@ -1,6 +1,7 @@
 import { X } from 'lucide-react';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect } from 'react';
+import { Button } from '../../components/Button';
 import { useSpringValue } from './useSpringValue';
 
 type ModalProps = {
@@ -57,14 +58,14 @@ export function Modal({ open, title, children, onClose, footer, width, className
               {title}
             </div>
           </div>
-          <button
-            type="button"
+          <Button
+            variant="icon"
             className="p-1.5 rounded-lg text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-colors cursor-pointer"
             onClick={onClose}
             aria-label="Close"
           >
             <X size={16} />
-          </button>
+          </Button>
         </div>
         <div className="px-4 py-4">{children}</div>
         {footer ? (

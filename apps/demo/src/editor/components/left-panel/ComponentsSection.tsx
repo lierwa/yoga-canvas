@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import type { NodeType } from "../../types";
+import { Button } from "../../../components/Button";
 import { LeftPanelSection } from "./LeftPanelSection";
 
 export function ComponentsSection({
@@ -23,7 +24,9 @@ export function ComponentsSection({
       <p className="text-[10px] text-gray-400 mb-2">{addToLabel}</p>
       <div className="grid grid-cols-2 gap-1.5">
         {items.map((item) => (
-          <button
+          <Button
+            variant="ghost"
+            size="sm"
             key={item.type}
             onClick={() => onAddNode(targetId, item.type)}
             className="flex flex-col items-center gap-1 px-2 py-2 rounded-md border border-gray-200
@@ -33,7 +36,7 @@ export function ComponentsSection({
           >
             <item.icon size={18} className="group-hover:scale-110 transition-transform" />
             <span className="text-[10px] font-medium">{item.label}</span>
-          </button>
+          </Button>
         ))}
       </div>
     </LeftPanelSection>

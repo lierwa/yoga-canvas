@@ -285,6 +285,17 @@ export default function LiveCodeEditorPanel({
           language={activeTab === 'json' ? 'json' : 'javascript'}
           value={activeTab === 'json' ? code.json : code.jsx}
           theme="vs-dark"
+          loading={
+            <textarea
+              value={activeTab === 'json' ? code.json : code.jsx}
+              readOnly={readOnly}
+              spellCheck={false}
+              className="w-full h-full resize-none bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs leading-5 outline-none p-3"
+              onChange={readOnly ? undefined : (e) => handleChange(e.currentTarget.value)}
+              onBlur={readOnly ? undefined : () => commitFromEditor()}
+            />
+          }
+          onChange={readOnly ? undefined : handleChange}
           beforeMount={(monaco) => {
             monaco.languages.typescript?.typescriptDefaults?.setCompilerOptions({
               jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
@@ -299,7 +310,6 @@ export default function LiveCodeEditorPanel({
               noSyntaxValidation: false,
             });
           }}
-          onChange={readOnly ? undefined : handleChange}
           onMount={(editor) => {
             editorRef.current = editor as unknown as MonacoEditorLike;
             blurSubscriptionRef.current?.dispose();

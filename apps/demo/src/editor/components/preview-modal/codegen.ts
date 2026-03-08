@@ -3,7 +3,8 @@ import type { CanvasNode, NodeTree } from '../../types';
 export function buildJSXFromTree(tree: NodeTree, mode: 'style' | 'className'): string {
   const root = tree.nodes[tree.rootId];
   if (!root) return '';
-  return renderJSXNode(tree, root.id, 0, mode);
+  const referencedIds = collectReferencedIdsFromTree(tree);
+  return renderJSXNode(tree, root.id, 0, mode, referencedIds);
 }
 
 export function formatHTMLString(input: string): string {
@@ -86,14 +87,20 @@ function formatDOMNode(node: Node, depth: number): string {
   return '';
 }
 
-function renderJSXNode(tree: NodeTree, nodeId: string, depth: number, mode: 'style' | 'className'): string {
+function renderJSXNode(
+  tree: NodeTree,
+  nodeId: string,
+  depth: number,
+  mode: 'style' | 'className',
+  referencedIds: Set<string>,
+): string {
   const node = tree.nodes[nodeId];
   if (!node) return '';
 
   const indent = '  '.repeat(depth);
   const tag = toJSXTag(node.type);
 
-  const props = buildJSXProps(node, mode);
+  const props = buildJSXProps(node, mode, referencedIds);
   const propsString = props.length ? ` ${props.join(' ')}` : '';
 
   if (node.type === 'image') {
@@ -106,7 +113,7 @@ function renderJSXNode(tree: NodeTree, nodeId: string, depth: number, mode: 'sty
   }
 
   const children = node.children
-    .map((childId) => renderJSXNode(tree, childId, depth + 1, mode))
+    .map((childId) => renderJSXNode(tree, childId, depth + 1, mode, referencedIds))
     .filter(Boolean);
 
   if (children.length === 0) {
@@ -131,9 +138,10 @@ function toJSXTag(type: CanvasNode['type']): string {
   }
 }
 
-function buildJSXProps(node: CanvasNode, mode: 'style' | 'className'): string[] {
+function buildJSXProps(node: CanvasNode, mode: 'style' | 'className', referencedIds: Set<string>): string[] {
   const props: string[] = [];
 
+  if (shouldShowId(node, referencedIds)) props.push(`id=${JSON.stringify(node.id)}`);
   if (node.name) props.push(`name=${JSON.stringify(node.name)}`);
 
   const style = stripDefaultStyleForExport(node, buildCombinedStyle(node));
@@ -143,6 +151,15 @@ function buildJSXProps(node: CanvasNode, mode: 'style' | 'className'): string[] 
   } else {
     if (className) props.push(`className=${JSON.stringify(className)}`);
     if (Object.keys(restStyle).length) props.push(`style={${JSON.stringify(restStyle, null, 2)}}`);
+  }
+
+  if (node.motion && typeof node.motion === 'object' && Object.keys(node.motion).length) {
+    props.push(`motion={${JSON.stringify(node.motion, null, 2)}}`);
+  }
+
+  const sanitizedEvents = sanitizeEventsForCodegen(node.events);
+  if (sanitizedEvents && typeof sanitizedEvents === 'object' && Object.keys(sanitizedEvents).length) {
+    props.push(`events={${JSON.stringify(sanitizedEvents, null, 2)}}`);
   }
 
   if (node.type === 'image') {
@@ -161,6 +178,54 @@ function buildJSXProps(node: CanvasNode, mode: 'style' | 'className'): string[] 
   }
 
   return props;
+}
+
+function collectReferencedIdsFromTree(tree: NodeTree): Set<string> {
+  const out = new Set<string>();
+  for (const node of Object.values(tree.nodes)) {
+    const events = (node as unknown as { events?: unknown }).events;
+    if (!events || typeof events !== 'object') continue;
+    for (const actionsRaw of Object.values(events as Record<string, unknown>)) {
+      if (!Array.isArray(actionsRaw)) continue;
+      for (const a of actionsRaw) {
+        if (!a || typeof a !== 'object') continue;
+        const target = (a as { target?: { id?: unknown } }).target;
+        const id = target?.id;
+        if (typeof id === 'string' && id.trim()) out.add(id);
+      }
+    }
+  }
+  return out;
+}
+
+function sanitizeEventsForCodegen(events: unknown): unknown {
+  if (!events || typeof events !== 'object') return null;
+  const out: Record<string, unknown> = {};
+  for (const [type, actionsRaw] of Object.entries(events as Record<string, unknown>)) {
+    if (!Array.isArray(actionsRaw)) continue;
+    const nextActions = actionsRaw
+      .filter((a) => a && typeof a === 'object')
+      .map((a) => {
+        const action = a as Record<string, unknown>;
+        if (action.type === 'playMotion' && 'options' in action) {
+          const { options: _options, ...rest } = action;
+          return rest;
+        }
+        return action;
+      })
+      .filter(Boolean);
+    if (nextActions.length === 0) continue;
+    out[type] = nextActions;
+  }
+  return Object.keys(out).length ? out : null;
+}
+
+function shouldShowId(node: CanvasNode, referencedIds: Set<string>): boolean {
+  const hasEvents =
+    !!node.events && typeof node.events === 'object' && Object.keys(node.events).length > 0;
+  const isReferenced = referencedIds.has(node.id);
+  const isCustom = typeof node.id === 'string' && !node.id.startsWith('yoga_');
+  return isCustom || hasEvents || isReferenced;
 }
 
 function buildCombinedStyle(node: CanvasNode): Record<string, unknown> {
@@ -188,6 +253,10 @@ function stripDefaultStyleForExport(node: CanvasNode, style: Record<string, unkn
     borderWidth: 0,
     borderRadius: 0,
     opacity: 1,
+    translateX: 0,
+    translateY: 0,
+    scaleX: 1,
+    scaleY: 1,
     rotate: 0,
     boxShadow: null,
     zIndex: 0,
@@ -409,7 +478,7 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     const blur = b.blur;
     const offsetX = b.offsetX;
     const offsetY = b.offsetY;
-    const spread = b.spread;
+    const spread = b.spread ?? 0;
     if (
       typeof color === 'string' &&
       typeof blur === 'number' &&
@@ -423,8 +492,35 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     }
   }
 
+  const textShadow = style.textShadow;
+  if (textShadow && typeof textShadow === 'object') {
+    const t = textShadow as Record<string, unknown>;
+    const color = t.color;
+    const blur = t.blur;
+    const offsetX = t.offsetX;
+    const offsetY = t.offsetY;
+    if (
+      typeof color === 'string' &&
+      typeof blur === 'number' &&
+      typeof offsetX === 'number' &&
+      typeof offsetY === 'number' &&
+      [blur, offsetX, offsetY].every((n) => Number.isFinite(n))
+    ) {
+      const css = `${offsetX}px ${offsetY}px ${blur}px ${color}`;
+      add(`[text-shadow:${escapeArbitrary(css)}]`, ['textShadow']);
+    }
+  }
+
   const opacity = style.opacity;
   if (typeof opacity === 'number' && opacity !== 1) add(`opacity-[${opacity}]`, ['opacity']);
+  const translateX = (style as Record<string, unknown>).translateX;
+  if (typeof translateX === 'number' && translateX !== 0) add(`translate-x-[${translateX}px]`, ['translateX']);
+  const translateY = (style as Record<string, unknown>).translateY;
+  if (typeof translateY === 'number' && translateY !== 0) add(`translate-y-[${translateY}px]`, ['translateY']);
+  const scaleX = (style as Record<string, unknown>).scaleX;
+  if (typeof scaleX === 'number' && scaleX !== 1) add(`scale-x-[${scaleX}]`, ['scaleX']);
+  const scaleY = (style as Record<string, unknown>).scaleY;
+  if (typeof scaleY === 'number' && scaleY !== 1) add(`scale-y-[${scaleY}]`, ['scaleY']);
   const rotate = style.rotate;
   if (typeof rotate === 'number' && rotate !== 0) add(`rotate-[${rotate}deg]`, ['rotate']);
   const zIndex = style.zIndex;

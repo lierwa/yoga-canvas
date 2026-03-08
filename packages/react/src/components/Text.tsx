@@ -1,10 +1,13 @@
-import type { StyleProps } from '@yoga-canvas/core';
+import type { NodeDescriptor, StyleProps } from '@yoga-canvas/core';
 
 export interface TextJSXProps {
+  id?: string;
   name?: string;
   className?: string;
   tw?: string;
   style?: StyleProps;
+  motion?: NodeDescriptor['motion'];
+  events?: NodeDescriptor['events'];
   /** Text content. Also accepts children string. */
   content?: string;
   children?: React.ReactNode;

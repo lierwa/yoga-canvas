@@ -93,6 +93,10 @@ export interface VisualStyle {
   borderWidth?: number;
   borderRadius?: number;
   opacity?: number;
+  translateX?: number;
+  translateY?: number;
+  scaleX?: number;
+  scaleY?: number;
   rotate?: number;
   boxShadow?: BoxShadowStyle | null;
   zIndex?: number;
@@ -225,7 +229,19 @@ export function splitStyle(style: StyleProps): {
   ];
 
   const visualKeys: (keyof VisualStyle)[] = [
-    'backgroundColor', 'linearGradient', 'borderColor', 'borderWidth', 'borderRadius', 'opacity', 'rotate', 'boxShadow', 'zIndex',
+    'backgroundColor',
+    'linearGradient',
+    'borderColor',
+    'borderWidth',
+    'borderRadius',
+    'opacity',
+    'translateX',
+    'translateY',
+    'scaleX',
+    'scaleY',
+    'rotate',
+    'boxShadow',
+    'zIndex',
   ];
 
   const textKeys: (keyof TextStyle)[] = [

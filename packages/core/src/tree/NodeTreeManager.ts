@@ -40,6 +40,10 @@ const DEFAULT_VISUAL_STYLE: Required<VisualStyle> = {
   borderWidth: 0,
   borderRadius: 0,
   opacity: 1,
+  translateX: 0,
+  translateY: 0,
+  scaleX: 1,
+  scaleY: 1,
   rotate: 0,
   boxShadow: null,
   zIndex: 0,
@@ -107,7 +111,9 @@ export class NodeTreeManager {
     const nodes: Record<string, CanvasNode> = {};
 
     function buildNode(desc: NodeDescriptor, parentId: string | null): string {
-      const id = generateId();
+      const candidateId =
+        typeof desc.id === 'string' && desc.id.trim() ? desc.id.trim() : generateId();
+      const id = nodes[candidateId] ? generateId() : candidateId;
       const { flexStyle, visualStyle, textStyle } = splitStyle(desc.style);
 
       const node: CanvasNode = {
@@ -116,6 +122,8 @@ export class NodeTreeManager {
         type: desc.type,
         flexStyle,
         visualStyle: { ...DEFAULT_VISUAL_STYLE, ...visualStyle },
+        motion: desc.motion,
+        events: desc.events,
         children: [],
         parentId,
         computedLayout: { left: 0, top: 0, width: 0, height: 0 },
@@ -331,6 +339,34 @@ export class NodeTreeManager {
     });
   }
 
+  updateMotion(nodeId: string, motion: NodeDescriptor['motion']): NodeTree {
+    return this.commit((tree) => {
+      const node = tree.nodes[nodeId];
+      if (!node) return null;
+      return {
+        ...tree,
+        nodes: {
+          ...tree.nodes,
+          [nodeId]: { ...node, motion },
+        },
+      };
+    });
+  }
+
+  updateEvents(nodeId: string, events: NodeDescriptor['events']): NodeTree {
+    return this.commit((tree) => {
+      const node = tree.nodes[nodeId];
+      if (!node) return null;
+      return {
+        ...tree,
+        nodes: {
+          ...tree.nodes,
+          [nodeId]: { ...node, events },
+        },
+      };
+    });
+  }
+
   addChild(parentId: string, descriptor: NodeDescriptor): NodeTree {
     return this.commit((tree) => {
       const parent = tree.nodes[parentId];
@@ -530,7 +566,9 @@ export class NodeTreeManager {
     parentId: string,
     outNodes: Record<string, CanvasNode>,
   ): string {
-    const id = generateId();
+    const candidateId =
+      typeof desc.id === 'string' && desc.id.trim() ? desc.id.trim() : generateId();
+    const id = outNodes[candidateId] || this.tree.nodes[candidateId] ? generateId() : candidateId;
     const { flexStyle, visualStyle, textStyle } = splitStyle(desc.style);
 
     const node: CanvasNode = {
@@ -539,6 +577,8 @@ export class NodeTreeManager {
       type: desc.type,
       flexStyle,
       visualStyle: { ...DEFAULT_VISUAL_STYLE, ...visualStyle },
+      motion: desc.motion,
+      events: desc.events,
       children: [],
       parentId,
       computedLayout: { left: 0, top: 0, width: 0, height: 0 },

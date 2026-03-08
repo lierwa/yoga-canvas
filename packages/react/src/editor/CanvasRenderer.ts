@@ -3,6 +3,12 @@ import type { ScrollManager } from '@yoga-canvas/core';
 import type { SelectionState } from './types';
 import { drawSelectionIndicator } from './SelectionIndicator';
 
+export type NodeRenderOverride = {
+  visualStyle?: Partial<CanvasNode['visualStyle']>;
+  textProps?: Partial<NonNullable<CanvasNode['textProps']>>;
+  imageProps?: Partial<NonNullable<CanvasNode['imageProps']>>;
+};
+
 type ShadowStyle = { offsetX: number; offsetY: number; blur: number; color: string };
 type BoxShadowStyle = ShadowStyle & { spread?: number };
 type GradientStop = { offset: number; color: string };
@@ -27,6 +33,10 @@ type VisualStyleEx = {
   borderWidth?: number;
   borderRadius?: number;
   opacity?: number;
+  translateX?: number;
+  translateY?: number;
+  scaleX?: number;
+  scaleY?: number;
   rotate?: number;
   boxShadow?: BoxShadowStyle | null;
   zIndex?: number;
@@ -85,7 +95,11 @@ export function renderCanvas(
   scale: number,
   offsetX: number,
   offsetY: number,
-  options?: { showGrid?: boolean; scrollManager?: ScrollManager | null }
+  options?: {
+    showGrid?: boolean;
+    scrollManager?: ScrollManager | null;
+    getNodeOverride?: (nodeId: string, node: CanvasNode) => NodeRenderOverride | null;
+  }
 ): void {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
 
@@ -96,9 +110,8 @@ export function renderCanvas(
   ctx.save();
   ctx.translate(offsetX, offsetY);
   ctx.scale(scale, scale);
-  const scrollManager = options?.scrollManager ?? null;
-  renderNode(ctx, tree, tree.rootId, selection, scrollManager);
-  drawOverlays(ctx, tree, selection, scrollManager, scale);
+  renderNode(ctx, tree, tree.rootId, selection, options);
+  drawOverlays(ctx, tree, selection, options?.scrollManager ?? null, scale);
   ctx.restore();
 }
 
@@ -135,13 +148,38 @@ function renderNode(
   tree: NodeTree,
   nodeId: string,
   selection: SelectionState,
-  scrollManager: ScrollManager | null
+  options?: {
+    scrollManager?: ScrollManager | null;
+    getNodeOverride?: (nodeId: string, node: CanvasNode) => NodeRenderOverride | null;
+  },
+  parentAlpha = 1
 ): void {
   const node = tree.nodes[nodeId];
   if (!node) return;
 
+  const override = options?.getNodeOverride?.(nodeId, node) ?? null;
+  const visualStyle = override?.visualStyle ? { ...node.visualStyle, ...override.visualStyle } : node.visualStyle;
+  const textProps =
+    node.type === 'text' && node.textProps
+      ? (override?.textProps ? { ...node.textProps, ...override.textProps } : node.textProps)
+      : node.textProps;
+  const imageProps =
+    node.type === 'image' && node.imageProps
+      ? (override?.imageProps ? { ...node.imageProps, ...override.imageProps } : node.imageProps)
+      : node.imageProps;
+
+  const effectiveNode: CanvasNode =
+    override
+      ? ({
+          ...node,
+          visualStyle: visualStyle as CanvasNode['visualStyle'],
+          ...(textProps ? { textProps } : {}),
+          ...(imageProps ? { imageProps } : {}),
+        } as CanvasNode)
+      : node;
+
   const { left, top, width, height } = node.computedLayout;
-  const vstyle = node.visualStyle as VisualStyleEx;
+  const vstyle = visualStyle as unknown as VisualStyleEx;
   const backgroundColor = vstyle.backgroundColor;
   const linearGradient = vstyle.linearGradient ?? null;
   const borderColor = vstyle.borderColor ?? 'transparent';
@@ -153,14 +191,27 @@ function renderNode(
   const effectiveGradient = node.type === 'text' ? null : linearGradient;
 
   ctx.save();
-  ctx.globalAlpha = opacity;
+  const nextAlpha = (Number.isFinite(opacity) ? opacity : 1) * parentAlpha;
+  ctx.globalAlpha = nextAlpha;
 
-  const rotate = node.visualStyle.rotate || 0;
-  if (rotate !== 0) {
+  const translateX = vstyle.translateX ?? 0;
+  const translateY = vstyle.translateY ?? 0;
+  const scaleX = vstyle.scaleX ?? 1;
+  const scaleY = vstyle.scaleY ?? 1;
+  const rotate = vstyle.rotate ?? 0;
+  if (
+    (translateX && translateX !== 0) ||
+    (translateY && translateY !== 0) ||
+    (scaleX && scaleX !== 1) ||
+    (scaleY && scaleY !== 1) ||
+    (rotate && rotate !== 0)
+  ) {
     const cx = left + width / 2;
     const cy = top + height / 2;
     ctx.translate(cx, cy);
-    ctx.rotate((rotate * Math.PI) / 180);
+    if (translateX || translateY) ctx.translate(translateX, translateY);
+    if ((scaleX && scaleX !== 1) || (scaleY && scaleY !== 1)) ctx.scale(scaleX, scaleY);
+    if (rotate && rotate !== 0) ctx.rotate((rotate * Math.PI) / 180);
     ctx.translate(-cx, -cy);
   }
 
@@ -212,21 +263,20 @@ function renderNode(
 
   switch (node.type) {
     case 'text':
-      drawTextContent(ctx, node);
+      drawTextContent(ctx, effectiveNode);
       break;
     case 'image':
-      drawImageContent(ctx, node);
+      drawImageContent(ctx, effectiveNode);
       break;
     case 'scrollview':
-      if (!scrollManager) drawScrollViewIndicator(ctx, node);
+      if (!options?.scrollManager) drawScrollViewIndicator(ctx, effectiveNode);
       break;
     default:
       break;
   }
 
-  ctx.restore();
-
   if (node.type === 'scrollview') {
+    const scrollManager = options?.scrollManager ?? null;
     const scrollOffset = scrollManager?.getOffset(nodeId) ?? { x: 0, y: 0 };
     ctx.save();
     ctx.beginPath();
@@ -235,14 +285,14 @@ function renderNode(
     ctx.translate(-scrollOffset.x, -scrollOffset.y);
     const orderedChildren = getOrderedChildren(tree, node);
     for (const childId of orderedChildren) {
-      renderNode(ctx, tree, childId, selection, scrollManager);
+      renderNode(ctx, tree, childId, selection, options, nextAlpha);
     }
     ctx.restore();
 
     if (scrollManager) {
       const state = scrollManager.getState(nodeId);
       const scrollBarOpacity = scrollManager.getScrollBarOpacity(nodeId);
-      drawScrollViewScrollbar(ctx, node, state, scrollBarOpacity);
+      drawScrollViewScrollbar(ctx, effectiveNode, state, scrollBarOpacity);
     }
   } else {
     const orderedChildren = getOrderedChildren(tree, node);
@@ -256,15 +306,16 @@ function renderNode(
       }
       ctx.clip();
       for (const childId of orderedChildren) {
-        renderNode(ctx, tree, childId, selection, scrollManager);
+        renderNode(ctx, tree, childId, selection, options, nextAlpha);
       }
       ctx.restore();
     } else {
       for (const childId of orderedChildren) {
-        renderNode(ctx, tree, childId, selection, scrollManager);
+        renderNode(ctx, tree, childId, selection, options, nextAlpha);
       }
     }
   }
+  ctx.restore();
 }
 
 function getAncestorScrollOffset(tree: NodeTree, nodeId: string, scrollManager: ScrollManager): { x: number; y: number } {

@@ -218,6 +218,99 @@ function parseBoxShadow(input: unknown, vars: Record<string, string>): NonNullab
   return { offsetX, offsetY, blur, spread, color };
 }
 
+function parseTextShadow(input: unknown, vars: Record<string, string>): NonNullable<StyleProps['textShadow']> | null {
+  if (typeof input !== 'string') return null;
+  const s = input.trim();
+  if (!s || s === 'none') return null;
+  const first = s.split(',')[0]?.trim();
+  if (!first) return null;
+
+  const parts = first.split(/\s+/g).filter(Boolean);
+  if (parts.length < 4) return null;
+
+  const offsetX = parseCssLengthToPx(parts[0]);
+  const offsetY = parseCssLengthToPx(parts[1]);
+  const blur = parseCssLengthToPx(parts[2]);
+  if (offsetX === null || offsetY === null || blur === null) return null;
+
+  const colorRaw = parts.slice(3).join(' ');
+  const color = cssToYogaColor(colorRaw, vars);
+  if (!color) return null;
+
+  return { offsetX, offsetY, blur, color };
+}
+
+function parseTransformToYogaStyle(input: unknown, vars: Record<string, string>): Partial<StyleProps> | null {
+  if (typeof input !== 'string') return null;
+  const raw = input.trim();
+  if (!raw || raw === 'none') return null;
+
+  const resolved = raw.replace(/var\((--[^)]+)\)/g, (_, name: string) => {
+    const v = vars[name];
+    if (typeof v === 'string') return v;
+    if (name.includes('scale')) return '1';
+    if (name.includes('rotate')) return '0deg';
+    return '0px';
+  });
+
+  const out: Partial<StyleProps> = {};
+
+  const parseDeg = (v: string): number | null => {
+    const m = v.trim().match(/^(-?\d+(?:\.\d+)?)deg$/);
+    if (!m) return null;
+    const n = Number(m[1]);
+    return Number.isFinite(n) ? n : null;
+  };
+
+  const translate = resolved.match(/translate(?:3d)?\(\s*([^,]+)\s*,\s*([^,)]+)(?:\s*,\s*([^)]+))?\s*\)/);
+  if (translate) {
+    const x = parseCssLengthToPx(translate[1]);
+    const y = parseCssLengthToPx(translate[2]);
+    if (x !== null) out.translateX = x;
+    if (y !== null) out.translateY = y;
+  }
+
+  const translateX = resolved.match(/translateX\(\s*([^)]+)\s*\)/);
+  if (translateX) {
+    const x = parseCssLengthToPx(translateX[1]);
+    if (x !== null) out.translateX = x;
+  }
+
+  const translateY = resolved.match(/translateY\(\s*([^)]+)\s*\)/);
+  if (translateY) {
+    const y = parseCssLengthToPx(translateY[1]);
+    if (y !== null) out.translateY = y;
+  }
+
+  const rotate = resolved.match(/rotate\(\s*([^)]+)\s*\)/);
+  if (rotate) {
+    const deg = parseDeg(rotate[1]);
+    if (deg !== null) out.rotate = deg;
+  }
+
+  const scaleX = resolved.match(/scaleX\(\s*([^)]+)\s*\)/);
+  if (scaleX) {
+    const n = Number(scaleX[1]);
+    if (Number.isFinite(n)) out.scaleX = n;
+  }
+
+  const scaleY = resolved.match(/scaleY\(\s*([^)]+)\s*\)/);
+  if (scaleY) {
+    const n = Number(scaleY[1]);
+    if (Number.isFinite(n)) out.scaleY = n;
+  }
+
+  const scale = resolved.match(/scale\(\s*([^,)]+)\s*(?:,\s*([^)]+)\s*)?\)/);
+  if (scale) {
+    const sx = Number(scale[1]);
+    const sy = scale[2] !== undefined ? Number(scale[2]) : sx;
+    if (Number.isFinite(sx)) out.scaleX = sx;
+    if (Number.isFinite(sy)) out.scaleY = sy;
+  }
+
+  return Object.keys(out).length ? out : null;
+}
+
 function cssObjectToYogaStyle(css: Record<string, unknown>): Partial<StyleProps> {
   const vars: Record<string, string> = {};
   for (const [k, v] of Object.entries(css)) {
@@ -242,74 +335,142 @@ function cssObjectToYogaStyle(css: Record<string, unknown>): Partial<StyleProps>
   for (const [k, v] of Object.entries(css)) {
     if (k.startsWith('--')) continue;
 
-    if (k === 'width') setFlex('width', v);
-    else if (k === 'height') setFlex('height', v);
-    else if (k === 'minWidth') setFlex('minWidth', v);
-    else if (k === 'minHeight') setFlex('minHeight', v);
-    else if (k === 'maxWidth') setFlex('maxWidth', v);
-    else if (k === 'maxHeight') setFlex('maxHeight', v);
-    else if (k === 'top') setFlex('top', v);
-    else if (k === 'right') setFlex('right', v);
-    else if (k === 'bottom') setFlex('bottom', v);
-    else if (k === 'left') setFlex('left', v);
-    else if (k === 'padding') setFlex('padding', v);
-    else if (k === 'paddingTop') setFlex('paddingTop', v);
-    else if (k === 'paddingRight') setFlex('paddingRight', v);
-    else if (k === 'paddingBottom') setFlex('paddingBottom', v);
-    else if (k === 'paddingLeft') setFlex('paddingLeft', v);
-    else if (k === 'margin') setFlex('margin', v);
-    else if (k === 'marginTop') setFlex('marginTop', v);
-    else if (k === 'marginRight') setFlex('marginRight', v);
-    else if (k === 'marginBottom') setFlex('marginBottom', v);
-    else if (k === 'marginLeft') setFlex('marginLeft', v);
-    else if (k === 'gap') setFlex('gap', v);
-    else if (k === 'rowGap') setFlex('rowGap', v);
-    else if (k === 'columnGap') setFlex('columnGap', v);
-    else if (k === 'backgroundColor') {
-      const c = cssToYogaColor(v, vars);
-      if (c) style.backgroundColor = c;
-    } else if (k === 'borderColor') {
-      const c = cssToYogaColor(v, vars);
-      if (c) style.borderColor = c;
-    } else if (k === 'color') {
-      const c = cssToYogaColor(v, vars);
-      if (c) style.color = c;
-    } else if (k === 'borderWidth') setNum('borderWidth', v);
-    else if (k === 'borderRadius') setNum('borderRadius', v);
-    else if (k === 'fontSize') setNum('fontSize', v);
-    else if (k === 'lineHeight') setNum('lineHeight', v);
-    else if (k === 'opacity') {
-      const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
-      if (Number.isFinite(n)) style.opacity = Math.max(0, Math.min(1, n));
-    } else if (k === 'zIndex') setN('zIndex', v);
-    else if (k === 'boxShadow') {
-      const parsed = parseBoxShadow(v, vars);
-      if (parsed) style.boxShadow = parsed;
-    } else if (k === 'fontWeight') {
-      if (typeof v === 'number') style.fontWeight = v;
-      else if (typeof v === 'string') {
-        const n = Number(v);
-        style.fontWeight = Number.isFinite(n) ? n : (v as StyleProps['fontWeight']);
+    switch (k) {
+      case 'width':
+      case 'height':
+      case 'minWidth':
+      case 'minHeight':
+      case 'maxWidth':
+      case 'maxHeight':
+      case 'top':
+      case 'right':
+      case 'bottom':
+      case 'left':
+      case 'padding':
+      case 'paddingTop':
+      case 'paddingRight':
+      case 'paddingBottom':
+      case 'paddingLeft':
+      case 'margin':
+      case 'marginTop':
+      case 'marginRight':
+      case 'marginBottom':
+      case 'marginLeft':
+      case 'gap':
+      case 'rowGap':
+      case 'columnGap':
+      case 'flexBasis':
+        setFlex(k as keyof StyleProps, v);
+        break;
+      case 'backgroundColor': {
+        const c = cssToYogaColor(v, vars);
+        if (c) style.backgroundColor = c;
+        break;
       }
-    } else if (k === 'fontStyle' && typeof v === 'string') style.fontStyle = v as StyleProps['fontStyle'];
-    else if (k === 'fontFamily' && typeof v === 'string') style.fontFamily = v;
-    else if (k === 'textAlign' && typeof v === 'string') style.textAlign = v as StyleProps['textAlign'];
-    else if (k === 'whiteSpace' && typeof v === 'string') style.whiteSpace = v as StyleProps['whiteSpace'];
-    else if (k === 'lineClamp') setN('lineClamp', v);
-    else if (k === 'WebkitLineClamp') setN('lineClamp', v);
-    else if (k === 'flexDirection' && typeof v === 'string') style.flexDirection = v as StyleProps['flexDirection'];
-    else if (k === 'justifyContent' && typeof v === 'string') style.justifyContent = v as StyleProps['justifyContent'];
-    else if (k === 'alignItems' && typeof v === 'string') style.alignItems = v as StyleProps['alignItems'];
-    else if (k === 'alignSelf' && typeof v === 'string') style.alignSelf = v as StyleProps['alignSelf'];
-    else if (k === 'flexWrap' && typeof v === 'string') style.flexWrap = v as StyleProps['flexWrap'];
-    else if (k === 'overflow' && typeof v === 'string') {
-      if (v === 'visible' || v === 'hidden') style.overflow = v;
+      case 'borderColor': {
+        const c = cssToYogaColor(v, vars);
+        if (c) style.borderColor = c;
+        break;
+      }
+      case 'color': {
+        const c = cssToYogaColor(v, vars);
+        if (c) style.color = c;
+        break;
+      }
+      case 'borderWidth':
+        setNum('borderWidth', v);
+        break;
+      case 'borderRadius':
+        setNum('borderRadius', v);
+        break;
+      case 'fontSize':
+        setNum('fontSize', v);
+        break;
+      case 'lineHeight':
+        setNum('lineHeight', v);
+        break;
+      case 'opacity': {
+        const n = typeof v === 'number' ? v : typeof v === 'string' ? Number(v) : NaN;
+        if (Number.isFinite(n)) style.opacity = Math.max(0, Math.min(1, n));
+        break;
+      }
+      case 'zIndex':
+        setN('zIndex', v);
+        break;
+      case 'boxShadow': {
+        const parsed = parseBoxShadow(v, vars);
+        if (parsed) style.boxShadow = parsed;
+        break;
+      }
+      case 'textShadow':
+      case 'text-shadow': {
+        const parsed = parseTextShadow(v, vars);
+        if (parsed) style.textShadow = parsed;
+        break;
+      }
+      case 'transform': {
+        const parsed = parseTransformToYogaStyle(v, vars);
+        if (parsed) Object.assign(style, parsed);
+        break;
+      }
+      case 'fontWeight':
+        if (typeof v === 'number') style.fontWeight = v;
+        else if (typeof v === 'string') {
+          const n = Number(v);
+          style.fontWeight = Number.isFinite(n) ? n : (v as StyleProps['fontWeight']);
+        }
+        break;
+      case 'fontStyle':
+        if (typeof v === 'string') style.fontStyle = v as StyleProps['fontStyle'];
+        break;
+      case 'fontFamily':
+        if (typeof v === 'string') style.fontFamily = v;
+        break;
+      case 'textAlign':
+        if (typeof v === 'string') style.textAlign = v as StyleProps['textAlign'];
+        break;
+      case 'whiteSpace':
+        if (typeof v === 'string') style.whiteSpace = v as StyleProps['whiteSpace'];
+        break;
+      case 'lineClamp':
+      case 'WebkitLineClamp':
+        setN('lineClamp', v);
+        break;
+      case 'flexDirection':
+        if (typeof v === 'string') style.flexDirection = v as StyleProps['flexDirection'];
+        break;
+      case 'justifyContent':
+        if (typeof v === 'string') style.justifyContent = v as StyleProps['justifyContent'];
+        break;
+      case 'alignItems':
+        if (typeof v === 'string') style.alignItems = v as StyleProps['alignItems'];
+        break;
+      case 'alignSelf':
+        if (typeof v === 'string') style.alignSelf = v as StyleProps['alignSelf'];
+        break;
+      case 'flexWrap':
+        if (typeof v === 'string') style.flexWrap = v as StyleProps['flexWrap'];
+        break;
+      case 'overflow':
+        if (typeof v === 'string') {
+          if (v === 'visible' || v === 'hidden') style.overflow = v;
+        }
+        break;
+      case 'position':
+        if (typeof v === 'string') style.position = v as StyleProps['position'];
+        break;
+      case 'flex':
+        setN('flex', v);
+        break;
+      case 'flexGrow':
+        setN('flexGrow', v);
+        break;
+      case 'flexShrink':
+        setN('flexShrink', v);
+        break;
+      default:
+        break;
     }
-    else if (k === 'position' && typeof v === 'string') style.position = v as StyleProps['position'];
-    else if (k === 'flex') setN('flex', v);
-    else if (k === 'flexGrow') setN('flexGrow', v);
-    else if (k === 'flexShrink') setN('flexShrink', v);
-    else if (k === 'flexBasis') setFlex('flexBasis', v);
   }
 
   return style;

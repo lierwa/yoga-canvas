@@ -73,8 +73,11 @@ function convertElementToDescriptor(
     case 'view':
       return {
         type: 'view',
+        id: props.id as string | undefined,
         name: props.name as string | undefined,
         style: mergedStyle,
+        motion: props.motion as NodeDescriptor['motion'],
+        events: props.events as NodeDescriptor['events'],
         children: props.children
           ? convertChildrenToDescriptors(props.children as React.ReactNode)
           : undefined,
@@ -88,8 +91,11 @@ function convertElementToDescriptor(
       }
       return {
         type: 'text',
+        id: props.id as string | undefined,
         name: props.name as string | undefined,
         style: mergedStyle,
+        motion: props.motion as NodeDescriptor['motion'],
+        events: props.events as NodeDescriptor['events'],
         content,
       };
     }
@@ -97,8 +103,11 @@ function convertElementToDescriptor(
     case 'image':
       return {
         type: 'image',
+        id: props.id as string | undefined,
         name: props.name as string | undefined,
         style: mergedStyle,
+        motion: props.motion as NodeDescriptor['motion'],
+        events: props.events as NodeDescriptor['events'],
         src: props.src as string,
         objectFit: props.objectFit as NodeDescriptor['objectFit'],
       };
@@ -106,8 +115,11 @@ function convertElementToDescriptor(
     case 'scrollview':
       return {
         type: 'scrollview',
+        id: props.id as string | undefined,
         name: props.name as string | undefined,
         style: mergedStyle,
+        motion: props.motion as NodeDescriptor['motion'],
+        events: props.events as NodeDescriptor['events'],
         scrollDirection: props.scrollDirection as NodeDescriptor['scrollDirection'],
         scrollBarVisibility: props.scrollBarVisibility as NodeDescriptor['scrollBarVisibility'],
         children: props.children

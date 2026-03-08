@@ -8,6 +8,11 @@ export function CodeViewer({ content, language }: { content: string; language: '
         language={language}
         value={content}
         theme="vs-dark"
+        loading={
+          <pre className="w-full h-full overflow-auto bg-[#1e1e1e] text-[#d4d4d4] font-mono text-xs leading-5 p-3">
+            {content}
+          </pre>
+        }
         beforeMount={(monaco) => {
           monaco.languages.typescript?.typescriptDefaults?.setCompilerOptions({
             jsx: monaco.languages.typescript.JsxEmit.ReactJSX,
