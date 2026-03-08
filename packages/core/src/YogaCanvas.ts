@@ -109,6 +109,8 @@ export class YogaCanvas {
     string,
     { nodeId: string; type: CanvasPointerEventType; handler: CanvasPointerEventHandler }
   > = new Map();
+  private boundEventTypesByNodeId: Map<string, Set<CanvasPointerEventType>> =
+    new Map();
   private scrollBarTimers: Map<string, ReturnType<typeof setTimeout>> =
     new Map();
   private animationRunning = false;
@@ -721,7 +723,26 @@ export class YogaCanvas {
   dispatchPointerEvent(
     input: CanvasPointerEventInput,
   ): CanvasPointerEventDispatchResult {
-    return this.pointerDispatcher.dispatchPointerEvent(input);
+    const dispatched = this.pointerDispatcher.dispatchPointerEvent(input);
+
+    if (this.adapter.name === "h5" && input.type === "pointermove") {
+      const el = this.canvas as HTMLCanvasElement;
+      if (el && typeof (el as unknown as { style?: unknown }).style === "object") {
+        let pointer = false;
+        for (let i = dispatched.path.length - 1; i >= 0; i--) {
+          const id = dispatched.path[i];
+          if (!id || id === CANVAS_EVENT_TARGET_ID) continue;
+          const types = this.boundEventTypesByNodeId.get(id);
+          if (types && types.has("click")) {
+            pointer = true;
+            break;
+          }
+        }
+        el.style.cursor = pointer ? "pointer" : "";
+      }
+    }
+
+    return dispatched;
   }
 
   // --- Lifecycle ---
@@ -1055,6 +1076,10 @@ export class YogaCanvas {
     }
     this.pointerDispatcher.addEventListener(nodeId, type, handler);
     this.boundEventHandlers.set(key, { nodeId, type, handler });
+
+    const set = this.boundEventTypesByNodeId.get(nodeId) ?? new Set();
+    set.add(type);
+    this.boundEventTypesByNodeId.set(nodeId, set);
   }
 
   private clearBoundEvents(): void {
@@ -1062,6 +1087,7 @@ export class YogaCanvas {
       this.pointerDispatcher.removeEventListener(nodeId, type, handler);
     }
     this.boundEventHandlers.clear();
+    this.boundEventTypesByNodeId.clear();
   }
 
   private runActions(actions: NodeAction[], e: unknown): void {

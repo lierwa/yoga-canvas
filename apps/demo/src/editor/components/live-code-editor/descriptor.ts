@@ -97,9 +97,10 @@ export function renderJSXFromDescriptor(desc: NodeDescriptor, depth: number, mod
       if (Object.keys(restStyle).length) props.push(`style={${JSON.stringify(restStyle, null, 2)}}`);
     }
 
-    if (Object.keys(button.textStyle).length) {
-      props.push(`textStyle={${JSON.stringify(button.textStyle, null, 2)}}`);
-    }
+    const { className: textClassNameRaw, restStyle: textRestStyle } = styleToTailwind(button.textStyle);
+    const textYcStyle = styleObjectToYcStyleClassName(textRestStyle);
+    const textClassName = [textClassNameRaw, textYcStyle].filter(Boolean).join(' ').trim();
+    if (textClassName) props.push(`textClassName=${JSON.stringify(textClassName)}`);
 
     if (desc.motion && typeof desc.motion === 'object' && Object.keys(desc.motion).length) {
       props.push(`motion={${JSON.stringify(desc.motion, null, 2)}}`);
@@ -533,7 +534,18 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
   const fontWeight = style.fontWeight;
   if (fontWeight === 'bold') add('font-bold', ['fontWeight']);
   else if (fontWeight === 'normal') add('font-normal', ['fontWeight']);
-  else if (typeof fontWeight === 'number') add(`font-[${fontWeight}]`, ['fontWeight']);
+  else if (typeof fontWeight === 'number') {
+    if (fontWeight === 100) add('font-thin', ['fontWeight']);
+    else if (fontWeight === 200) add('font-extralight', ['fontWeight']);
+    else if (fontWeight === 300) add('font-light', ['fontWeight']);
+    else if (fontWeight === 400) add('font-normal', ['fontWeight']);
+    else if (fontWeight === 500) add('font-medium', ['fontWeight']);
+    else if (fontWeight === 600) add('font-semibold', ['fontWeight']);
+    else if (fontWeight === 700) add('font-bold', ['fontWeight']);
+    else if (fontWeight === 800) add('font-extrabold', ['fontWeight']);
+    else if (fontWeight === 900) add('font-black', ['fontWeight']);
+    else add(`font-[${fontWeight}]`, ['fontWeight']);
+  }
   const lineHeight = style.lineHeight;
   if (typeof lineHeight === 'number') add(`leading-[${lineHeight}]`, ['lineHeight']);
   const textAlign = style.textAlign;
@@ -548,6 +560,32 @@ function styleToTailwind(style: Record<string, unknown>): { className: string; r
     className: tokens.join(' ').trim(),
     restStyle: rest,
   };
+}
+
+function styleObjectToYcStyleClassName(style: Record<string, unknown>): string | null {
+  if (!Object.keys(style).length) return null;
+  const encoded = encodeBase64UrlFromUtf8(JSON.stringify(style));
+  return `yc-style-[${encoded}]`;
+}
+
+function encodeBase64UrlFromUtf8(input: string): string {
+  const g = globalThis as unknown as { btoa?: (s: string) => string; Buffer?: unknown };
+  if (typeof g.btoa === 'function') {
+    const bytes = new TextEncoder().encode(input);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i += 1) binary += String.fromCharCode(bytes[i]!);
+    const base64 = g.btoa(binary);
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  if (typeof g.Buffer !== 'undefined') {
+    const base64 = (g.Buffer as { from: (s: string, enc: 'utf8') => { toString: (enc: 'base64') => string } })
+      .from(input, 'utf8')
+      .toString('base64');
+    return base64.replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+  }
+
+  throw new Error('Base64 encode not supported');
 }
 
 export function isNodeDescriptor(value: unknown): value is NodeDescriptor {

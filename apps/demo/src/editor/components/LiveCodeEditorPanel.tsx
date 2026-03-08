@@ -26,25 +26,17 @@ type LiveButtonProps = {
   className?: string;
   tw?: string;
   style?: NodeDescriptor['style'];
-  textStyle?: NodeDescriptor['style'];
+  textClassName?: string;
   motion?: NodeDescriptor['motion'];
   events?: NodeDescriptor['events'];
 };
 
-function Button({ id, name, label, className, tw, style, textStyle, motion, events }: LiveButtonProps) {
+function Button({ id, name, label, className, tw, style, textClassName, motion, events }: LiveButtonProps) {
+  const baseTextClassName = 'text-[14px] font-semibold leading-[1.2] text-center whitespace-nowrap';
+  const mergedTextClassName = [baseTextClassName, textClassName].filter(Boolean).join(' ').trim();
   return (
     <View id={id} name={name} className={className} tw={tw} style={style} motion={motion} events={events}>
-      <Text
-        name="ButtonLabel"
-        style={{
-          fontSize: 14,
-          fontWeight: 600,
-          lineHeight: 1.2,
-          textAlign: 'center',
-          whiteSpace: 'nowrap',
-          ...(textStyle ?? {}),
-        }}
-      >
+      <Text name="ButtonLabel" className={mergedTextClassName}>
         {label}
       </Text>
     </View>
