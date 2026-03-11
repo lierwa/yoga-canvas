@@ -6,6 +6,7 @@ import fs from 'node:fs/promises'
 import { createRequire } from 'node:module'
 
 export default defineConfig(({ command }) => ({
+  base: process.env.VITE_BASE || '/',
   plugins: [react(), tailwindcss(), monacoLocalAssets()],
   ...(command === 'serve'
     ? {

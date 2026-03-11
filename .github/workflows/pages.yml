@@ -38,17 +38,15 @@ jobs:
       - name: Build packages
         run: pnpm run build:libs
 
-      - name: Build demo (site root)
+      - name: Build demo
         env:
           VITE_BASE: /${{ github.event.repository.name }}/
-          VITE_OUT_DIR: ../../dist
-        run: pnpm --filter @yoga-canvas/demo build
-
-      - name: Build editor (sub path)
-        env:
-          VITE_BASE: /${{ github.event.repository.name }}/editor/
-          VITE_OUT_DIR: ../../dist/editor
-        run: pnpm --filter @yoga-canvas/editor build
+        run: |
+          # 确保输出目录干净
+          rm -rf dist
+          pnpm --filter @yoga-canvas/demo build
+          # 将 demo 的 build 产物移动到根目录的 dist
+          mv apps/demo/dist dist
 
       - name: Upload artifact
         uses: actions/upload-pages-artifact@v3

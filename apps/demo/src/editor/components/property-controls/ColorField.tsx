@@ -292,7 +292,9 @@ export function ColorField({
                   }
             }
             aria-label="Open color picker"
-          />
+          >
+            <span className="sr-only">Open color picker</span>
+          </Button>
           <input
             type="text"
             value={textValue}
