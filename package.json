@@ -12,9 +12,13 @@
     "dev:libs": "pnpm -r --filter @yoga-canvas/core --filter @yoga-canvas/react --filter @yoga-canvas/taro dev",
     "dev:demo": "pnpm --filter @yoga-canvas/demo dev",
     "build:demo": "pnpm --filter @yoga-canvas/demo build",
-    "build:all": "pnpm run build:libs"
+    "build:all": "pnpm run build:libs",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build:libs && changeset publish"
   },
   "devDependencies": {
+    "@changesets/cli": "^2.30.0",
     "@eslint/js": "^9.13.0",
     "eslint": "^9.13.0",
     "eslint-plugin-react-hooks": "^5.0.0",

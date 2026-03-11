@@ -1,7 +1,7 @@
 {
   "name": "@yoga-canvas/taro-demo",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "scripts": {
     "dev:weapp": "taro build --type weapp --watch",
     "build:weapp": "taro build --type weapp",

@@ -1,6 +1,6 @@
 {
   "name": "@yoga-canvas/taro",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Taro helpers for @yoga-canvas/core (WeChat Mini Program wasm + asset wiring).",
   "type": "module",
   "main": "./dist/node.cjs",

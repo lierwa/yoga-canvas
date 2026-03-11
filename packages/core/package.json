@@ -1,6 +1,6 @@
 {
   "name": "@yoga-canvas/core",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Framework-agnostic Canvas layout engine powered by Yoga (flexbox). Supports H5 and WeChat Mini Program.",
   "type": "module",
   "main": "./dist/index.cjs",
