@@ -1,6 +1,6 @@
 import { Suspense, lazy } from 'react';
 import { DemoI18nProvider } from './i18n';
-import { BrowserRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { HashRouter, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 
 const HomePage = lazy(() => import('./pages/HomePage'));
 const DocsPage = lazy(() => import('./pages/docs/DocsPage'));
@@ -20,10 +20,9 @@ function EditorRoute() {
 }
 
 export default function App() {
-  const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
   return (
     <DemoI18nProvider>
-      <BrowserRouter basename={basename}>
+      <HashRouter>
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<HomePage />} />
@@ -33,7 +32,7 @@ export default function App() {
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Suspense>
-      </BrowserRouter>
+      </HashRouter>
     </DemoI18nProvider>
   );
 }
