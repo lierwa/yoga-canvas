@@ -3,7 +3,7 @@ import { seedTemplates } from '../templates/seedDescriptors';
 import { COMPONENTS_CANVAS_CONTENT } from '../../pages/components/ComponentsCanvasContent';
 
 export const WORKSPACE_DEFAULT_PANEL_ID = 'workspace_default_panel';
-const WORKSPACE_DEFAULT_PANEL_NAME = '默认面板';
+const WORKSPACE_DEFAULT_PANEL_NAME = 'Default Panel';
 
 export type ProjectPayload =
   | { kind: 'descriptor'; descriptor: NodeDescriptor }
