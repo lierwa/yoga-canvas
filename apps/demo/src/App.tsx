@@ -20,9 +20,10 @@ function EditorRoute() {
 }
 
 export default function App() {
+  const basename = import.meta.env.BASE_URL.replace(/\/$/, "");
   return (
     <DemoI18nProvider>
-      <BrowserRouter>
+      <BrowserRouter basename={basename}>
         <Suspense fallback={null}>
           <Routes>
             <Route path="/" element={<HomePage />} />
