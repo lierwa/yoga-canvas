@@ -79,7 +79,9 @@ type MessageKey =
   | 'template.seed_legacy_demo.name'
   | 'template.seed_legacy_demo.desc'
   | 'template.seed_share_poster.name'
-  | 'template.seed_share_poster.desc';
+  | 'template.seed_share_poster.desc'
+  | 'template.seed_animation_basic.name'
+  | 'template.seed_animation_basic.desc';
 
 const STORAGE_KEY = 'yoga-canvas.demo.locale.v1';
 
@@ -88,10 +90,10 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'home.tagline': 'Yoga Canvas',
     'home.subtitle': '基于 Yoga Layout 的 Canvas 画布引擎',
     'home.hero.lead': '一个面向',
-    'home.hero.highlight': '布局与可视化编辑',
-    'home.hero.tail': '的 Canvas 引擎与组件库',
+    'home.hero.highlight': '高性能布局与可视化编辑',
+    'home.hero.tail': '的跨端 Canvas 渲染引擎',
     'home.intro':
-      '用 Yoga（Flexbox）计算布局，把 View/Text/Image/ScrollView 这类节点树渲染到 Canvas；并提供命中测试、选中高亮、缩放平移与属性调参等编辑能力，支持导出 JSON / DOM / 图片，适配 H5 与微信小程序。',
+      'Yoga Canvas 深度集成 Yoga 布局引擎，将熟悉的 Flexbox 与 React 组件化开发模式带入 Canvas 世界。支持 H5 与小程序双端一致性渲染，内置手势交互、属性动画与自动命中测试，是构建海报编辑器、交互图表与跨端 UI 的全链路解决方案。',
     'home.cta': '立即体验',
     'home.stats.layoutEngine': 'Yoga 布局',
     'home.stats.renderTarget': '渲染输出',
@@ -163,22 +165,24 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'template.seed_legacy_demo.desc': '包含常用节点与样式示例',
     'template.seed_share_poster.name': '分享海报模板',
     'template.seed_share_poster.desc': '带海报卡片与二维码示例',
+    'template.seed_animation_basic.name': '动画基础模板',
+    'template.seed_animation_basic.desc': '展示位移、缩放、旋转与透明度动画',
   },
   en: {
     'home.tagline': 'Yoga Canvas',
     'home.subtitle': 'A Canvas engine powered by Yoga Layout',
     'home.hero.lead': 'A Canvas engine for',
-    'home.hero.highlight': 'layout and visual editing',
-    'home.hero.tail': 'with a component system',
+    'home.hero.highlight': 'High-performance layout and visual editing',
+    'home.hero.tail': 'cross-platform Canvas rendering engine',
     'home.intro':
-      'Compute layout with Yoga (flexbox), render a View/Text/Image/ScrollView node tree on Canvas, and power editor interactions like hit-testing, selection highlight, zoom/pan, and property tweaking. Export to JSON / DOM / image with adapters for H5 and WeChat Mini Program.',
+      'Yoga Canvas deeply integrates the Yoga layout engine, bringing familiar Flexbox and React-like component patterns to the Canvas world. Supporting consistent rendering across H5 and Mini Programs with built-in gestures, property animations, and automatic hit-testing, it is a comprehensive solution for poster editors, interactive charts, and cross-platform UI systems.',
     'home.cta': 'Get Started',
     'home.stats.layoutEngine': 'Yoga layout',
     'home.stats.renderTarget': 'Render output',
     'home.stats.editor': 'Editor tools',
     'home.stats.export': 'Export formats',
-    'lang.switchToEn': '切换至英文',
-    'lang.switchToZh': '切换中文',
+    'lang.switchToEn': 'Switch to English',
+    'lang.switchToZh': '切换至中文',
     'nav.docs': 'Docs',
     'nav.back': 'Back',
     'nav.backHome': 'Back to Home',
@@ -199,11 +203,11 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'product.components.b1': 'Read-only showcase',
     'product.components.b2': 'Flex / gap / grid',
     'product.components.b3': 'Image fill / ScrollView',
-    'playground.inspector.show': 'Show inspector',
-    'playground.inspector.hide': 'Hide inspector',
+    'playground.inspector.show': 'Show Inspector',
+    'playground.inspector.hide': 'Hide Inspector',
     'playground.inspector.title': 'Inspector',
-    'playground.inspector.subtitle': 'NodeTree · Properties',
-    'editor.projectMissing': 'Project not found or deleted',
+    'playground.inspector.subtitle': 'Node Tree · Props',
+    'editor.projectMissing': 'Project missing or deleted',
     'editor.backWorkspace': 'Back to Workspace',
     'editor.backWorkspaceTitle': 'Back to Workspace',
     'editor.back': 'Back',
@@ -212,37 +216,39 @@ const messages: Record<DemoLocale, Record<MessageKey, string>> = {
     'editor.saved': 'Saved',
     'editor.loading': 'Loading Yoga Layout Engine…',
     'workspace.title': 'Workspace',
-    'workspace.desc': 'Each template is a project. Create, duplicate, rename, delete — then enter the editor to iterate.',
-    'workspace.defaultProjectName': 'My project',
-    'workspace.newProject': 'New project',
-    'workspace.addProject': 'Add project',
-    'workspace.addProjectDesc': 'Start from a blank canvas',
-    'workspace.recentUpdated': 'Updated:',
+    'workspace.desc': 'Each template is like a project. You can create, duplicate, rename, delete here, and enter editor for low-code editing.',
+    'workspace.defaultProjectName': 'My Project',
+    'workspace.newProject': 'New Project',
+    'workspace.addProject': 'Add Project',
+    'workspace.addProjectDesc': 'Create your new canvas from blank template',
+    'workspace.recentUpdated': 'Last updated: ',
     'workspace.preset.custom': 'Custom',
     'workspace.action.rename': 'Rename',
     'workspace.action.duplicate': 'Duplicate',
     'workspace.action.delete': 'Delete',
-    'workspace.modal.create.title': 'New project',
+    'workspace.modal.create.title': 'New Project',
     'workspace.modal.create.cancel': 'Cancel',
-    'workspace.modal.create.createAndOpen': 'Create & open',
-    'workspace.modal.create.projectName': 'Project name',
-    'workspace.modal.create.projectNamePlaceholder': 'e.g. My poster',
-    'workspace.modal.create.canvasSize': 'Canvas size',
-    'workspace.modal.create.templateLockedHint': 'Canvas size is defined by the template and cannot be changed on create',
+    'workspace.modal.create.createAndOpen': 'Create and Open',
+    'workspace.modal.create.projectName': 'Project Name',
+    'workspace.modal.create.projectNamePlaceholder': 'e.g. My Poster',
+    'workspace.modal.create.canvasSize': 'Canvas Size',
+    'workspace.modal.create.templateLockedHint': 'The canvas size is determined by the template and cannot be modified during creation',
     'workspace.modal.create.width': 'Width',
     'workspace.modal.create.height': 'Height',
-    'workspace.modal.create.selectTemplate': 'Choose template',
-    'workspace.modal.rename.title': 'Rename project',
+    'workspace.modal.create.selectTemplate': 'Select Template',
+    'workspace.modal.rename.title': 'Rename Project',
     'workspace.modal.rename.cancel': 'Cancel',
     'workspace.modal.rename.save': 'Save',
-    'workspace.modal.rename.projectName': 'Project name',
-    'workspace.modal.rename.placeholder': 'Enter a new name',
-    'template.seed_blank.name': 'Blank template',
-    'template.seed_blank.desc': 'Start from scratch',
-    'template.seed_legacy_demo.name': 'Legacy Layout template',
-    'template.seed_legacy_demo.desc': 'Common nodes and style samples',
-    'template.seed_share_poster.name': 'Share poster template',
-    'template.seed_share_poster.desc': 'Poster card + QR sample',
+    'workspace.modal.rename.projectName': 'Project Name',
+    'workspace.modal.rename.placeholder': 'Enter new name',
+    'template.seed_blank.name': 'Blank Template',
+    'template.seed_blank.desc': 'Build layout from scratch',
+    'template.seed_legacy_demo.name': 'Layout Showcase',
+    'template.seed_legacy_demo.desc': 'Examples of common nodes and styles',
+    'template.seed_share_poster.name': 'Share Poster',
+    'template.seed_share_poster.desc': 'Poster card with QR code examples',
+    'template.seed_animation_basic.name': 'Animation Basic',
+    'template.seed_animation_basic.desc': 'Showcase translation, scaling, rotation, and opacity animations',
   },
 };
 
@@ -263,7 +269,7 @@ function safeReadLocale(): DemoLocale | null {
 }
 
 export function DemoI18nProvider({ children }: { children: ReactNode }) {
-  const [locale, setLocaleState] = useState<DemoLocale>(() => safeReadLocale() ?? 'zh');
+  const [locale, setLocaleState] = useState<DemoLocale>(() => safeReadLocale() ?? 'en');
 
   const setLocale = useCallback((next: DemoLocale) => {
     setLocaleState(next);
