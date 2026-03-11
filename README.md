@@ -21,8 +21,8 @@ Yoga Canvas is a high-performance, lightweight **Canvas rendering engine** that 
 
 ## 🔗 Quick Links
 
-- **[Live Demo & Editor](https://lierwa.github.io/yoga-canvas/workspace)**: Visual layout tool with real-time property tweaking.
-- **[Documentation](https://lierwa.github.io/yoga-canvas/)**: Comprehensive guides, API references, and best practices.
+- **[Live Demo & Editor](https://lierwa.github.io/yoga-canvas/#/workspace)**: Visual layout tool with real-time property tweaking.
+- **[Documentation](https://lierwa.github.io/yoga-canvas/#/docs)**: Comprehensive guides, API references, and best practices.
 
 ---
 
