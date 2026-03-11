@@ -69,8 +69,8 @@ export const seedTemplates: SeedTemplate[] = [
   },
   {
     id: "seed_animation_basic",
-    name: "动画示例",
-    description: "使用 motion 做数值动画（平移/缩放/旋转/透明度）",
+    name: "Animation Basic",
+    description: "Use motion to create numerical animation (translation/scaling/rotation/transparency)",
     descriptor: {
       type: "view",
       id: "root",

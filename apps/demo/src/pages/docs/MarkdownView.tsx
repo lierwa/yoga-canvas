@@ -211,6 +211,26 @@ export function MarkdownView({ markdown }: { markdown: string }) {
           {children}
         </td>
       ),
+      img: ({ src, alt, ...props }) => {
+        // Handle local paths like /src/pages/docs/assets/...
+        const finalSrc = src?.startsWith('/src/') ? src : src;
+        return (
+          <div className="my-8 overflow-hidden rounded-2xl border border-white/10 bg-white/5">
+            <img
+              {...props}
+              src={finalSrc}
+              alt={alt}
+              className="mx-auto block max-w-full h-auto"
+              loading="lazy"
+            />
+            {alt && (
+              <div className="border-t border-white/5 bg-white/5 px-4 py-2 text-center text-[12px] text-white/45">
+                {alt}
+              </div>
+            )}
+          </div>
+        );
+      },
     }),
     [scrollToHash],
   );

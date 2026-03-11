@@ -741,22 +741,10 @@ export default function WorkspacePage({ onOpenProject }: WorkspacePageProps) {
                 >
                   <TemplatePreviewFrame descriptor={tpl.descriptor} />
                   <div className="mt-2 text-sm font-semibold text-slate-900 truncate">
-                    {tpl.id === "seed_blank"
-                      ? t("template.seed_blank.name")
-                      : tpl.id === "seed_legacy_demo"
-                      ? t("template.seed_legacy_demo.name")
-                      : tpl.id === "seed_share_poster"
-                      ? t("template.seed_share_poster.name")
-                      : tpl.name}
+                    {t(`template.${tpl.id}.name` as Parameters<typeof t>[0]) || tpl.name}
                   </div>
-                  <div className="text-[11px] text-slate-500 mt-0.5 leading-snug max-h-8 overflow-hidden">
-                    {tpl.id === "seed_blank"
-                      ? t("template.seed_blank.desc")
-                      : tpl.id === "seed_legacy_demo"
-                      ? t("template.seed_legacy_demo.desc")
-                      : tpl.id === "seed_share_poster"
-                      ? t("template.seed_share_poster.desc")
-                      : tpl.description ?? ""}
+                  <div title={t(`template.${tpl.id}.desc` as Parameters<typeof t>[0]) || tpl.description} className="text-[11px] text-slate-500 mt-0.5 leading-snug max-h-8 overflow-hidden truncate">
+                    {t(`template.${tpl.id}.desc` as Parameters<typeof t>[0]) || tpl.description}
                   </div>
                 </button>
               ))}

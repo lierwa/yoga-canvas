@@ -1,4 +1,4 @@
-import { BookOpen, LayoutGrid } from 'lucide-react';
+import { BookOpen, Github, LayoutGrid } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from './Button';
 import { useDemoI18n } from '../i18n';
@@ -9,10 +9,12 @@ export function DemoHeaderActions({
   variant,
   showDocs = false,
   showWorkspace = false,
+  showGithub = true,
 }: {
   variant: DemoHeaderActionsVariant;
   showDocs?: boolean;
   showWorkspace?: boolean;
+  showGithub?: boolean;
 }) {
   const { locale, toggleLocale, t } = useDemoI18n();
   const navigate = useNavigate();
@@ -20,12 +22,25 @@ export function DemoHeaderActions({
   const buttonClassName =
     variant === 'dark'
       ? 'cursor-pointer px-3 py-2 rounded-2xl bg-white/7 border border-white/12 backdrop-blur text-[11px] font-semibold text-white/75 hover:bg-white/10 hover:text-white transition-colors'
-      : 'cursor-pointer px-3 py-2 rounded-2xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-white transition-colors';
+      : 'cursor-pointer px-3 py-2 rounded-2xl bg-white/90 border border-slate-200 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors';
 
   const iconClassName = variant === 'dark' ? 'text-white/70' : 'text-slate-600';
 
   return (
     <div className="flex items-center gap-2">
+      {showGithub ? (
+        <Button
+          variant="ghost"
+          onClick={() => {
+            window.open('https://github.com/lierwa/yoga-canvas', '_blank');
+          }}
+          className={`${buttonClassName} flex items-center gap-2`}
+        >
+          <Github size={14} className={iconClassName} />
+          GitHub
+        </Button>
+      ) : null}
+
       {showDocs ? (
         <Button
           variant="ghost"

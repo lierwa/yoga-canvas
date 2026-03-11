@@ -4,13 +4,13 @@ export type ButtonVariant = 'default' | 'primary' | 'ghost' | 'danger' | 'icon';
 export type ButtonSize = 'sm' | 'md';
 
 const BASE =
-  'inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none';
+  'inline-flex items-center justify-center gap-1 transition-colors disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer select-none';
 
 const VARIANT: Record<ButtonVariant, string> = {
   default:
     'rounded-md border border-gray-200 bg-white text-gray-700 hover:bg-gray-50',
   primary: 'rounded-md border border-transparent bg-black/80 hover:bg-black/70 active:bg-black/60 text-white',
-  ghost: 'rounded-md border border-transparent text-gray-700 hover:bg-gray-50',
+  ghost: 'rounded-md border border-transparent',
   danger:
     'rounded-md border border-transparent bg-red-50 text-red-600 hover:bg-red-100',
   icon:

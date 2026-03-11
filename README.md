@@ -1,50 +1,68 @@
-# React + TypeScript + Vite
+# Yoga Canvas
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Yoga Canvas is a high-performance, lightweight **Canvas rendering engine** that bridges the layout capabilities of **Yoga (Flexbox)** with the drawing power of **Canvas 2D**. It provides a React-like declarative UI rendering solution for H5 and WeChat Mini Programs.
 
-Currently, two official plugins are available:
+<p align="center">
+  <img src="apps/demo/src/pages/docs/assets/data-modal-01.png" width="800" alt="Yoga Canvas Architecture" />
+</p>
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+---
 
-## Expanding the ESLint configuration
+## 🚀 Key Features
 
-If you are developing a production application, we recommend updating the configuration to enable type aware lint rules:
+- **Flexbox Layout**: Powered by Facebook's Yoga engine, supporting `flex-direction`, `justify-content`, `gap`, absolute positioning, and more.
+- **Declarative UI**: Familiar React component pattern (`View`, `Text`, `Image`, `ScrollView`) with extremely low learning curve.
+- **High Performance**: 60FPS smooth experience even with thousands of nodes, thanks to optimized Canvas rendering.
+- **Visual Richness**: Support for gradients, shadows, rounded corners, text truncation, and Tailwind CSS class parsing.
+- **Cross-Platform**: Unified rendering across H5 and WeChat Mini Programs via a robust Adapter layer.
+- **Interactive**: Full event system with capture/bubble phases and high-precision hit testing.
 
-- Configure the top-level `parserOptions` property like this:
+---
 
-```js
-export default tseslint.config({
-  languageOptions: {
-    // other options...
-    parserOptions: {
-      project: ['./tsconfig.node.json', './tsconfig.app.json'],
-      tsconfigRootDir: import.meta.dirname,
-    },
-  },
-})
+## 🔗 Quick Links
+
+- **[Live Demo & Editor](https://lierwa.github.io/yoga-canvas/workspace)**: Visual layout tool with real-time property tweaking.
+- **[Documentation](https://lierwa.github.io/yoga-canvas/)**: Comprehensive guides, API references, and best practices.
+
+---
+
+## 📦 Installation
+
+```bash
+pnpm add @yoga-canvas/core @yoga-canvas/react
 ```
 
-- Replace `tseslint.configs.recommended` to `tseslint.configs.recommendedTypeChecked` or `tseslint.configs.strictTypeChecked`
-- Optionally add `...tseslint.configs.stylisticTypeChecked`
-- Install [eslint-plugin-react](https://github.com/jsx-eslint/eslint-plugin-react) and update the config:
+---
 
-```js
-// eslint.config.js
-import react from 'eslint-plugin-react'
+## 💻 Quick Start (React)
 
-export default tseslint.config({
-  // Set the react version
-  settings: { react: { version: '18.3' } },
-  plugins: {
-    // Add the react plugin
-    react,
-  },
-  rules: {
-    // other rules...
-    // Enable its recommended rules
-    ...react.configs.recommended.rules,
-    ...react.configs['jsx-runtime'].rules,
-  },
-})
+```tsx
+import { YogaCanvas, View, Text } from '@yoga-canvas/react';
+
+export function MyCanvas() {
+  return (
+    <YogaCanvas width={375} height={240}>
+      <View style={{ width: 375, height: 240, padding: 16, backgroundColor: '#050816' }}>
+        <Text
+          content="Hello Yoga Canvas"
+          style={{ fontSize: 18, color: '#ffffff', lineHeight: 1.4 }}
+        />
+      </View>
+    </YogaCanvas>
+  );
+}
 ```
+
+---
+
+## 🛠 Usage Modes
+
+1. **React (JSX)**: The most recommended way for React/Next.js/Taro applications.
+2. **Pure JS (API)**: Use directly in logic-heavy environments or non-React projects.
+3. **JSON Schema**: Load layouts from dynamic JSON data for Server-Driven UI.
+
+---
+
+## 📄 License
+
+MIT © [lierwa](https://github.com/lierwa)
